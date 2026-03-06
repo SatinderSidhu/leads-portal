@@ -46,6 +46,20 @@ interface StatusHistoryEntry {
   createdAt: string;
 }
 
+interface Nda {
+  id: string;
+  status: string;
+  signerName: string | null;
+  signedAt: string | null;
+  createdAt: string;
+}
+
+const NDA_STATUS_DISPLAY: Record<string, { label: string; color: string }> = {
+  GENERATED: { label: "Generated", color: "bg-yellow-100 text-yellow-800" },
+  SENT: { label: "Sent to Customer", color: "bg-blue-100 text-blue-800" },
+  SIGNED: { label: "Signed", color: "bg-green-100 text-green-800" },
+};
+
 interface Lead {
   id: string;
   projectName: string;
@@ -57,6 +71,7 @@ interface Lead {
   createdAt: string;
   notes: Note[];
   statusHistory: StatusHistoryEntry[];
+  nda: Nda | null;
 }
 
 export default function LeadDetailPage() {
@@ -71,6 +86,7 @@ export default function LeadDetailPage() {
 
   const [noteContent, setNoteContent] = useState("");
   const [noteAdding, setNoteAdding] = useState(false);
+  const [ndaGenerating, setNdaGenerating] = useState(false);
 
   async function fetchLead() {
     const res = await fetch(`/api/leads/${params.id}`);
@@ -124,6 +140,24 @@ export default function LeadDetailPage() {
       alert("Failed to add note");
     } finally {
       setNoteAdding(false);
+    }
+  }
+
+  async function handleGenerateNda() {
+    if (!lead) return;
+    setNdaGenerating(true);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/nda`, { method: "POST" });
+      if (res.ok) {
+        await fetchLead();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to generate NDA");
+      }
+    } catch {
+      alert("Failed to generate NDA");
+    } finally {
+      setNdaGenerating(false);
     }
   }
 
@@ -323,6 +357,63 @@ export default function LeadDetailPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+
+            {/* NDA */}
+            <div className="bg-white rounded-xl border p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">
+                Non-Disclosure Agreement
+              </h2>
+
+              {!lead.nda ? (
+                <div>
+                  <p className="text-gray-500 text-sm mb-4">
+                    No NDA has been generated for this lead yet.
+                  </p>
+                  <button
+                    onClick={handleGenerateNda}
+                    disabled={ndaGenerating}
+                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-2.5 rounded-lg text-sm font-medium hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  >
+                    {ndaGenerating ? "Generating..." : "Generate NDA"}
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">Status</span>
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${NDA_STATUS_DISPLAY[lead.nda.status]?.color || "bg-gray-100 text-gray-800"}`}
+                    >
+                      {NDA_STATUS_DISPLAY[lead.nda.status]?.label || lead.nda.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-500">Created</span>
+                    <span className="text-sm text-gray-900">
+                      {new Date(lead.nda.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                  {lead.nda.status === "SIGNED" && lead.nda.signerName && (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-500">Signed By</span>
+                        <span className="text-sm text-gray-900 font-medium">
+                          {lead.nda.signerName}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-gray-500">Signed On</span>
+                        <span className="text-sm text-gray-900">
+                          {lead.nda.signedAt
+                            ? new Date(lead.nda.signedAt).toLocaleString()
+                            : "—"}
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>

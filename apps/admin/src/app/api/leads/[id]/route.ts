@@ -12,6 +12,7 @@ export async function GET(
     include: {
       notes: { orderBy: { createdAt: "desc" } },
       statusHistory: { orderBy: { createdAt: "desc" } },
+      nda: true,
     },
   });
 

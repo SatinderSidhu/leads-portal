@@ -4,7 +4,7 @@
 
 | Field | Detail |
 |-------|--------|
-| Document Version | 1.1 |
+| Document Version | 1.2 |
 | Last Updated | March 6, 2026 |
 | Status | Active |
 
@@ -112,17 +112,29 @@ leads-portal/
 │   │                       ├── route.ts       # GET single lead
 │   │                       ├── status/
 │   │                       │   └── route.ts   # PATCH status update
-│   │                       └── notes/
-│   │                           └── route.ts   # POST add note
+│   │                       ├── notes/
+│   │                       │   └── route.ts   # POST add note
+│   │                       └── nda/
+│   │                           └── route.ts   # POST generate, GET retrieve NDA
 │   └── customer/                   # Customer Portal (Next.js)
 │       ├── package.json
 │       ├── next.config.ts
 │       ├── tsconfig.json
 │       └── src/
+│           ├── lib/
+│           │   ├── email.ts         # NDA signed email notifications
+│           │   └── generate-pdf.ts  # Client-side PDF generation (jspdf)
+│           ├── components/
+│           │   └── NdaSection.tsx   # NDA view, PDF download, e-signature form
 │           └── app/
 │               ├── layout.tsx       # Root layout
 │               ├── globals.css      # Global styles
-│               └── page.tsx         # Welcome page (SSR)
+│               ├── page.tsx         # Welcome page (SSR) + NDA tab
+│               └── api/
+│                   └── nda/
+│                       ├── route.ts      # GET NDA by leadId
+│                       └── sign/
+│                           └── route.ts  # POST sign NDA
 └── packages/
     └── database/                   # Shared Database Package
         ├── package.json
@@ -173,6 +185,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum NdaStatus {
+  GENERATED
+  SENT
+  SIGNED
+}
+
 enum LeadStatus {
   NEW
   DESIGN_READY
@@ -195,6 +213,7 @@ model Lead {
   updatedAt          DateTime     @updatedAt @map("updated_at")
   notes              Note[]
   statusHistory      StatusHistory[]
+  nda                Nda?
 
   @@map("leads")
 }
@@ -219,6 +238,20 @@ model StatusHistory {
 
   @@map("status_history")
 }
+
+model Nda {
+  id         String    @id @default(uuid())
+  leadId     String    @unique @map("lead_id")
+  lead       Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  content    String    @db.Text
+  status     NdaStatus @default(GENERATED)
+  signerName String?   @map("signer_name")
+  signerIp   String?   @map("signer_ip")
+  signedAt   DateTime? @map("signed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@map("ndas")
+}
 ```
 
 ### 3.3 Design Decisions
@@ -233,6 +266,9 @@ model StatusHistory {
 | `onDelete: Cascade` | Notes and history are deleted when a lead is removed |
 | `@db.Text` for description | Allows long-form project descriptions without VARCHAR limits |
 | Prisma `$transaction` | Atomic status updates — lead status and history record created together |
+| `Nda` model | One-to-one with Lead (`@unique` on leadId), stores full NDA text and e-signature data |
+| `NdaStatus` enum | Tracks NDA lifecycle: GENERATED → SENT → SIGNED |
+| Client-side PDF | `jspdf` generates PDF in-browser — no server-side rendering needed |
 
 ---
 
@@ -352,7 +388,7 @@ sendEmail === true?
 
 ```
 Auth:     Required (middleware-enforced)
-Response: Lead with notes[] and statusHistory[] (sorted by createdAt DESC)
+Response: Lead with notes[], statusHistory[], and nda (sorted by createdAt DESC)
 404:      { "error": "Lead not found" }
 ```
 
@@ -395,7 +431,67 @@ Response: Note (201)
 404:      { "error": "Lead not found" }
 ```
 
-### 5.3 Response Types
+### 5.3 NDA API
+
+#### `POST /api/leads/[id]/nda` — Generate NDA (Admin)
+
+```
+Auth:     Required (middleware-enforced)
+Request:  (none — NDA is auto-generated from template)
+Response: Nda (201)
+409:      { "error": "NDA already exists for this lead" }
+```
+
+**Flow:**
+
+```
+Receive POST request
+    ↓
+Find lead by ID (404 if not found)
+    ↓
+Check no existing NDA (409 if exists)
+    ↓
+Generate NDA content from template (company name, customer, project, date)
+    ↓
+Create NDA record (status = GENERATED)
+    ↓
+Send NDA Ready email to customer
+    ↓
+Update NDA status to SENT
+    ↓
+Return NDA (201)
+```
+
+#### `GET /api/leads/[id]/nda` — Get NDA (Admin)
+
+```
+Auth:     Required (middleware-enforced)
+Response: Nda (200)
+404:      { "error": "NDA not found" }
+```
+
+#### `GET /api/nda?leadId=...` — Get NDA (Customer Portal)
+
+```
+Auth:     None (customer portal)
+Response: Nda with lead details (200)
+404:      { "error": "NDA not found" }
+```
+
+#### `POST /api/nda/sign` — Sign NDA (Customer Portal)
+
+```
+Auth:     None (customer portal)
+Request:  { "leadId": string, "signerName": string }
+Response: Nda (200)
+400:      { "error": "NDA has already been signed" }
+```
+
+**Recorded data:** Signer name, IP address (from headers), timestamp.
+
+**Post-sign:** Confirmation emails sent to both customer and admin.
+
+### 5.4 Response Types
 
 ```typescript
 type LeadStatus =
@@ -419,6 +515,20 @@ interface Lead {
   updatedAt: string;           // ISO 8601
   notes?: Note[];
   statusHistory?: StatusHistory[];
+  nda?: Nda | null;
+}
+
+type NdaStatus = "GENERATED" | "SENT" | "SIGNED";
+
+interface Nda {
+  id: string;
+  leadId: string;
+  content: string;
+  status: NdaStatus;
+  signerName: string | null;
+  signerIp: string | null;
+  signedAt: string | null;
+  createdAt: string;
 }
 
 interface Note {
@@ -639,6 +749,7 @@ The admin container runs `prisma db push` on startup (via `scripts/start-admin.s
 | `SMTP_PASS` | SMTP password (Gmail App Password) | `xxxx xxxx xxxx xxxx` |
 | `SMTP_FROM` | Sender email address | `user@gmail.com` |
 | `CUSTOMER_PORTAL_URL` | Base URL of customer portal | `http://localhost:3001` |
+| `COMPANY_NAME` | Company name for NDA documents | `Your Company Name` |
 
 **Security:** The `.env` file is listed in both `.gitignore` and `.dockerignore` to prevent secrets from being committed or included in Docker images.
 
@@ -783,3 +894,4 @@ Both Next.js apps include `transpilePackages: ["@leads-portal/database"]` in the
 |---------|------|---------|--------|
 | 1.0 | March 5, 2026 | Initial document creation | — |
 | 1.1 | March 6, 2026 | Added LeadStatus enum, Note & StatusHistory models, new API endpoints (single lead, status update, notes), status update email, updated customer portal architecture | — |
+| 1.2 | March 6, 2026 | Added NDA feature: NdaStatus enum, Nda model, NDA generation/signing APIs, customer portal NDA UI with PDF download and e-signature, NDA email notifications | — |

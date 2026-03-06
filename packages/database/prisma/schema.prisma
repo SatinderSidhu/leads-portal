@@ -7,6 +7,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum NdaStatus {
+  GENERATED
+  SENT
+  SIGNED
+}
+
 enum LeadStatus {
   NEW
   DESIGN_READY
@@ -30,6 +36,7 @@ model Lead {
 
   notes         Note[]
   statusHistory StatusHistory[]
+  nda           Nda?
 
   @@map("leads")
 }
@@ -53,4 +60,18 @@ model StatusHistory {
   createdAt  DateTime    @default(now()) @map("created_at")
 
   @@map("status_history")
+}
+
+model Nda {
+  id         String    @id @default(uuid())
+  leadId     String    @unique @map("lead_id")
+  lead       Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  content    String    @db.Text
+  status     NdaStatus @default(GENERATED)
+  signerName String?   @map("signer_name")
+  signerIp   String?   @map("signer_ip")
+  signedAt   DateTime? @map("signed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@map("ndas")
 }
