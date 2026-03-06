@@ -1,0 +1,21 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Lead {
+  id                 String   @id @default(uuid())
+  projectName        String   @map("project_name")
+  customerName       String   @map("customer_name")
+  customerEmail      String   @map("customer_email")
+  projectDescription String   @map("project_description") @db.Text
+  emailSent          Boolean  @default(false) @map("email_sent")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("leads")
+}

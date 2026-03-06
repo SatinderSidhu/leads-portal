@@ -1,0 +1,19 @@
+{
+  "name": "leads-portal",
+  "private": true,
+  "packageManager": "npm@11.6.1",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "db:generate": "npm run generate --workspace=@leads-portal/database",
+    "db:push": "npm run push --workspace=@leads-portal/database"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.0",
+    "typescript": "^5.7.0"
+  }
+}
