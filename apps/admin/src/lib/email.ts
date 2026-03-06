@@ -1,9 +1,7 @@
 import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST,
-  port: Number(process.env.SMTP_PORT) || 587,
-  secure: false,
+  service: "gmail",
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
@@ -20,7 +18,10 @@ interface Lead {
 export async function sendWelcomeEmail(lead: Lead) {
   const customerPortalUrl = `${process.env.CUSTOMER_PORTAL_URL}?id=${lead.id}`;
 
-  await transporter.sendMail({
+  console.log(`[Email] Sending welcome email to ${lead.customerEmail} for project "${lead.projectName}"...`);
+  const start = Date.now();
+
+  const info = await transporter.sendMail({
     from: process.env.SMTP_FROM || "noreply@leadsportal.com",
     to: lead.customerEmail,
     subject: `Welcome to ${lead.projectName}!`,
@@ -53,4 +54,6 @@ export async function sendWelcomeEmail(lead: Lead) {
       </div>
     `,
   });
+
+  console.log(`[Email] Sent successfully in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
 }
