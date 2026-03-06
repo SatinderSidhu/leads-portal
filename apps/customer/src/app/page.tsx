@@ -1,5 +1,25 @@
 import { prisma } from "@leads-portal/database";
 
+const STATUS_LABELS: Record<string, string> = {
+  NEW: "New",
+  DESIGN_READY: "Design Ready",
+  DESIGN_APPROVED: "Design Approved",
+  BUILD_IN_PROGRESS: "Build In Progress",
+  BUILD_READY_FOR_REVIEW: "Build Ready for Review",
+  BUILD_SUBMITTED: "Build Submitted",
+  GO_LIVE: "Go Live",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  NEW: "bg-blue-500",
+  DESIGN_READY: "bg-yellow-500",
+  DESIGN_APPROVED: "bg-green-500",
+  BUILD_IN_PROGRESS: "bg-orange-500",
+  BUILD_READY_FOR_REVIEW: "bg-purple-500",
+  BUILD_SUBMITTED: "bg-indigo-500",
+  GO_LIVE: "bg-emerald-500",
+};
+
 export default async function CustomerPage({
   searchParams,
 }: {
@@ -22,7 +42,13 @@ export default async function CustomerPage({
     );
   }
 
-  const lead = await prisma.lead.findUnique({ where: { id } });
+  const lead = await prisma.lead.findUnique({
+    where: { id },
+    include: {
+      notes: { orderBy: { createdAt: "desc" } },
+      statusHistory: { orderBy: { createdAt: "asc" } },
+    },
+  });
 
   if (!lead) {
     return (
@@ -65,6 +91,16 @@ export default async function CustomerPage({
               </h2>
             </div>
 
+            {/* Current Status */}
+            <div className="mb-6">
+              <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">
+                Current Status
+              </p>
+              <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-indigo-100 text-indigo-800">
+                {STATUS_LABELS[lead.status] || lead.status}
+              </span>
+            </div>
+
             <div className="border-t border-gray-100 pt-6">
               <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">
                 Project Description
@@ -94,6 +130,65 @@ export default async function CustomerPage({
                 </div>
               </div>
             </div>
+
+            {/* Status History Timeline */}
+            {lead.statusHistory.length > 0 && (
+              <div className="border-t border-gray-100 pt-6 mt-6">
+                <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">
+                  Status History
+                </p>
+                <div className="space-y-0">
+                  {lead.statusHistory.map((entry, index) => (
+                    <div key={entry.id} className="flex gap-3">
+                      <div className="flex flex-col items-center">
+                        <div
+                          className={`w-3 h-3 rounded-full ${
+                            index === lead.statusHistory.length - 1
+                              ? STATUS_COLORS[entry.toStatus] || "bg-gray-400"
+                              : "bg-gray-300"
+                          }`}
+                        />
+                        {index < lead.statusHistory.length - 1 && (
+                          <div className="w-0.5 h-full bg-gray-200 min-h-[28px]" />
+                        )}
+                      </div>
+                      <div className="pb-4">
+                        <p className="text-sm font-medium text-gray-900">
+                          {STATUS_LABELS[entry.toStatus] || entry.toStatus}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {new Date(entry.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Admin Comments */}
+            {lead.notes.length > 0 && (
+              <div className="border-t border-gray-100 pt-6 mt-6">
+                <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">
+                  Comments from Our Team
+                </p>
+                <div className="space-y-3">
+                  {lead.notes.map((note) => (
+                    <div
+                      key={note.id}
+                      className="bg-gray-50 rounded-lg p-4 border border-gray-100"
+                    >
+                      <p className="text-gray-700 whitespace-pre-wrap">
+                        {note.content}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-2">
+                        {new Date(note.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Footer */}

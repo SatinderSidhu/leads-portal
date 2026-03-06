@@ -4,8 +4,8 @@
 
 | Field | Detail |
 |-------|--------|
-| Document Version | 1.0 |
-| Last Updated | March 5, 2026 |
+| Document Version | 1.1 |
+| Last Updated | March 6, 2026 |
 | Status | Active |
 
 ---
@@ -89,7 +89,7 @@ leads-portal/
 │   │   ├── middleware.ts           # Auth middleware
 │   │   └── src/
 │   │       ├── lib/
-│   │       │   └── email.ts        # Nodemailer utility
+│   │       │   └── email.ts        # Nodemailer utility (welcome + status update)
 │   │       └── app/
 │   │           ├── layout.tsx       # Root layout
 │   │           ├── globals.css      # Global styles
@@ -97,15 +97,23 @@ leads-portal/
 │   │           ├── login/
 │   │           │   └── page.tsx     # Login form
 │   │           ├── dashboard/
-│   │           │   └── page.tsx     # Leads grid
+│   │           │   └── page.tsx     # Leads grid (clickable rows)
 │   │           ├── leads/
-│   │           │   └── new/
-│   │           │       └── page.tsx # Create lead form
+│   │           │   ├── new/
+│   │           │   │   └── page.tsx # Create lead form
+│   │           │   └── [id]/
+│   │           │       └── page.tsx # Lead detail (status, notes, history)
 │   │           └── api/
 │   │               ├── auth/
 │   │               │   └── route.ts # POST login, DELETE logout
 │   │               └── leads/
-│   │                   └── route.ts # GET all, POST create
+│   │                   ├── route.ts # GET all, POST create
+│   │                   └── [id]/
+│   │                       ├── route.ts       # GET single lead
+│   │                       ├── status/
+│   │                       │   └── route.ts   # PATCH status update
+│   │                       └── notes/
+│   │                           └── route.ts   # POST add note
 │   └── customer/                   # Customer Portal (Next.js)
 │       ├── package.json
 │       ├── next.config.ts
@@ -132,18 +140,25 @@ leads-portal/
 ### 3.1 Schema Diagram
 
 ```
-┌────────────────────────────────────────┐
-│               leads                     │
-├────────────────────────────────────────┤
-│ id                 UUID    PK DEFAULT  │
-│ project_name       VARCHAR NOT NULL    │
-│ customer_name      VARCHAR NOT NULL    │
-│ customer_email     VARCHAR NOT NULL    │
-│ project_description TEXT   NOT NULL    │
-│ email_sent         BOOLEAN DEFAULT false│
-│ created_at         TIMESTAMP DEFAULT now│
-│ updated_at         TIMESTAMP AUTO      │
-└────────────────────────────────────────┘
+┌────────────────────────────────────────┐       ┌──────────────────────────────┐
+│               leads                     │       │           notes              │
+├────────────────────────────────────────┤       ├──────────────────────────────┤
+│ id                 UUID    PK DEFAULT  │──┐    │ id          UUID   PK DEFAULT│
+│ project_name       VARCHAR NOT NULL    │  │    │ content     TEXT   NOT NULL  │
+│ customer_name      VARCHAR NOT NULL    │  ├───>│ lead_id     UUID   FK        │
+│ customer_email     VARCHAR NOT NULL    │  │    │ created_at  TIMESTAMP DEFAULT│
+│ project_description TEXT   NOT NULL    │  │    └──────────────────────────────┘
+│ status             LeadStatus DEFAULT  │  │
+│ email_sent         BOOLEAN DEFAULT false│  │    ┌──────────────────────────────┐
+│ created_at         TIMESTAMP DEFAULT now│  │    │       status_history         │
+│ updated_at         TIMESTAMP AUTO      │  │    ├──────────────────────────────┤
+└────────────────────────────────────────┘  │    │ id          UUID   PK DEFAULT│
+                                            │    │ from_status LeadStatus NULL  │
+  LeadStatus ENUM:                          │    │ to_status   LeadStatus       │
+  NEW | DESIGN_READY | DESIGN_APPROVED |    ├───>│ lead_id     UUID   FK        │
+  BUILD_IN_PROGRESS | BUILD_READY_FOR_  |   │    │ created_at  TIMESTAMP DEFAULT│
+  REVIEW | BUILD_SUBMITTED | GO_LIVE        │    └──────────────────────────────┘
+                                            │
 ```
 
 ### 3.2 Prisma Schema
@@ -158,17 +173,51 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum LeadStatus {
+  NEW
+  DESIGN_READY
+  DESIGN_APPROVED
+  BUILD_IN_PROGRESS
+  BUILD_READY_FOR_REVIEW
+  BUILD_SUBMITTED
+  GO_LIVE
+}
+
 model Lead {
-  id                 String   @id @default(uuid())
-  projectName        String   @map("project_name")
-  customerName       String   @map("customer_name")
-  customerEmail      String   @map("customer_email")
-  projectDescription String   @map("project_description") @db.Text
-  emailSent          Boolean  @default(false) @map("email_sent")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  id                 String       @id @default(uuid())
+  projectName        String       @map("project_name")
+  customerName       String       @map("customer_name")
+  customerEmail      String       @map("customer_email")
+  projectDescription String       @map("project_description") @db.Text
+  status             LeadStatus   @default(NEW)
+  emailSent          Boolean      @default(false) @map("email_sent")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+  notes              Note[]
+  statusHistory      StatusHistory[]
 
   @@map("leads")
+}
+
+model Note {
+  id        String   @id @default(uuid())
+  content   String   @db.Text
+  leadId    String   @map("lead_id")
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("notes")
+}
+
+model StatusHistory {
+  id         String      @id @default(uuid())
+  fromStatus LeadStatus? @map("from_status")
+  toStatus   LeadStatus  @map("to_status")
+  leadId     String      @map("lead_id")
+  lead       Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  @@map("status_history")
 }
 ```
 
@@ -178,8 +227,12 @@ model Lead {
 |----------|-----------|
 | UUID for primary key | Non-sequential IDs prevent enumeration attacks on the customer portal |
 | `@map` annotations | Clean snake_case in PostgreSQL, camelCase in TypeScript |
-| Single table | MVP simplicity; no separate user/auth table needed |
+| `LeadStatus` enum | Type-safe status values enforced at database level |
+| `Note` model | Append-only notes (no edit/delete) for audit trail |
+| `StatusHistory` model | Full history of status changes with timestamps |
+| `onDelete: Cascade` | Notes and history are deleted when a lead is removed |
 | `@db.Text` for description | Allows long-form project descriptions without VARCHAR limits |
+| Prisma `$transaction` | Atomic status updates — lead status and history record created together |
 
 ---
 
@@ -282,7 +335,9 @@ Response: Lead (201)
 ```
 Receive POST request
     ↓
-Validate & create lead in database
+Validate & create lead in database (status = NEW)
+    ↓
+Create initial StatusHistory record (fromStatus: null, toStatus: NEW)
     ↓
 sendEmail === true?
     ├── YES → Send welcome email via Nodemailer
@@ -291,18 +346,94 @@ sendEmail === true?
     └── NO  → Return lead (201)
 ```
 
-### 5.2 Response Types
+### 5.2 Single Lead API
+
+#### `GET /api/leads/[id]` — Get Lead Details
+
+```
+Auth:     Required (middleware-enforced)
+Response: Lead with notes[] and statusHistory[] (sorted by createdAt DESC)
+404:      { "error": "Lead not found" }
+```
+
+#### `PATCH /api/leads/[id]/status` — Update Lead Status
+
+```
+Auth:     Required (middleware-enforced)
+Request:  {
+  "status": LeadStatus,   // e.g. "DESIGN_READY"
+  "sendEmail": boolean     // notify customer via email
+}
+Response: Lead (200)
+404:      { "error": "Lead not found" }
+```
+
+**Flow:**
+
+```
+Receive PATCH request
+    ↓
+Find lead by ID (404 if not found)
+    ↓
+Transaction:
+  ├── Update lead.status
+  └── Create StatusHistory record (fromStatus → toStatus)
+    ↓
+sendEmail === true?
+    ├── YES → Send status update email
+    │         ├── Success → Return updated lead
+    │         └── Failure → Return lead with emailWarning
+    └── NO  → Return updated lead
+```
+
+#### `POST /api/leads/[id]/notes` — Add Note
+
+```
+Auth:     Required (middleware-enforced)
+Request:  { "content": string }
+Response: Note (201)
+404:      { "error": "Lead not found" }
+```
+
+### 5.3 Response Types
 
 ```typescript
+type LeadStatus =
+  | "NEW"
+  | "DESIGN_READY"
+  | "DESIGN_APPROVED"
+  | "BUILD_IN_PROGRESS"
+  | "BUILD_READY_FOR_REVIEW"
+  | "BUILD_SUBMITTED"
+  | "GO_LIVE";
+
 interface Lead {
-  id: string;            // UUID
+  id: string;                  // UUID
   projectName: string;
   customerName: string;
   customerEmail: string;
   projectDescription: string;
+  status: LeadStatus;
   emailSent: boolean;
-  createdAt: string;     // ISO 8601
-  updatedAt: string;     // ISO 8601
+  createdAt: string;           // ISO 8601
+  updatedAt: string;           // ISO 8601
+  notes?: Note[];
+  statusHistory?: StatusHistory[];
+}
+
+interface Note {
+  id: string;
+  content: string;
+  leadId: string;
+  createdAt: string;
+}
+
+interface StatusHistory {
+  id: string;
+  fromStatus: LeadStatus | null;
+  toStatus: LeadStatus;
+  leadId: string;
+  createdAt: string;
 }
 ```
 
@@ -314,11 +445,9 @@ interface Lead {
 
 | Setting | Value |
 |---------|-------|
-| Transport | SMTP via Nodemailer |
-| SMTP Host | smtp.gmail.com |
-| SMTP Port | 587 |
+| Transport | Nodemailer with `service: "gmail"` |
 | Authentication | Gmail App Password |
-| TLS | STARTTLS (secure: false, port 587) |
+| TLS | Handled automatically by Nodemailer's Gmail service preset |
 
 ### 6.2 Email Flow Diagram
 
@@ -342,7 +471,30 @@ Email contains link: CUSTOMER_PORTAL_URL?id={leadId}
 emailSent flag updated to true
 ```
 
-### 6.3 Email Template Structure
+### 6.3 Status Update Email Flow
+
+```
+Admin changes lead status (with "Notify Customer" checked)
+    ↓
+PATCH /api/leads/[id]/status (sendEmail: true)
+    ↓
+Status updated + history created (transaction)
+    ↓
+sendStatusUpdateEmail() called
+    ↓
+Nodemailer constructs HTML email
+    Subject: "{Project Name} — Status Update: {New Status Label}"
+    ↓
+SMTP transport sends to Gmail
+    ↓
+Gmail delivers to customer's inbox
+    ↓
+Email contains link: CUSTOMER_PORTAL_URL?id={leadId}
+```
+
+### 6.4 Email Template Structure
+
+#### Welcome Email
 
 ```
 ┌─────────────────────────────────────┐
@@ -368,6 +520,37 @@ emailSent flag updated to true
 └─────────────────────────────────────┘
 ```
 
+#### Status Update Email
+
+```
+┌─────────────────────────────────────┐
+│  ┌─────────────────────────────┐    │
+│  │   Header                    │    │
+│  │   "Status Update"           │    │
+│  └─────────────────────────────┘    │
+│                                     │
+│  ┌─────────────────────────────┐    │
+│  │   Body Card                  │    │
+│  │                              │    │
+│  │   "Hi {customerName},"      │    │
+│  │   "Your project has a new    │    │
+│  │   status update:"            │    │
+│  │                              │    │
+│  │   ┌──────────────────────┐   │    │
+│  │   │  {Status Label}      │   │    │
+│  │   │  (Color Badge)       │   │    │
+│  │   └──────────────────────┘   │    │
+│  │                              │    │
+│  │   ┌──────────────────────┐   │    │
+│  │   │  View Your Project   │   │    │
+│  │   │  (CTA Button)        │   │    │
+│  │   └──────────────────────┘   │    │
+│  └─────────────────────────────┘    │
+│                                     │
+│  Footer: "Reply to this email"      │
+└─────────────────────────────────────┘
+```
+
 ---
 
 ## 7. Customer Portal Architecture
@@ -382,8 +565,13 @@ Browser requests: http://localhost:3001?id={uuid}
 Next.js Server Component receives searchParams
     ↓
 Server queries PostgreSQL via Prisma
+    (includes notes and statusHistory)
     ↓
-[Lead found]     → Renders welcome page with project data
+[Lead found]     → Renders page with:
+                    - Welcome greeting
+                    - Project details & current status badge
+                    - Status history timeline (chronological)
+                    - Admin comments/notes
 [Lead not found] → Renders "Project Not Found" page
 [No ID param]    → Renders "No Project ID Provided" page
     ↓
@@ -594,3 +782,4 @@ Both Next.js apps include `transpilePackages: ["@leads-portal/database"]` in the
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
 | 1.0 | March 5, 2026 | Initial document creation | — |
+| 1.1 | March 6, 2026 | Added LeadStatus enum, Note & StatusHistory models, new API endpoints (single lead, status update, notes), status update email, updated customer portal architecture | — |

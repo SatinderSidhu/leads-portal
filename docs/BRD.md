@@ -145,6 +145,66 @@ A public-facing, interactive web application for customers to view their project
 - Call-to-action button linking to the Customer Portal
 - The link contains the lead's unique ID as a query parameter
 
+#### 5.1.5 Lead Detail View
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | View full details of a lead, manage status, and add notes |
+| Access | Click on any lead row in the Dashboard grid |
+
+**Displayed Information:**
+- Project details (name, customer, email, description, creation date, email status)
+- Current status with color-coded badge
+- Notes section with ability to add new notes
+- Status history timeline
+
+#### 5.1.6 Status Management
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | Track the lifecycle of a lead through project phases |
+| Default Status | NEW (set automatically on lead creation) |
+
+**Available Statuses:**
+
+| Status | Display Label |
+|--------|--------------|
+| NEW | New |
+| DESIGN_READY | Design Ready |
+| DESIGN_APPROVED | Design Approved |
+| BUILD_IN_PROGRESS | Build In Progress |
+| BUILD_READY_FOR_REVIEW | Build Ready for Review |
+| BUILD_SUBMITTED | Build Submitted |
+| GO_LIVE | Go Live |
+
+**Status Update Process:**
+- Admin selects a new status from the dropdown
+- Optional: Check "Notify Customer" to send a status update email
+- Click "Update Status" to save the change
+- A status history record is created for every change
+
+#### 5.1.7 Notes System
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | Allow admin to add timestamped notes to a lead |
+| Behavior | Append-only — notes cannot be edited or deleted |
+| Visibility | Notes are visible to customers on the Customer Portal |
+
+#### 5.1.8 Status Update Email
+
+| Aspect | Detail |
+|--------|--------|
+| Trigger | Admin checks "Notify Customer" when changing status |
+| Recipient | Customer's email address |
+| Subject | "{Project Name} — Status Update: {New Status}" |
+
+**Email Content:**
+- Greeting with customer name
+- New status displayed prominently
+- Call-to-action button linking to Customer Portal
+- The link contains the lead's unique ID
+
 ### 5.2 Customer Portal Features
 
 #### 5.2.1 Welcome / Project Page
@@ -161,8 +221,11 @@ A public-facing, interactive web application for customers to view their project
 |-------|-------------|
 | Customer Name | Shown in a welcome greeting |
 | Project Name | Displayed as the main heading |
+| Current Status | Shown as a color-coded badge |
 | Project Description | Full description of the project |
 | Customer Email | Shown for reference |
+| Status History | Timeline of all status changes with timestamps |
+| Admin Comments | List of notes from admin with timestamps |
 
 **Error States:**
 
@@ -215,7 +278,45 @@ Admin is redirected to Dashboard
 New lead appears in the grid with "Sent" email status
 ```
 
-### 6.3 Customer Portal Access Flow
+### 6.3 Status Update Flow
+
+```
+Admin clicks on a lead in the Dashboard
+    ↓
+Lead Detail page opens
+    ↓
+Admin selects new status from dropdown
+    ↓
+Optionally checks "Notify Customer"
+    ↓
+Clicks "Update Status"
+    ↓
+Status is updated in database
+    ↓
+StatusHistory record is created
+    ↓
+[If Notify] → Status update email sent to customer
+    ↓
+Lead Detail page refreshes with new status
+```
+
+### 6.4 Add Note Flow
+
+```
+Admin opens Lead Detail page
+    ↓
+Types a note in the text area
+    ↓
+Clicks "Add Note"
+    ↓
+Note is saved to database
+    ↓
+Note appears in the notes list
+    ↓
+Note is visible on Customer Portal
+```
+
+### 6.5 Customer Portal Access Flow
 
 ```
 Customer receives welcome email
@@ -257,9 +358,29 @@ User enters username and password
 | Customer Name | String | Full name of the customer |
 | Customer Email | String | Email address of the customer |
 | Project Description | Text | Detailed project description |
+| Status | Enum | Current lead status (NEW through GO_LIVE) |
 | Email Sent | Boolean | Whether the welcome email was sent |
 | Created At | Timestamp | When the lead was created |
 | Updated At | Timestamp | When the lead was last modified |
+
+### 7.2 Note Record
+
+| Field | Type | Description |
+|-------|------|-------------|
+| ID | UUID | Unique identifier |
+| Content | Text | Note content |
+| Lead ID | UUID | Foreign key to Lead |
+| Created At | Timestamp | When the note was created |
+
+### 7.3 Status History Record
+
+| Field | Type | Description |
+|-------|------|-------------|
+| ID | UUID | Unique identifier |
+| From Status | Enum (nullable) | Previous status (null for initial) |
+| To Status | Enum | New status |
+| Lead ID | UUID | Foreign key to Lead |
+| Created At | Timestamp | When the status change occurred |
 
 ---
 
@@ -281,7 +402,9 @@ _This section will be updated as new features are planned and developed._
 
 | Feature | Description | Priority |
 |---------|-------------|----------|
-| Lead Status Tracking | Add status field (New, In Progress, Converted, Lost) | High |
+| ~~Lead Status Tracking~~ | ~~Add status field~~ — **Implemented v1.1** | ~~High~~ |
+| ~~Notes System~~ | ~~Admin notes visible to customers~~ — **Implemented v1.1** | ~~High~~ |
+| ~~Status Update Emails~~ | ~~Email notifications on status changes~~ — **Implemented v1.1** | ~~High~~ |
 | Multiple Admin Users | Support for multiple admin accounts with roles | Medium |
 | Customer Portal Interactions | Allow customers to add comments/feedback on their project | Medium |
 | File Attachments | Allow admin to attach files (proposals, wireframes) to leads | Medium |
@@ -297,3 +420,4 @@ _This section will be updated as new features are planned and developed._
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
 | 1.0 | March 5, 2026 | Initial document creation | — |
+| 1.1 | March 6, 2026 | Added lead detail view, status tracking, notes system, status update emails | — |

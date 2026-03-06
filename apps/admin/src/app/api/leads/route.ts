@@ -21,6 +21,14 @@ export async function POST(req: Request) {
     },
   });
 
+  await prisma.statusHistory.create({
+    data: {
+      leadId: lead.id,
+      fromStatus: null,
+      toStatus: "NEW",
+    },
+  });
+
   if (body.sendEmail) {
     try {
       await sendWelcomeEmail(lead);

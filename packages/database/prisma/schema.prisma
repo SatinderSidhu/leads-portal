@@ -7,15 +7,50 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum LeadStatus {
+  NEW
+  DESIGN_READY
+  DESIGN_APPROVED
+  BUILD_IN_PROGRESS
+  BUILD_READY_FOR_REVIEW
+  BUILD_SUBMITTED
+  GO_LIVE
+}
+
 model Lead {
-  id                 String   @id @default(uuid())
-  projectName        String   @map("project_name")
-  customerName       String   @map("customer_name")
-  customerEmail      String   @map("customer_email")
-  projectDescription String   @map("project_description") @db.Text
-  emailSent          Boolean  @default(false) @map("email_sent")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  id                 String       @id @default(uuid())
+  projectName        String       @map("project_name")
+  customerName       String       @map("customer_name")
+  customerEmail      String       @map("customer_email")
+  projectDescription String       @map("project_description") @db.Text
+  status             LeadStatus   @default(NEW)
+  emailSent          Boolean      @default(false) @map("email_sent")
+  createdAt          DateTime     @default(now()) @map("created_at")
+  updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  notes         Note[]
+  statusHistory StatusHistory[]
 
   @@map("leads")
+}
+
+model Note {
+  id        String   @id @default(uuid())
+  content   String   @db.Text
+  leadId    String   @map("lead_id")
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("notes")
+}
+
+model StatusHistory {
+  id         String      @id @default(uuid())
+  fromStatus LeadStatus? @map("from_status")
+  toStatus   LeadStatus  @map("to_status")
+  leadId     String      @map("lead_id")
+  lead       Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdAt  DateTime    @default(now()) @map("created_at")
+
+  @@map("status_history")
 }

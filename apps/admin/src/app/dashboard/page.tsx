@@ -3,12 +3,33 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
+const STATUS_LABELS: Record<string, string> = {
+  NEW: "New",
+  DESIGN_READY: "Design Ready",
+  DESIGN_APPROVED: "Design Approved",
+  BUILD_IN_PROGRESS: "Build In Progress",
+  BUILD_READY_FOR_REVIEW: "Build Ready for Review",
+  BUILD_SUBMITTED: "Build Submitted",
+  GO_LIVE: "Go Live",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  NEW: "bg-blue-100 text-blue-800",
+  DESIGN_READY: "bg-yellow-100 text-yellow-800",
+  DESIGN_APPROVED: "bg-green-100 text-green-800",
+  BUILD_IN_PROGRESS: "bg-orange-100 text-orange-800",
+  BUILD_READY_FOR_REVIEW: "bg-purple-100 text-purple-800",
+  BUILD_SUBMITTED: "bg-indigo-100 text-indigo-800",
+  GO_LIVE: "bg-emerald-100 text-emerald-800",
+};
+
 interface Lead {
   id: string;
   projectName: string;
   customerName: string;
   customerEmail: string;
   projectDescription: string;
+  status: string;
   emailSent: boolean;
   createdAt: string;
 }
@@ -83,17 +104,21 @@ export default function DashboardPage() {
                       Email
                     </th>
                     <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Created
+                      Status
                     </th>
-                    <th className="text-center px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Email Sent
+                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Created
                     </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {leads.map((lead) => (
-                    <tr key={lead.id} className="hover:bg-gray-50 transition">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                    <tr
+                      key={lead.id}
+                      className="hover:bg-gray-50 transition cursor-pointer"
+                      onClick={() => router.push(`/leads/${lead.id}`)}
+                    >
+                      <td className="px-6 py-4 text-sm font-medium text-blue-600">
                         {lead.projectName}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
@@ -102,19 +127,15 @@ export default function DashboardPage() {
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {lead.customerEmail}
                       </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[lead.status] || "bg-gray-100 text-gray-800"}`}
+                        >
+                          {STATUS_LABELS[lead.status] || lead.status}
+                        </span>
+                      </td>
                       <td className="px-6 py-4 text-sm text-gray-500">
                         {new Date(lead.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        {lead.emailSent ? (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            Sent
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-                            Not sent
-                          </span>
-                        )}
                       </td>
                     </tr>
                   ))}
