@@ -1,0 +1,269 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Leads Portal API",
+    "version": "1.0.0",
+    "description": "External API for managing leads and content in the Leads Portal system. All endpoints require Bearer token authentication.",
+    "contact": {
+      "name": "KITLabs Inc"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Local development"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "API token provided by the admin. Pass as: Authorization: Bearer <token>"
+      }
+    },
+    "schemas": {
+      "Lead": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "projectName": { "type": "string" },
+          "customerName": { "type": "string" },
+          "customerEmail": { "type": "string", "format": "email" },
+          "projectDescription": { "type": "string" },
+          "source": { "type": "string", "enum": ["MANUAL", "AGENT"] },
+          "status": { "type": "string", "enum": ["NEW", "DESIGN_READY", "DESIGN_APPROVED", "BUILD_IN_PROGRESS", "BUILD_READY_FOR_REVIEW", "BUILD_SUBMITTED", "GO_LIVE"] },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "LeadCreate": {
+        "type": "object",
+        "required": ["projectName", "customerName", "customerEmail", "projectDescription"],
+        "properties": {
+          "projectName": { "type": "string", "description": "Name of the project or opportunity" },
+          "customerName": { "type": "string", "description": "Full name of the customer" },
+          "customerEmail": { "type": "string", "format": "email", "description": "Customer's email address" },
+          "projectDescription": { "type": "string", "description": "Detailed project description" }
+        }
+      },
+      "Content": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "body": { "type": "string" },
+          "mediaUrl": { "type": "string", "nullable": true },
+          "mediaFile": { "type": "string", "nullable": true },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "platforms": { "type": "array", "items": { "type": "string", "enum": ["LINKEDIN", "FACEBOOK", "TIKTOK", "INSTAGRAM"] } },
+          "status": { "type": "string", "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"] },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ContentCreate": {
+        "type": "object",
+        "required": ["title", "body"],
+        "properties": {
+          "title": { "type": "string", "description": "Content title" },
+          "body": { "type": "string", "description": "Post content text" },
+          "mediaUrl": { "type": "string", "description": "URL to external media" },
+          "tags": { "type": "array", "items": { "type": "string" }, "description": "Array of tag strings" },
+          "platforms": { "type": "array", "items": { "type": "string", "enum": ["LINKEDIN", "FACEBOOK", "TIKTOK", "INSTAGRAM"] }, "description": "Target platforms" },
+          "status": { "type": "string", "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"], "default": "DRAFT" }
+        }
+      },
+      "ContentUpdate": {
+        "type": "object",
+        "properties": {
+          "title": { "type": "string" },
+          "body": { "type": "string" },
+          "mediaUrl": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "platforms": { "type": "array", "items": { "type": "string", "enum": ["LINKEDIN", "FACEBOOK", "TIKTOK", "INSTAGRAM"] } },
+          "status": { "type": "string", "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"] }
+        }
+      },
+      "UploadResponse": {
+        "type": "object",
+        "properties": {
+          "filePath": { "type": "string", "description": "Path to the uploaded file (e.g., /uploads/filename.jpg)" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": { "type": "string" },
+          "details": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    }
+  },
+  "security": [{ "bearerAuth": [] }],
+  "paths": {
+    "/api/v1/leads": {
+      "post": {
+        "tags": ["Leads"],
+        "summary": "Create a new lead",
+        "description": "Creates a new lead with source set to AGENT. No email is sent to the customer.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/LeadCreate" },
+              "example": {
+                "projectName": "Mobile Banking App",
+                "customerName": "Jane Smith",
+                "customerEmail": "jane@example.com",
+                "projectDescription": "A mobile banking app with account management and payment features."
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Lead created successfully",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Lead" } } }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/content": {
+      "get": {
+        "tags": ["Content"],
+        "summary": "List all content",
+        "description": "Returns all content items sorted by creation date (newest first).",
+        "responses": {
+          "200": {
+            "description": "Content list",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Content" } } } }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Content"],
+        "summary": "Create new content",
+        "description": "Creates a new content item. Defaults to DRAFT status.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ContentCreate" },
+              "example": {
+                "title": "Exciting Product Launch",
+                "body": "We're thrilled to announce the launch of our new platform...",
+                "tags": ["launch", "product", "announcement"],
+                "platforms": ["LINKEDIN", "FACEBOOK"],
+                "status": "DRAFT"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Content created successfully",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Content" } } }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/content/{id}": {
+      "get": {
+        "tags": ["Content"],
+        "summary": "Get content by ID",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Content found",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Content" } } }
+          },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Content not found" }
+        }
+      },
+      "put": {
+        "tags": ["Content"],
+        "summary": "Update content",
+        "description": "Updates an existing content item. Only include fields you want to change.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/ContentUpdate" },
+              "example": {
+                "title": "Updated Title",
+                "status": "PUBLISHED"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Content updated",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Content" } } }
+          },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Content not found" }
+        }
+      },
+      "delete": {
+        "tags": ["Content"],
+        "summary": "Delete content",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Content deleted" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Content not found" }
+        }
+      }
+    },
+    "/api/v1/content/upload": {
+      "post": {
+        "tags": ["Content"],
+        "summary": "Upload media file",
+        "description": "Uploads an image or video file. Allowed types: JPEG, PNG, GIF, WebP, MP4, WebM. Max size: 50MB.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": { "type": "string", "format": "binary", "description": "The media file to upload" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "File uploaded successfully",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UploadResponse" } } }
+          },
+          "400": { "description": "Invalid file type or size" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    }
+  }
+}

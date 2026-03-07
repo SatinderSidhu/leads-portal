@@ -1,13 +1,19 @@
 # Leads Portal — API Integration Guide
 
-**Version:** 1.0
-**Last Updated:** March 6, 2026
+**Version:** 2.0
+**Last Updated:** March 7, 2026
 
 ## Overview
 
-The Leads Portal provides a REST API for external systems (e.g., Business Development Lead Generation Agents) to programmatically create leads. Leads created via the API are tagged with `source: "AGENT"` to distinguish them from manually entered leads.
+The Leads Portal provides a REST API for external systems to programmatically manage leads and content. The API supports:
+
+- **Leads**: Create prospect leads (tagged as `source: "AGENT"`)
+- **Content**: Full CRUD for social media content (create, list, read, update, delete)
+- **File Upload**: Upload media files for content
 
 > **Note:** The API does not send any emails to customers. Email communication is managed by the admin through the portal UI.
+
+> **Interactive API Docs:** Visit `http://localhost:3000/api-docs` for Swagger/OpenAPI interactive documentation.
 
 ---
 
@@ -161,9 +167,161 @@ Once a lead is created via the API:
 
 ---
 
+---
+
+## Content Endpoints
+
+### Create Content
+
+**`POST /api/v1/content`**
+
+Creates a new content item. Defaults to `DRAFT` status.
+
+#### Request Body
+
+| Field        | Type       | Required | Description                                           |
+|--------------|------------|----------|-------------------------------------------------------|
+| `title`      | `string`   | Yes      | Content title                                         |
+| `body`       | `string`   | Yes      | Post content text                                     |
+| `mediaUrl`   | `string`   | No       | URL to external media (image/video)                   |
+| `tags`       | `string[]` | No       | Array of tag strings                                  |
+| `platforms`  | `string[]` | No       | Target platforms: `LINKEDIN`, `FACEBOOK`, `TIKTOK`, `INSTAGRAM` |
+| `status`     | `string`   | No       | `DRAFT` (default), `PUBLISHED`, or `ARCHIVED`         |
+
+#### Example Request
+
+```bash
+curl -X POST http://localhost:3000/api/v1/content \
+  -H "Authorization: Bearer lp_sk_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Exciting Product Launch",
+    "body": "We are thrilled to announce the launch of our new platform...",
+    "tags": ["launch", "product", "announcement"],
+    "platforms": ["LINKEDIN", "FACEBOOK"],
+    "status": "DRAFT"
+  }'
+```
+
+#### Success Response — `201 Created`
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "title": "Exciting Product Launch",
+  "body": "We are thrilled to announce the launch of our new platform...",
+  "mediaUrl": null,
+  "mediaFile": null,
+  "tags": ["launch", "product", "announcement"],
+  "platforms": ["LINKEDIN", "FACEBOOK"],
+  "status": "DRAFT",
+  "createdAt": "2026-03-07T10:30:00.000Z",
+  "updatedAt": "2026-03-07T10:30:00.000Z"
+}
+```
+
+### List All Content
+
+**`GET /api/v1/content`**
+
+Returns all content items sorted by creation date (newest first).
+
+```bash
+curl http://localhost:3000/api/v1/content \
+  -H "Authorization: Bearer lp_sk_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+```
+
+### Get Content by ID
+
+**`GET /api/v1/content/{id}`**
+
+Returns a single content item.
+
+```bash
+curl http://localhost:3000/api/v1/content/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer lp_sk_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+```
+
+### Update Content
+
+**`PUT /api/v1/content/{id}`**
+
+Updates an existing content item. Only include fields you want to change.
+
+```bash
+curl -X PUT http://localhost:3000/api/v1/content/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer lp_sk_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Updated Title",
+    "status": "PUBLISHED"
+  }'
+```
+
+### Delete Content
+
+**`DELETE /api/v1/content/{id}`**
+
+Deletes a content item permanently.
+
+```bash
+curl -X DELETE http://localhost:3000/api/v1/content/550e8400-e29b-41d4-a716-446655440000 \
+  -H "Authorization: Bearer lp_sk_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+```
+
+### Upload Media File
+
+**`POST /api/v1/content/upload`**
+
+Uploads an image or video file. Returns the file path.
+
+**Allowed types:** JPEG, PNG, GIF, WebP, MP4, WebM
+**Max size:** 50MB
+
+```bash
+curl -X POST http://localhost:3000/api/v1/content/upload \
+  -H "Authorization: Bearer lp_sk_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6" \
+  -F "file=@/path/to/image.jpg"
+```
+
+#### Success Response — `201 Created`
+
+```json
+{
+  "filePath": "/uploads/a1b2c3d4-e5f6-7890-abcd-ef1234567890.jpg"
+}
+```
+
+---
+
+## Content Field Mapping Reference
+
+| API Field    | Description                    | Constraints                                      |
+|--------------|--------------------------------|--------------------------------------------------|
+| `title`      | Content title                  | Non-empty string                                 |
+| `body`       | Post content text              | Non-empty string                                 |
+| `mediaUrl`   | URL to external media          | Valid URL (optional)                             |
+| `tags`       | Tag labels                     | Array of strings (optional)                      |
+| `platforms`  | Target social platforms        | Array of: LINKEDIN, FACEBOOK, TIKTOK, INSTAGRAM  |
+| `status`     | Content status                 | DRAFT, PUBLISHED, or ARCHIVED                    |
+
+---
+
 ## Rate Limits
 
 There are currently no rate limits enforced. Please use reasonable request rates.
+
+---
+
+## Interactive API Documentation
+
+Swagger/OpenAPI interactive documentation is available at:
+
+```
+http://localhost:3000/api-docs
+```
+
+This page allows you to explore all endpoints, view schemas, and test API calls directly in the browser.
 
 ---
 

@@ -4,7 +4,7 @@
 
 | Field | Detail |
 |-------|--------|
-| Document Version | 1.3 |
+| Document Version | 1.4 |
 | Last Updated | March 6, 2026 |
 | Status | Active |
 
@@ -23,6 +23,7 @@
 | Email | Nodemailer (SMTP/Gmail) | 8.x |
 | Monorepo Tool | Turborepo | 2.x |
 | Package Manager | npm workspaces | 11.x |
+| API Docs | swagger-ui-react | Latest |
 | Containerization | Docker + Docker Compose | Latest |
 | Runtime | Node.js | 20 (Alpine) |
 
@@ -89,6 +90,7 @@ leads-portal/
 │   │   ├── middleware.ts           # Auth middleware
 │   │   └── src/
 │   │       ├── lib/
+│   │       │   ├── api-auth.ts     # Shared Bearer token validation helpers
 │   │       │   └── email.ts        # Nodemailer utility (welcome + status update)
 │   │       └── app/
 │   │           ├── layout.tsx       # Root layout
@@ -96,8 +98,16 @@ leads-portal/
 │   │           ├── page.tsx         # Redirects to /dashboard
 │   │           ├── login/
 │   │           │   └── page.tsx     # Login form
+│   │           ├── api-docs/
+│   │           │   └── page.tsx     # Swagger UI (public)
 │   │           ├── dashboard/
 │   │           │   └── page.tsx     # Leads grid (clickable rows)
+│   │           ├── content/
+│   │           │   ├── page.tsx     # Content list
+│   │           │   ├── new/
+│   │           │   │   └── page.tsx # Create content form
+│   │           │   └── [id]/
+│   │           │       └── page.tsx # Content detail/edit
 │   │           ├── leads/
 │   │           │   ├── new/
 │   │           │   │   └── page.tsx # Create lead form
@@ -106,9 +116,21 @@ leads-portal/
 │   │           └── api/
 │   │               ├── auth/
 │   │               │   └── route.ts # POST login, DELETE logout
+│   │               ├── content/
+│   │               │   ├── route.ts     # GET all, POST create
+│   │               │   ├── [id]/
+│   │               │   │   └── route.ts # GET, PUT, DELETE
+│   │               │   └── upload/
+│   │               │       └── route.ts # POST file upload
 │   │               ├── v1/
-│   │               │   └── leads/
-│   │               │       └── route.ts # POST create lead (external API, Bearer token auth)
+│   │               │   ├── leads/
+│   │               │   │   └── route.ts # POST create lead (external API)
+│   │               │   └── content/
+│   │               │       ├── route.ts     # GET, POST (external API)
+│   │               │       ├── [id]/
+│   │               │       │   └── route.ts # GET, PUT, DELETE (external API)
+│   │               │       └── upload/
+│   │               │           └── route.ts # POST upload (external API)
 │   │               └── leads/
 │   │                   ├── route.ts # GET all, POST create
 │   │                   └── [id]/
@@ -193,6 +215,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum Platform {
+  LINKEDIN
+  FACEBOOK
+  TIKTOK
+  INSTAGRAM
+}
+
 enum NdaStatus {
   GENERATED
   SENT
@@ -266,6 +301,21 @@ model Nda {
 
   @@map("ndas")
 }
+
+model Content {
+  id        String        @id @default(uuid())
+  title     String
+  body      String        @db.Text
+  mediaUrl  String?       @map("media_url")
+  mediaFile String?       @map("media_file")
+  tags      Json          @default("[]")
+  platforms Platform[]
+  status    ContentStatus @default(DRAFT)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  @@map("content")
+}
 ```
 
 ### 3.3 Design Decisions
@@ -286,6 +336,11 @@ model Nda {
 | `LeadSource` enum | Tracks lead origin: MANUAL (admin UI) vs AGENT (external API) |
 | Bearer token auth | Simple token-based auth for external API — no OAuth complexity needed |
 | `/api/v1/` prefix | Versioned API path for external integrations, separate from internal routes |
+| `Content` model | Standalone model for social media content, supports file upload and platform targeting |
+| `ContentStatus` enum | Tracks content lifecycle: DRAFT → PUBLISHED → ARCHIVED |
+| `Platform` enum array | PostgreSQL native array for multi-platform targeting |
+| `Json` for tags | Simple array storage without separate Tag model |
+| `swagger-ui-react` | Interactive API docs at `/api-docs`, loads static OpenAPI spec |
 
 ---
 
@@ -543,7 +598,69 @@ Response: {
 - Does NOT send any email to the customer
 - Full documentation: `docs/API-INTEGRATION.md`
 
-### 5.5 Response Types
+### 5.5 Content API
+
+#### `GET /api/content` — List All Content (Internal)
+
+```
+Auth:     Required (middleware-enforced)
+Response: Content[] (sorted by createdAt DESC)
+```
+
+#### `POST /api/content` — Create Content (Internal)
+
+```
+Auth:     Required (middleware-enforced)
+Request:  { title, body, mediaUrl?, mediaFile?, tags?, platforms?, status? }
+Response: Content (201)
+```
+
+#### `GET /api/content/[id]` — Get Content (Internal)
+
+```
+Auth:     Required (middleware-enforced)
+Response: Content (200)
+404:      { "error": "Content not found" }
+```
+
+#### `PUT /api/content/[id]` — Update Content (Internal)
+
+```
+Auth:     Required (middleware-enforced)
+Request:  { title?, body?, mediaUrl?, mediaFile?, tags?, platforms?, status? }
+Response: Content (200)
+```
+
+#### `DELETE /api/content/[id]` — Delete Content (Internal)
+
+```
+Auth:     Required (middleware-enforced)
+Response: { "success": true }
+```
+
+#### `POST /api/content/upload` — Upload Media File (Internal)
+
+```
+Auth:     Required (middleware-enforced)
+Request:  multipart/form-data with "file" field
+Response: { "filePath": "/uploads/filename.ext" } (201)
+400:      File type not allowed or too large
+```
+
+### 5.6 External Content API (v1)
+
+All content v1 endpoints use Bearer token auth (same as leads API).
+
+#### `GET /api/v1/content` — List Content
+#### `POST /api/v1/content` — Create Content
+#### `GET /api/v1/content/[id]` — Get Content
+#### `PUT /api/v1/content/[id]` — Update Content
+#### `DELETE /api/v1/content/[id]` — Delete Content
+#### `POST /api/v1/content/upload` — Upload Media File
+
+Full documentation: `docs/API-INTEGRATION.md` and interactive Swagger at `/api-docs`
+
+### 5.7 Response Types
 
 ```typescript
 type LeadSource = "MANUAL" | "AGENT";
@@ -599,6 +716,22 @@ interface StatusHistory {
   toStatus: LeadStatus;
   leadId: string;
   createdAt: string;
+}
+
+type ContentStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
+type Platform = "LINKEDIN" | "FACEBOOK" | "TIKTOK" | "INSTAGRAM";
+
+interface Content {
+  id: string;
+  title: string;
+  body: string;
+  mediaUrl: string | null;
+  mediaFile: string | null;
+  tags: string[];
+  platforms: Platform[];
+  status: ContentStatus;
+  createdAt: string;
+  updatedAt: string;
 }
 ```
 
@@ -952,3 +1085,4 @@ Both Next.js apps include `transpilePackages: ["@leads-portal/database"]` in the
 | 1.1 | March 6, 2026 | Added LeadStatus enum, Note & StatusHistory models, new API endpoints (single lead, status update, notes), status update email, updated customer portal architecture | — |
 | 1.2 | March 6, 2026 | Added NDA feature: NdaStatus enum, Nda model, NDA generation/signing APIs, customer portal NDA UI with PDF download and e-signature, NDA email notifications | — |
 | 1.3 | March 6, 2026 | Added external API integration: LeadSource enum, Bearer token auth, POST /api/v1/leads endpoint, NDA edit/send split, API documentation | — |
+| 1.4 | March 7, 2026 | Added content management: Content model, CRUD API + external v1 API, file upload, Swagger/OpenAPI docs at /api-docs | — |

@@ -4,7 +4,7 @@
 
 | Field | Detail |
 |-------|--------|
-| Document Version | 1.3 |
+| Document Version | 1.4 |
 | Last Updated | March 6, 2026 |
 | Status | Active |
 
@@ -356,6 +356,61 @@ A public-facing, interactive web application for customers to view their project
 - No welcome email is sent — admin manages communication manually
 - Full API documentation provided in `docs/API-INTEGRATION.md`
 
+### 5.5 Content Management Features
+
+#### 5.5.1 Content Creation (Admin)
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | Create social media content to be posted on various platforms |
+| Access | Admin portal at `/content/new` |
+
+**Form Fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| Title | Text input | Yes | Content title |
+| Post Content | Textarea | Yes | Full post text |
+| Media URL | URL input | No | Link to external media |
+| Upload Media | File upload | No | Upload image/video (max 50MB) |
+| Tags | Text input | No | Comma-separated tags |
+| Target Platforms | Checkboxes | No | LinkedIn, Facebook, TikTok, Instagram |
+| Status | Select | No | Draft (default), Published, Archived |
+
+#### 5.5.2 Content List View
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | View all created content at a glance |
+| Format | Table layout with clickable rows |
+| Columns | Title, Status, Platforms, Tags, Created date |
+| Navigation | Accessible from dashboard via "Content" button |
+
+#### 5.5.3 Content Edit/Delete
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | Edit existing content or delete it |
+| Access | Click on content row in the content list |
+| Features | Pre-populated form, media preview, save/delete buttons |
+
+#### 5.5.4 Content Status Workflow
+
+| Status | Description |
+|--------|-------------|
+| DRAFT | Content is being worked on (default) |
+| PUBLISHED | Content is approved and ready for posting |
+| ARCHIVED | Content is no longer active |
+
+#### 5.5.5 Content External API
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | Allow external parties to create and manage content via API |
+| Authentication | Bearer token (same API_TOKEN as leads API) |
+| Endpoints | Full CRUD + file upload |
+| Documentation | `docs/API-INTEGRATION.md` + interactive Swagger at `/api-docs` |
+
 ---
 
 ## 6. Business Flows
@@ -584,6 +639,21 @@ User enters username and password
 | Signed At | Timestamp (nullable) | When the NDA was signed |
 | Created At | Timestamp | When the NDA was generated |
 
+### 7.5 Content Record
+
+| Field | Type | Description |
+|-------|------|-------------|
+| ID | UUID | Unique identifier |
+| Title | String | Content title |
+| Body | Text | Full post content |
+| Media URL | String (nullable) | URL to external media |
+| Media File | String (nullable) | Path to uploaded file |
+| Tags | JSON Array | Array of tag strings |
+| Platforms | Enum Array | Target platforms (LINKEDIN, FACEBOOK, TIKTOK, INSTAGRAM) |
+| Status | Enum | DRAFT, PUBLISHED, ARCHIVED |
+| Created At | Timestamp | When the content was created |
+| Updated At | Timestamp | When the content was last modified |
+
 ---
 
 ## 8. Non-Functional Requirements
@@ -609,6 +679,7 @@ _This section will be updated as new features are planned and developed._
 | ~~Status Update Emails~~ | ~~Email notifications on status changes~~ — **Implemented v1.1** | ~~High~~ |
 | ~~NDA System~~ | ~~Generate, send, and e-sign NDAs~~ — **Implemented v1.2** | ~~High~~ |
 | ~~API Integration~~ | ~~External BD agent API with auth token~~ — **Implemented v1.3** | ~~High~~ |
+| ~~Content Management~~ | ~~CRUD for social media content with external API~~ — **Implemented v1.4** | ~~High~~ |
 | Multiple Admin Users | Support for multiple admin accounts with roles | Medium |
 | Customer Portal Interactions | Allow customers to add comments/feedback on their project | Medium |
 | File Attachments | Allow admin to attach files (proposals, wireframes) to leads | Medium |
@@ -627,3 +698,4 @@ _This section will be updated as new features are planned and developed._
 | 1.1 | March 6, 2026 | Added lead detail view, status tracking, notes system, status update emails | — |
 | 1.2 | March 6, 2026 | Added NDA generation, e-signature, PDF download, and signed confirmation emails | — |
 | 1.3 | March 6, 2026 | Added external API integration with Bearer token auth, LeadSource tracking (MANUAL/AGENT), API documentation | — |
+| 1.4 | March 7, 2026 | Added content management system with CRUD, file upload, external API, Swagger/OpenAPI docs | — |

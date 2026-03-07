@@ -7,6 +7,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum Platform {
+  LINKEDIN
+  FACEBOOK
+  TIKTOK
+  INSTAGRAM
+}
+
 enum NdaStatus {
   GENERATED
   SENT
@@ -80,4 +93,19 @@ model Nda {
   createdAt  DateTime  @default(now()) @map("created_at")
 
   @@map("ndas")
+}
+
+model Content {
+  id        String        @id @default(uuid())
+  title     String
+  body      String        @db.Text
+  mediaUrl  String?       @map("media_url")
+  mediaFile String?       @map("media_file")
+  tags      Json          @default("[]")
+  platforms Platform[]
+  status    ContentStatus @default(DRAFT)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  @@map("content")
 }

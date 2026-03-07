@@ -59,6 +59,12 @@ export default function DashboardPage() {
           <h1 className="text-xl font-bold text-gray-900">Leads Portal</h1>
           <div className="flex items-center gap-4">
             <button
+              onClick={() => router.push("/content")}
+              className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition"
+            >
+              Content
+            </button>
+            <button
               onClick={() => router.push("/leads/new")}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
             >
