@@ -1,7 +1,6 @@
 import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { generateNdaContent } from "../../../../../lib/nda-template";
-import { sendNdaReadyEmail } from "../../../../../lib/email";
 
 export async function GET(
   _req: Request,
@@ -57,20 +56,39 @@ export async function POST(
     },
   });
 
-  try {
-    await sendNdaReadyEmail(lead);
-    await prisma.nda.update({
-      where: { id: nda.id },
-      data: { status: "SENT" },
-    });
-  } catch (error) {
-    console.error("Failed to send NDA ready email:", error);
+  return NextResponse.json(nda, { status: 201 });
+}
+
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  const { content } = await req.json();
+
+  if (!content?.trim()) {
     return NextResponse.json(
-      { ...nda, emailWarning: "NDA created but email failed to send" },
-      { status: 201 }
+      { error: "Content is required" },
+      { status: 400 }
     );
   }
 
-  const updatedNda = await prisma.nda.findUnique({ where: { id: nda.id } });
-  return NextResponse.json(updatedNda, { status: 201 });
+  const nda = await prisma.nda.findUnique({ where: { leadId: id } });
+  if (!nda) {
+    return NextResponse.json({ error: "NDA not found" }, { status: 404 });
+  }
+
+  if (nda.status === "SIGNED") {
+    return NextResponse.json(
+      { error: "Cannot edit a signed NDA" },
+      { status: 400 }
+    );
+  }
+
+  const updated = await prisma.nda.update({
+    where: { id: nda.id },
+    data: { content: content.trim() },
+  });
+
+  return NextResponse.json(updated);
 }

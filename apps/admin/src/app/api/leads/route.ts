@@ -18,6 +18,7 @@ export async function POST(req: Request) {
       customerName: body.customerName,
       customerEmail: body.customerEmail,
       projectDescription: body.projectDescription,
+      source: "MANUAL",
     },
   });
 

@@ -4,8 +4,8 @@
 
 | Field | Detail |
 |-------|--------|
-| Document Version | 1.0 |
-| Last Updated | March 5, 2026 |
+| Document Version | 1.3 |
+| Last Updated | March 6, 2026 |
 | Status | Active |
 
 ---
@@ -23,6 +23,7 @@ The Leads Portal is a web-based lead management system designed to streamline th
 3. Provide an automated, professional welcome experience for new clients
 4. Give customers a self-service portal to view their project information
 5. Maintain a clear record of all leads and their communication status
+6. Support automated lead ingestion from external BD agents via API
 
 ---
 
@@ -32,6 +33,7 @@ The Leads Portal is a web-based lead management system designed to streamline th
 |------|-------------|
 | Admin | Internal team member responsible for entering and managing leads |
 | Customer | External client who has been entered as a lead |
+| BD Agent | External automated system that submits leads via API |
 
 ---
 
@@ -310,6 +312,50 @@ A public-facing, interactive web application for customers to view their project
 - Subject: "NDA Signed by {Customer Name} — {Project Name}"
 - Includes signer name, date, and IP address
 
+### 5.4 API Integration Features
+
+#### 5.4.1 Lead Source Tracking
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | Distinguish between manually created leads and those from external agents |
+| Field | Source (MANUAL or AGENT) |
+
+**Source Values:**
+
+| Value | Description |
+|-------|-------------|
+| MANUAL | Lead created by admin through the portal UI (default) |
+| AGENT | Lead created via the external API by a BD agent |
+
+**Display:**
+- Source is shown on the leads dashboard table as a badge
+- Source is shown on the lead detail page in the project details section
+
+#### 5.4.2 External Leads API
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | Allow external BD agents to programmatically submit leads |
+| Endpoint | `POST /api/v1/leads` |
+| Authentication | Bearer token (API_TOKEN) |
+| Email Behavior | No emails are sent to the customer for API-created leads |
+
+**Required Fields:**
+
+| Field | Type | Validation |
+|-------|------|------------|
+| projectName | string | Non-empty |
+| customerName | string | Non-empty |
+| customerEmail | string | Valid email format |
+| projectDescription | string | Non-empty |
+
+**Business Rules:**
+- All API-created leads are tagged with `source: AGENT`
+- Leads are created with initial status `NEW`
+- No welcome email is sent — admin manages communication manually
+- Full API documentation provided in `docs/API-INTEGRATION.md`
+
 ---
 
 ## 6. Business Flows
@@ -436,7 +482,29 @@ Confirmation emails sent to both customer and admin
 Customer sees green "NDA Signed Successfully" banner
 ```
 
-### 6.7 Customer Portal Access Flow
+### 6.7 API Lead Ingestion Flow
+
+```
+External BD Agent sends POST /api/v1/leads
+    ↓
+Bearer token validated against API_TOKEN
+    ↓
+[Invalid] → 401 Unauthorized
+[Valid] → Request body validated
+    ↓
+[Invalid fields] → 400 Validation failed with details
+[Valid] → Lead created in database (source = AGENT, status = NEW)
+    ↓
+StatusHistory record created (fromStatus: null, toStatus: NEW)
+    ↓
+No email sent to customer
+    ↓
+201 Created — lead data returned
+    ↓
+Admin sees new lead on dashboard with "Agent" source badge
+```
+
+### 6.8 Customer Portal Access Flow
 
 ```
 Customer receives welcome email
@@ -478,6 +546,7 @@ User enters username and password
 | Customer Name | String | Full name of the customer |
 | Customer Email | String | Email address of the customer |
 | Project Description | Text | Detailed project description |
+| Source | Enum | How the lead was created (MANUAL or AGENT) |
 | Status | Enum | Current lead status (NEW through GO_LIVE) |
 | Email Sent | Boolean | Whether the welcome email was sent |
 | Created At | Timestamp | When the lead was created |
@@ -539,6 +608,7 @@ _This section will be updated as new features are planned and developed._
 | ~~Notes System~~ | ~~Admin notes visible to customers~~ — **Implemented v1.1** | ~~High~~ |
 | ~~Status Update Emails~~ | ~~Email notifications on status changes~~ — **Implemented v1.1** | ~~High~~ |
 | ~~NDA System~~ | ~~Generate, send, and e-sign NDAs~~ — **Implemented v1.2** | ~~High~~ |
+| ~~API Integration~~ | ~~External BD agent API with auth token~~ — **Implemented v1.3** | ~~High~~ |
 | Multiple Admin Users | Support for multiple admin accounts with roles | Medium |
 | Customer Portal Interactions | Allow customers to add comments/feedback on their project | Medium |
 | File Attachments | Allow admin to attach files (proposals, wireframes) to leads | Medium |
@@ -556,3 +626,4 @@ _This section will be updated as new features are planned and developed._
 | 1.0 | March 5, 2026 | Initial document creation | — |
 | 1.1 | March 6, 2026 | Added lead detail view, status tracking, notes system, status update emails | — |
 | 1.2 | March 6, 2026 | Added NDA generation, e-signature, PDF download, and signed confirmation emails | — |
+| 1.3 | March 6, 2026 | Added external API integration with Bearer token auth, LeadSource tracking (MANUAL/AGENT), API documentation | — |

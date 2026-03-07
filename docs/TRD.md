@@ -4,7 +4,7 @@
 
 | Field | Detail |
 |-------|--------|
-| Document Version | 1.2 |
+| Document Version | 1.3 |
 | Last Updated | March 6, 2026 |
 | Status | Active |
 
@@ -106,6 +106,9 @@ leads-portal/
 │   │           └── api/
 │   │               ├── auth/
 │   │               │   └── route.ts # POST login, DELETE logout
+│   │               ├── v1/
+│   │               │   └── leads/
+│   │               │       └── route.ts # POST create lead (external API, Bearer token auth)
 │   │               └── leads/
 │   │                   ├── route.ts # GET all, POST create
 │   │                   └── [id]/
@@ -115,7 +118,9 @@ leads-portal/
 │   │                       ├── notes/
 │   │                       │   └── route.ts   # POST add note
 │   │                       └── nda/
-│   │                           └── route.ts   # POST generate, GET retrieve NDA
+│   │                           ├── route.ts   # POST generate, GET retrieve, PATCH edit NDA
+│   │                           └── send/
+│   │                               └── route.ts # POST send NDA email
 │   └── customer/                   # Customer Portal (Next.js)
 │       ├── package.json
 │       ├── next.config.ts
@@ -160,13 +165,16 @@ leads-portal/
 │ customer_name      VARCHAR NOT NULL    │  ├───>│ lead_id     UUID   FK        │
 │ customer_email     VARCHAR NOT NULL    │  │    │ created_at  TIMESTAMP DEFAULT│
 │ project_description TEXT   NOT NULL    │  │    └──────────────────────────────┘
+│ source             LeadSource DEFAULT  │  │
 │ status             LeadStatus DEFAULT  │  │
 │ email_sent         BOOLEAN DEFAULT false│  │    ┌──────────────────────────────┐
 │ created_at         TIMESTAMP DEFAULT now│  │    │       status_history         │
 │ updated_at         TIMESTAMP AUTO      │  │    ├──────────────────────────────┤
 └────────────────────────────────────────┘  │    │ id          UUID   PK DEFAULT│
                                             │    │ from_status LeadStatus NULL  │
-  LeadStatus ENUM:                          │    │ to_status   LeadStatus       │
+  LeadSource ENUM: MANUAL | AGENT           │    │ to_status   LeadStatus       │
+                                            │
+  LeadStatus ENUM:                          │
   NEW | DESIGN_READY | DESIGN_APPROVED |    ├───>│ lead_id     UUID   FK        │
   BUILD_IN_PROGRESS | BUILD_READY_FOR_  |   │    │ created_at  TIMESTAMP DEFAULT│
   REVIEW | BUILD_SUBMITTED | GO_LIVE        │    └──────────────────────────────┘
@@ -191,6 +199,11 @@ enum NdaStatus {
   SIGNED
 }
 
+enum LeadSource {
+  MANUAL
+  AGENT
+}
+
 enum LeadStatus {
   NEW
   DESIGN_READY
@@ -207,6 +220,7 @@ model Lead {
   customerName       String       @map("customer_name")
   customerEmail      String       @map("customer_email")
   projectDescription String       @map("project_description") @db.Text
+  source             LeadSource   @default(MANUAL)
   status             LeadStatus   @default(NEW)
   emailSent          Boolean      @default(false) @map("email_sent")
   createdAt          DateTime     @default(now()) @map("created_at")
@@ -269,6 +283,9 @@ model Nda {
 | `Nda` model | One-to-one with Lead (`@unique` on leadId), stores full NDA text and e-signature data |
 | `NdaStatus` enum | Tracks NDA lifecycle: GENERATED → SENT → SIGNED |
 | Client-side PDF | `jspdf` generates PDF in-browser — no server-side rendering needed |
+| `LeadSource` enum | Tracks lead origin: MANUAL (admin UI) vs AGENT (external API) |
+| Bearer token auth | Simple token-based auth for external API — no OAuth complexity needed |
+| `/api/v1/` prefix | Versioned API path for external integrations, separate from internal routes |
 
 ---
 
@@ -491,9 +508,46 @@ Response: Nda (200)
 
 **Post-sign:** Confirmation emails sent to both customer and admin.
 
-### 5.4 Response Types
+### 5.4 External API (v1)
+
+#### `POST /api/v1/leads` — Create Lead (External Agent)
+
+```
+Auth:     Bearer token (API_TOKEN env variable)
+Header:   Authorization: Bearer <token>
+Request:  {
+  "projectName": string,
+  "customerName": string,
+  "customerEmail": string,
+  "projectDescription": string
+}
+Response: {
+  "id": string,
+  "projectName": string,
+  "customerName": string,
+  "customerEmail": string,
+  "projectDescription": string,
+  "source": "AGENT",
+  "status": "NEW",
+  "createdAt": string
+} (201)
+401:      { "error": "Unauthorized..." }
+400:      { "error": "Validation failed", "details": string[] }
+```
+
+**Behavior:**
+- Validates Bearer token against `API_TOKEN` env variable
+- Validates all required fields and email format
+- Creates lead with `source: AGENT`
+- Creates initial StatusHistory record
+- Does NOT send any email to the customer
+- Full documentation: `docs/API-INTEGRATION.md`
+
+### 5.5 Response Types
 
 ```typescript
+type LeadSource = "MANUAL" | "AGENT";
+
 type LeadStatus =
   | "NEW"
   | "DESIGN_READY"
@@ -509,6 +563,7 @@ interface Lead {
   customerName: string;
   customerEmail: string;
   projectDescription: string;
+  source: LeadSource;
   status: LeadStatus;
   emailSent: boolean;
   createdAt: string;           // ISO 8601
@@ -750,6 +805,7 @@ The admin container runs `prisma db push` on startup (via `scripts/start-admin.s
 | `SMTP_FROM` | Sender email address | `user@gmail.com` |
 | `CUSTOMER_PORTAL_URL` | Base URL of customer portal | `http://localhost:3001` |
 | `COMPANY_NAME` | Company name for NDA documents | `Your Company Name` |
+| `API_TOKEN` | Bearer token for external API authentication | `lp_sk_...` |
 
 **Security:** The `.env` file is listed in both `.gitignore` and `.dockerignore` to prevent secrets from being committed or included in Docker images.
 
@@ -895,3 +951,4 @@ Both Next.js apps include `transpilePackages: ["@leads-portal/database"]` in the
 | 1.0 | March 5, 2026 | Initial document creation | — |
 | 1.1 | March 6, 2026 | Added LeadStatus enum, Note & StatusHistory models, new API endpoints (single lead, status update, notes), status update email, updated customer portal architecture | — |
 | 1.2 | March 6, 2026 | Added NDA feature: NdaStatus enum, Nda model, NDA generation/signing APIs, customer portal NDA UI with PDF download and e-signature, NDA email notifications | — |
+| 1.3 | March 6, 2026 | Added external API integration: LeadSource enum, Bearer token auth, POST /api/v1/leads endpoint, NDA edit/send split, API documentation | — |

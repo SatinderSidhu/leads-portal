@@ -29,6 +29,7 @@ interface Lead {
   customerName: string;
   customerEmail: string;
   projectDescription: string;
+  source: string;
   status: string;
   emailSent: boolean;
   createdAt: string;
@@ -104,6 +105,9 @@ export default function DashboardPage() {
                       Email
                     </th>
                     <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Source
+                    </th>
+                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
                     <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -126,6 +130,13 @@ export default function DashboardPage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {lead.customerEmail}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${lead.source === "AGENT" ? "bg-cyan-100 text-cyan-800" : "bg-gray-100 text-gray-800"}`}
+                        >
+                          {lead.source === "AGENT" ? "Agent" : "Manual"}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <span

@@ -13,6 +13,11 @@ enum NdaStatus {
   SIGNED
 }
 
+enum LeadSource {
+  MANUAL
+  AGENT
+}
+
 enum LeadStatus {
   NEW
   DESIGN_READY
@@ -29,6 +34,7 @@ model Lead {
   customerName       String       @map("customer_name")
   customerEmail      String       @map("customer_email")
   projectDescription String       @map("project_description") @db.Text
+  source             LeadSource   @default(MANUAL)
   status             LeadStatus   @default(NEW)
   emailSent          Boolean      @default(false) @map("email_sent")
   createdAt          DateTime     @default(now()) @map("created_at")

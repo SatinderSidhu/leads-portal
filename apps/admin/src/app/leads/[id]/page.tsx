@@ -66,6 +66,7 @@ interface Lead {
   customerName: string;
   customerEmail: string;
   projectDescription: string;
+  source: string;
   status: string;
   emailSent: boolean;
   createdAt: string;
@@ -149,7 +150,7 @@ export default function LeadDetailPage() {
     try {
       const res = await fetch(`/api/leads/${lead.id}/nda`, { method: "POST" });
       if (res.ok) {
-        await fetchLead();
+        router.push(`/leads/${lead.id}/nda`);
       } else {
         const data = await res.json();
         alert(data.error || "Failed to generate NDA");
@@ -218,6 +219,16 @@ export default function LeadDetailPage() {
                   <p className="text-sm text-gray-500">Customer Email</p>
                   <p className="text-gray-900 font-medium">
                     {lead.customerEmail}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-500">Source</p>
+                  <p className="text-gray-900 font-medium">
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${lead.source === "AGENT" ? "bg-cyan-100 text-cyan-800" : "bg-gray-100 text-gray-800"}`}
+                    >
+                      {lead.source === "AGENT" ? "Agent" : "Manual"}
+                    </span>
                   </p>
                 </div>
                 <div>
@@ -414,6 +425,12 @@ export default function LeadDetailPage() {
                       </div>
                     </>
                   )}
+                  <button
+                    onClick={() => router.push(`/leads/${lead.id}/nda`)}
+                    className="w-full mt-2 border border-gray-300 text-gray-700 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition"
+                  >
+                    View NDA
+                  </button>
                 </div>
               )}
             </div>
