@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ThemeToggle } from "../../../../components/ThemeToggle";
 
 interface Nda {
   id: string;
@@ -92,16 +93,16 @@ export default function NdaPreviewPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500">Loading...</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <p className="text-gray-500 dark:text-gray-400">Loading...</p>
       </div>
     );
   }
 
   if (!lead || !lead.nda) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500">NDA not found</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <p className="text-gray-500 dark:text-gray-400">NDA not found</p>
       </div>
     );
   }
@@ -111,25 +112,26 @@ export default function NdaPreviewPage() {
   const isSent = nda.status === "SENT";
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
         <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push(`/leads/${lead.id}`)}
-              className="text-gray-500 hover:text-gray-700 text-sm font-medium transition"
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm font-medium transition"
             >
               &larr; Back to Lead
             </button>
-            <h1 className="text-xl font-bold text-gray-900">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
               NDA — {lead.projectName}
             </h1>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             {!isSigned && !editing && (
               <button
                 onClick={() => setEditing(true)}
-                className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
               >
                 Edit
               </button>
@@ -158,9 +160,9 @@ export default function NdaPreviewPage() {
 
       <main className="max-w-5xl mx-auto px-6 py-8">
         {/* Status Bar */}
-        <div className="bg-white rounded-xl border p-4 mb-6 flex items-center justify-between">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4 mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-500">Status:</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">Status:</span>
             <span
               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                 isSigned
@@ -173,8 +175,8 @@ export default function NdaPreviewPage() {
               {isSigned ? "Signed" : isSent ? "Sent to Customer" : "Draft"}
             </span>
             {isSigned && nda.signerName && (
-              <span className="text-sm text-gray-500">
-                Signed by <strong className="text-gray-900">{nda.signerName}</strong> on{" "}
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                Signed by <strong className="text-gray-900 dark:text-white">{nda.signerName}</strong> on{" "}
                 {nda.signedAt ? new Date(nda.signedAt).toLocaleString() : "—"}
               </span>
             )}
@@ -185,11 +187,11 @@ export default function NdaPreviewPage() {
         </div>
 
         {/* NDA Content */}
-        <div className="bg-white rounded-xl border">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700">
           {editing ? (
             <div>
-              <div className="border-b px-6 py-3 flex items-center justify-between bg-gray-50 rounded-t-xl">
-                <span className="text-sm font-medium text-gray-700">
+              <div className="border-b dark:border-gray-700 px-6 py-3 flex items-center justify-between bg-gray-50 dark:bg-gray-700 rounded-t-xl">
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Editing NDA
                 </span>
                 <div className="flex gap-2">
@@ -198,7 +200,7 @@ export default function NdaPreviewPage() {
                       setContent(nda.content);
                       setEditing(false);
                     }}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-100 transition"
+                    className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition"
                   >
                     Cancel
                   </button>
@@ -214,12 +216,12 @@ export default function NdaPreviewPage() {
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                className="w-full p-6 text-gray-700 text-sm leading-relaxed font-mono resize-none outline-none min-h-[600px]"
+                className="w-full p-6 text-gray-700 dark:text-gray-300 text-sm leading-relaxed font-mono resize-none outline-none min-h-[600px] bg-white dark:bg-gray-800"
               />
             </div>
           ) : (
             <div className="p-6 md:p-10">
-              <pre className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap font-sans">
+              <pre className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap font-sans">
                 {nda.content}
               </pre>
             </div>

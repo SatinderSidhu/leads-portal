@@ -4,8 +4,8 @@
 
 | Field | Detail |
 |-------|--------|
-| Document Version | 1.4 |
-| Last Updated | March 6, 2026 |
+| Document Version | 1.5 |
+| Last Updated | March 7, 2026 |
 | Status | Active |
 
 ---
@@ -20,6 +20,7 @@
 | Styling | Tailwind CSS | 4.x |
 | Database | PostgreSQL | 16 |
 | ORM | Prisma | 6.x |
+| Password Hashing | bcryptjs | 3.x |
 | Email | Nodemailer (SMTP/Gmail) | 8.x |
 | Monorepo Tool | Turborepo | 2.x |
 | Package Manager | npm workspaces | 11.x |
@@ -89,9 +90,13 @@ leads-portal/
 │   │   ├── tsconfig.json
 │   │   ├── middleware.ts           # Auth middleware
 │   │   └── src/
+│   │       ├── components/
+│   │       │   ├── ThemeProvider.tsx # Dark/light theme context with localStorage
+│   │       │   └── ThemeToggle.tsx  # Sun/moon toggle button
 │   │       ├── lib/
 │   │       │   ├── api-auth.ts     # Shared Bearer token validation helpers
-│   │       │   └── email.ts        # Nodemailer utility (welcome + status update)
+│   │       │   ├── email.ts        # Nodemailer utility (welcome, status, NDA, admin welcome)
+│   │       │   └── session.ts      # Admin session helper (cookie → AdminUser lookup)
 │   │       └── app/
 │   │           ├── layout.tsx       # Root layout
 │   │           ├── globals.css      # Global styles
@@ -100,6 +105,12 @@ leads-portal/
 │   │           │   └── page.tsx     # Login form
 │   │           ├── api-docs/
 │   │           │   └── page.tsx     # Swagger UI (public)
+│   │           ├── admin-users/
+│   │           │   ├── page.tsx     # Admin users list
+│   │           │   ├── new/
+│   │           │   │   └── page.tsx # Create admin user form
+│   │           │   └── [id]/
+│   │           │       └── page.tsx # Edit admin user
 │   │           ├── dashboard/
 │   │           │   └── page.tsx     # Leads grid (clickable rows)
 │   │           ├── content/
@@ -114,8 +125,12 @@ leads-portal/
 │   │           │   └── [id]/
 │   │           │       └── page.tsx # Lead detail (status, notes, history)
 │   │           └── api/
+│   │               ├── admin-users/
+│   │               │   ├── route.ts     # GET list, POST create
+│   │               │   └── [id]/
+│   │               │       └── route.ts # GET, PUT, DELETE admin user
 │   │               ├── auth/
-│   │               │   └── route.ts # POST login, DELETE logout
+│   │               │   └── route.ts # POST login (DB-backed bcrypt), DELETE logout
 │   │               ├── content/
 │   │               │   ├── route.ts     # GET all, POST create
 │   │               │   ├── [id]/
@@ -134,7 +149,7 @@ leads-portal/
 │   │               └── leads/
 │   │                   ├── route.ts # GET all, POST create
 │   │                   └── [id]/
-│   │                       ├── route.ts       # GET single lead
+│   │                       ├── route.ts       # GET single lead, PUT edit, DELETE
 │   │                       ├── status/
 │   │                       │   └── route.ts   # PATCH status update
 │   │                       ├── notes/
@@ -167,7 +182,8 @@ leads-portal/
         ├── package.json
         ├── tsconfig.json
         ├── prisma/
-        │   └── schema.prisma       # Database schema
+        │   ├── schema.prisma       # Database schema
+        │   └── seed.ts             # Seeds initial admin user (admin/admin)
         └── src/
             └── index.ts            # PrismaClient singleton
 ```
@@ -249,6 +265,19 @@ enum LeadStatus {
   GO_LIVE
 }
 
+model AdminUser {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  username  String   @unique
+  password  String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("admin_users")
+}
+
 model Lead {
   id                 String       @id @default(uuid())
   projectName        String       @map("project_name")
@@ -258,6 +287,8 @@ model Lead {
   source             LeadSource   @default(MANUAL)
   status             LeadStatus   @default(NEW)
   emailSent          Boolean      @default(false) @map("email_sent")
+  createdBy          String?      @map("created_by")
+  updatedBy          String?      @map("updated_by")
   createdAt          DateTime     @default(now()) @map("created_at")
   updatedAt          DateTime     @updatedAt @map("updated_at")
   notes              Note[]
@@ -272,6 +303,7 @@ model Note {
   content   String   @db.Text
   leadId    String   @map("lead_id")
   lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdBy String?  @map("created_by")
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("notes")
@@ -283,6 +315,7 @@ model StatusHistory {
   toStatus   LeadStatus  @map("to_status")
   leadId     String      @map("lead_id")
   lead       Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  changedBy  String?     @map("changed_by")
   createdAt  DateTime    @default(now()) @map("created_at")
 
   @@map("status_history")
@@ -341,6 +374,12 @@ model Content {
 | `Platform` enum array | PostgreSQL native array for multi-platform targeting |
 | `Json` for tags | Simple array storage without separate Tag model |
 | `swagger-ui-react` | Interactive API docs at `/api-docs`, loads static OpenAPI spec |
+| `AdminUser` model | Database-backed admin accounts replacing hardcoded credentials |
+| `bcryptjs` | Pure JS bcrypt implementation — no native dependencies, works everywhere |
+| Audit fields as strings | Store admin name (not FK) — simpler, no cascade issues if admin deleted |
+| Session cookie `userId:secret` | Identifies admin for audit trail while validating via SESSION_SECRET |
+| Inline lead editing | Edit mode toggles on same page — no separate edit page needed |
+| Hard delete for leads | Cascade deletes notes, statusHistory, NDA — simplest approach |
 
 ---
 
@@ -386,21 +425,34 @@ model Content {
 
 | Component | Detail |
 |-----------|--------|
-| Strategy | Cookie-based session (no JWT, no NextAuth) |
+| Strategy | Cookie-based session with database-backed admin users |
 | Cookie Name | `admin-session` |
-| Cookie Value | Matches `SESSION_SECRET` environment variable |
+| Cookie Value | `adminUserId:SESSION_SECRET` (identifies admin for audit trail) |
 | Cookie Flags | `httpOnly`, `secure` (in production), `path=/`, `maxAge=86400` |
-| Public Paths | `/login`, `/api/auth` |
+| Password Storage | bcryptjs hash (10 salt rounds) |
+| Public Paths | `/login`, `/api/auth`, `/api/v1`, `/api-docs` |
 | Middleware Matcher | All routes except `_next/static`, `_next/image`, `favicon.ico` |
 
-### 4.3 API Endpoints
+### 4.3 Session Helper
+
+**File:** `apps/admin/src/lib/session.ts`
+
+```typescript
+// Extracts admin user info from session cookie
+// Returns { id, name, username } or null
+// Used by API routes for audit trail (createdBy, updatedBy, changedBy)
+export async function getAdminSession(): Promise<AdminSession | null>
+```
+
+### 4.4 API Endpoints
 
 #### `POST /api/auth` — Login
 
 ```
 Request:  { "username": string, "password": string }
-Response: { "success": true } (200) | { "error": "Invalid credentials" } (401)
-Side Effect: Sets admin-session cookie on success
+Validation: Looks up AdminUser by username, bcrypt-compares password, checks active=true
+Response: { "success": true, "name": string } (200) | { "error": "Invalid credentials" } (401)
+Side Effect: Sets admin-session cookie with adminUserId:sessionSecret
 ```
 
 #### `DELETE /api/auth` — Logout
@@ -462,6 +514,31 @@ sendEmail === true?
 Auth:     Required (middleware-enforced)
 Response: Lead with notes[], statusHistory[], and nda (sorted by createdAt DESC)
 404:      { "error": "Lead not found" }
+```
+
+#### `PUT /api/leads/[id]` — Edit Lead
+
+```
+Auth:     Required (middleware-enforced)
+Request:  {
+  "projectName"?: string,
+  "customerName"?: string,
+  "customerEmail"?: string,
+  "projectDescription"?: string
+}
+Response: Lead (200)
+404:      { "error": "Lead not found" }
+400:      { "error": "Validation failed", "details": string[] }
+Side Effect: Sets updatedBy to current admin's name
+```
+
+#### `DELETE /api/leads/[id]` — Delete Lead
+
+```
+Auth:     Required (middleware-enforced)
+Response: { "success": true } (200)
+404:      { "error": "Lead not found" }
+Side Effect: Cascade deletes all associated notes, statusHistory, and NDA
 ```
 
 #### `PATCH /api/leads/[id]/status` — Update Lead Status
@@ -647,7 +724,58 @@ Response: { "filePath": "/uploads/filename.ext" } (201)
 400:      File type not allowed or too large
 ```
 
-### 5.6 External Content API (v1)
+### 5.6 Admin Users API
+
+#### `GET /api/admin-users` — List All Admin Users
+
+```
+Auth:     Required (middleware-enforced)
+Response: AdminUser[] (sorted by createdAt DESC, password excluded)
+```
+
+#### `POST /api/admin-users` — Create Admin User
+
+```
+Auth:     Required (middleware-enforced)
+Request:  {
+  "name": string,
+  "email": string,
+  "username": string,
+  "password": string (min 4 chars),
+  "active"?: boolean (default true)
+}
+Response: AdminUser (201, password excluded)
+409:      { "error": "Email already in use" | "Username already taken" }
+400:      { "error": "Validation failed", "details": string[] }
+Side Effect: Sends welcome email to new admin's email address
+```
+
+#### `GET /api/admin-users/[id]` — Get Admin User
+
+```
+Auth:     Required (middleware-enforced)
+Response: AdminUser (200, password excluded)
+404:      { "error": "Admin user not found" }
+```
+
+#### `PUT /api/admin-users/[id]` — Update Admin User
+
+```
+Auth:     Required (middleware-enforced)
+Request:  { "name"?, "email"?, "username"?, "password"?, "active"? }
+Response: AdminUser (200, password excluded)
+409:      { "error": "Email already in use" | "Username already taken" }
+```
+
+#### `DELETE /api/admin-users/[id]` — Delete Admin User
+
+```
+Auth:     Required (middleware-enforced)
+Response: { "success": true }
+404:      { "error": "Admin user not found" }
+```
+
+### 5.7 External Content API (v1)
 
 All content v1 endpoints use Bearer token auth (same as leads API).
 
@@ -683,6 +811,8 @@ interface Lead {
   source: LeadSource;
   status: LeadStatus;
   emailSent: boolean;
+  createdBy: string | null;    // Admin name or "API"
+  updatedBy: string | null;    // Admin name
   createdAt: string;           // ISO 8601
   updatedAt: string;           // ISO 8601
   notes?: Note[];
@@ -707,6 +837,7 @@ interface Note {
   id: string;
   content: string;
   leadId: string;
+  createdBy: string | null;
   createdAt: string;
 }
 
@@ -715,7 +846,18 @@ interface StatusHistory {
   fromStatus: LeadStatus | null;
   toStatus: LeadStatus;
   leadId: string;
+  changedBy: string | null;
   createdAt: string;
+}
+
+interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  username: string;
+  active: boolean;
+  createdAt: string;
+  // password is never returned in API responses
 }
 
 type ContentStatus = "DRAFT" | "PUBLISHED" | "ARCHIVED";
@@ -937,8 +1079,9 @@ The admin container runs `prisma db push` on startup (via `scripts/start-admin.s
 | `SMTP_PASS` | SMTP password (Gmail App Password) | `xxxx xxxx xxxx xxxx` |
 | `SMTP_FROM` | Sender email address | `user@gmail.com` |
 | `CUSTOMER_PORTAL_URL` | Base URL of customer portal | `http://localhost:3001` |
-| `COMPANY_NAME` | Company name for NDA documents | `Your Company Name` |
+| `COMPANY_NAME` | Company name for NDA documents and emails | `Your Company Name` |
 | `API_TOKEN` | Bearer token for external API authentication | `lp_sk_...` |
+| `ADMIN_PORTAL_URL` | Admin portal URL (for welcome emails) | `http://localhost:3000` |
 
 **Security:** The `.env` file is listed in both `.gitignore` and `.dockerignore` to prevent secrets from being committed or included in Docker images.
 
@@ -1086,3 +1229,4 @@ Both Next.js apps include `transpilePackages: ["@leads-portal/database"]` in the
 | 1.2 | March 6, 2026 | Added NDA feature: NdaStatus enum, Nda model, NDA generation/signing APIs, customer portal NDA UI with PDF download and e-signature, NDA email notifications | — |
 | 1.3 | March 6, 2026 | Added external API integration: LeadSource enum, Bearer token auth, POST /api/v1/leads endpoint, NDA edit/send split, API documentation | — |
 | 1.4 | March 7, 2026 | Added content management: Content model, CRUD API + external v1 API, file upload, Swagger/OpenAPI docs at /api-docs | — |
+| 1.5 | March 7, 2026 | Added AdminUser model with bcrypt auth, session helper for audit trail, lead edit/delete APIs, audit fields (createdBy/updatedBy/changedBy), admin user CRUD API, admin welcome email, dark mode (ThemeProvider + ThemeToggle) | — |

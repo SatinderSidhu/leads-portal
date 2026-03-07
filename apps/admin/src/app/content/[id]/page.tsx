@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { ThemeToggle } from "../../../components/ThemeToggle";
 
 const PLATFORMS = [
   { value: "LINKEDIN", label: "LinkedIn" },
@@ -156,16 +157,16 @@ export default function ContentEditPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500">Loading...</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <p className="text-gray-500 dark:text-gray-400">Loading...</p>
       </div>
     );
   }
 
   if (!content) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <p className="text-gray-500">Content not found</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <p className="text-gray-500 dark:text-gray-400">Content not found</p>
       </div>
     );
   }
@@ -174,37 +175,40 @@ export default function ContentEditPage() {
   const isValid = title.trim() && body.trim();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => router.push("/content")}
-              className="text-gray-500 hover:text-gray-700 text-sm font-medium transition"
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm font-medium transition"
             >
               &larr; Back
             </button>
-            <h1 className="text-xl font-bold text-gray-900">Edit Content</h1>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Edit Content</h1>
           </div>
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="text-red-600 hover:text-red-700 text-sm font-medium transition disabled:opacity-50"
-          >
-            {deleting ? "Deleting..." : "Delete"}
-          </button>
+          <div className="flex items-center gap-4">
+            <ThemeToggle />
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="text-red-600 hover:text-red-700 text-sm font-medium transition disabled:opacity-50"
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-8">
-        <div className="bg-white rounded-xl border p-6 space-y-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6 space-y-6">
           {/* Media Preview */}
           {mediaPreview && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Media Preview
               </label>
-              <div className="rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+              <div className="rounded-lg overflow-hidden border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700">
                 {mediaPreview.match(/\.(mp4|webm)$/i) ? (
                   <video
                     src={mediaPreview}
@@ -225,33 +229,33 @@ export default function ContentEditPage() {
 
           {/* Title */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Title *
             </label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition text-gray-900"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
             />
           </div>
 
           {/* Body */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Post Content *
             </label>
             <textarea
               value={body}
               onChange={(e) => setBody(e.target.value)}
               rows={6}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition resize-none text-gray-900"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition resize-none text-gray-900 dark:text-white bg-white dark:bg-gray-700"
             />
           </div>
 
           {/* Media URL */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Media URL
             </label>
             <input
@@ -259,13 +263,13 @@ export default function ContentEditPage() {
               value={mediaUrl}
               onChange={(e) => setMediaUrl(e.target.value)}
               placeholder="https://example.com/image.jpg"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition text-gray-900"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
             />
           </div>
 
           {/* File Upload */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Upload Media
             </label>
             <input
@@ -273,7 +277,7 @@ export default function ContentEditPage() {
               accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm"
               onChange={handleFileUpload}
               disabled={uploading}
-              className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 transition"
+              className="w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-purple-50 dark:file:bg-purple-900 file:text-purple-700 dark:file:text-purple-300 hover:file:bg-purple-100 dark:hover:file:bg-purple-800 transition"
             />
             {uploading && (
               <p className="text-sm text-purple-600 mt-1">Uploading...</p>
@@ -287,7 +291,7 @@ export default function ContentEditPage() {
 
           {/* Tags */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Tags
             </label>
             <input
@@ -295,13 +299,13 @@ export default function ContentEditPage() {
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
               placeholder="marketing, launch, product (comma-separated)"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition text-gray-900"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
             />
           </div>
 
           {/* Target Platforms */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Target Platforms
             </label>
             <div className="flex flex-wrap gap-3">
@@ -316,7 +320,7 @@ export default function ContentEditPage() {
                     onChange={() => togglePlatform(p.value)}
                     className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
                   />
-                  <span className="text-sm text-gray-700">{p.label}</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{p.label}</span>
                 </label>
               ))}
             </div>
@@ -324,13 +328,13 @@ export default function ContentEditPage() {
 
           {/* Status */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Status
             </label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition text-gray-900"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
             >
               <option value="DRAFT">Draft</option>
               <option value="PUBLISHED">Published</option>
@@ -348,7 +352,7 @@ export default function ContentEditPage() {
           </button>
 
           {/* Metadata */}
-          <div className="border-t pt-4 text-xs text-gray-400 space-y-1">
+          <div className="border-t dark:border-gray-700 pt-4 text-xs text-gray-400 space-y-1">
             <p>Created: {new Date(content.createdAt).toLocaleString()}</p>
             <p>Updated: {new Date(content.updatedAt).toLocaleString()}</p>
           </div>

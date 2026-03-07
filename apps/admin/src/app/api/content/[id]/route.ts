@@ -1,4 +1,5 @@
 import { prisma } from "@leads-portal/database";
+import type { Platform, ContentStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 export async function GET(
@@ -20,11 +21,34 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const body = await req.json();
 
-  if (!body.title?.trim() || !body.body?.trim()) {
+  let body: Record<string, unknown>;
+  try {
+    body = await req.json();
+  } catch {
     return NextResponse.json(
-      { error: "Title and body are required" },
+      { error: "Invalid JSON body" },
+      { status: 400 }
+    );
+  }
+
+  const { title, body: postBody, mediaUrl, mediaFile, tags, platforms, status } = body as {
+    title?: string;
+    body?: string;
+    mediaUrl?: string;
+    mediaFile?: string;
+    tags?: string[];
+    platforms?: string[];
+    status?: string;
+  };
+
+  const errors: string[] = [];
+  if (title !== undefined && !title?.trim()) errors.push("title cannot be empty");
+  if (postBody !== undefined && !postBody?.trim()) errors.push("body cannot be empty");
+
+  if (errors.length > 0) {
+    return NextResponse.json(
+      { error: "Validation failed", details: errors },
       { status: 400 }
     );
   }
@@ -33,13 +57,13 @@ export async function PUT(
     const content = await prisma.content.update({
       where: { id },
       data: {
-        title: body.title.trim(),
-        body: body.body.trim(),
-        mediaUrl: body.mediaUrl ?? undefined,
-        mediaFile: body.mediaFile ?? undefined,
-        tags: body.tags ?? undefined,
-        platforms: body.platforms ?? undefined,
-        status: body.status ?? undefined,
+        ...(title !== undefined && { title: title.trim() }),
+        ...(postBody !== undefined && { body: postBody.trim() }),
+        ...(mediaUrl !== undefined && { mediaUrl }),
+        ...(mediaFile !== undefined && { mediaFile }),
+        ...(tags !== undefined && { tags }),
+        ...(platforms !== undefined && { platforms: platforms as Platform[] }),
+        ...(status !== undefined && { status: status as ContentStatus }),
       },
     });
     return NextResponse.json(content);

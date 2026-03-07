@@ -75,7 +75,7 @@ Creates a new lead in the system with `source: "AGENT"` and initial status `NEW`
 #### Example Request
 
 ```bash
-curl -X POST http://localhost:3000/api/v1/leads \
+curl -X POST http://localhost:192.168.64.1/api/v1/leads \
   -H "Authorization: Bearer lp_sk_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6" \
   -H "Content-Type: application/json" \
   -d '{

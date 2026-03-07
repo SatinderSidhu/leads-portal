@@ -1,0 +1,56 @@
+{
+  "linkedin": {
+    "search_criteria": {
+      "job_titles": [
+        "CTO",
+        "VP of Engineering",
+        "Head of Engineering",
+        "Director of Engineering"
+      ],
+      "industries": [
+        "Computer Software",
+        "Information Technology and Services",
+        "Internet"
+      ],
+      "company_size": [
+        "51-200",
+        "201-500",
+        "501-1000"
+      ],
+      "locations": [
+        "San Francisco Bay Area",
+        "New York City Metropolitan Area",
+        "Greater London"
+      ]
+    },
+    "pages_to_scan": 3,
+    "max_leads_per_run": 50
+  },
+  "crm": {
+    "base_url": "http://localhost:3000/api/v1",
+    "endpoint": "/leads",
+    "method": "POST",
+    "auth_type": "bearer",
+    "auth_token": "lp_sk_a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "field_mapping": {
+      "full_name": "name",
+      "job_title": "title",
+      "company_name": "company",
+      "email": "email",
+      "phone": "phone",
+      "linkedin_url": "linkedin_url",
+      "industry": "industry",
+      "company_size": "company_size",
+      "location": "location",
+      "notes": "notes"
+    }
+  },
+  "settings": {
+    "dry_run": true,
+    "log_file": "data/run_log.json",
+    "processed_leads_file": "data/processed_leads.json"
+  }
+}

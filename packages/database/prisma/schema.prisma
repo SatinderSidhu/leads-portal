@@ -41,6 +41,19 @@ enum LeadStatus {
   GO_LIVE
 }
 
+model AdminUser {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  username  String   @unique
+  password  String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("admin_users")
+}
+
 model Lead {
   id                 String       @id @default(uuid())
   projectName        String       @map("project_name")
@@ -50,6 +63,8 @@ model Lead {
   source             LeadSource   @default(MANUAL)
   status             LeadStatus   @default(NEW)
   emailSent          Boolean      @default(false) @map("email_sent")
+  createdBy          String?      @map("created_by")
+  updatedBy          String?      @map("updated_by")
   createdAt          DateTime     @default(now()) @map("created_at")
   updatedAt          DateTime     @updatedAt @map("updated_at")
 
@@ -65,6 +80,7 @@ model Note {
   content   String   @db.Text
   leadId    String   @map("lead_id")
   lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  createdBy String?  @map("created_by")
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("notes")
@@ -74,6 +90,7 @@ model StatusHistory {
   id         String      @id @default(uuid())
   fromStatus LeadStatus? @map("from_status")
   toStatus   LeadStatus  @map("to_status")
+  changedBy  String?     @map("changed_by")
   leadId     String      @map("lead_id")
   lead       Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
   createdAt  DateTime    @default(now()) @map("created_at")

@@ -4,8 +4,8 @@
 
 | Field | Detail |
 |-------|--------|
-| Document Version | 1.4 |
-| Last Updated | March 6, 2026 |
+| Document Version | 1.5 |
+| Last Updated | March 7, 2026 |
 | Status | Active |
 
 ---
@@ -31,7 +31,7 @@ The Leads Portal is a web-based lead management system designed to streamline th
 
 | Role | Description |
 |------|-------------|
-| Admin | Internal team member responsible for entering and managing leads |
+| Admin | Internal team member responsible for entering and managing leads (database-backed user accounts) |
 | Customer | External client who has been entered as a lead |
 | BD Agent | External automated system that submits leads via API |
 
@@ -45,8 +45,10 @@ A secure, internal-only web application for managing leads.
 
 **Access Control:**
 - Protected behind username/password authentication
-- Only authorized admin users can access the portal
-- Current credentials: username `admin`, password `admin`
+- Multiple admin user accounts stored in the database (AdminUser model)
+- Passwords hashed with bcryptjs; inactive accounts are blocked from login
+- Default seeded credentials: username `admin`, password `admin`
+- Session cookie stores `userId:sessionSecret` — enables audit trail tracking
 - Session-based authentication with secure HTTP-only cookies
 
 ### 4.2 Customer Portal
@@ -70,8 +72,8 @@ A public-facing, interactive web application for customers to view their project
 |--------|--------|
 | Purpose | Secure access to the admin portal |
 | Fields | Username, Password |
-| Validation | Must match stored credentials |
-| On Success | Redirect to Dashboard |
+| Validation | Must match an active AdminUser in the database (bcrypt comparison) |
+| On Success | Redirect to Dashboard; session cookie set with admin user ID |
 | On Failure | Display error message "Invalid username or password" |
 | Session Duration | 24 hours |
 
@@ -79,6 +81,8 @@ A public-facing, interactive web application for customers to view their project
 - Unauthenticated users are automatically redirected to the login page
 - Session persists across browser refreshes within the 24-hour window
 - Logout option available from the dashboard
+- Inactive admin accounts (`active: false`) are blocked from logging in
+- Session cookie format: `adminUserId:sessionSecret` — used for audit trail
 
 #### 5.1.2 Leads Dashboard
 
@@ -151,14 +155,78 @@ A public-facing, interactive web application for customers to view their project
 
 | Aspect | Detail |
 |--------|--------|
-| Purpose | View full details of a lead, manage status, and add notes |
+| Purpose | View full details of a lead, manage status, edit/delete, and add notes |
 | Access | Click on any lead row in the Dashboard grid |
 
 **Displayed Information:**
 - Project details (name, customer, email, description, creation date, email status)
 - Current status with color-coded badge
-- Notes section with ability to add new notes
-- Status history timeline
+- Notes section with ability to add new notes (shows author name)
+- Status history timeline (shows who made each change)
+- Audit info: "Created by" and "Last updated by" with timestamps
+
+**Available Actions:**
+- "Edit" button — toggles inline editing of project name, customer name, email, and description
+- "Delete" button — confirmation dialog, then permanently removes lead and all associated data
+- Status update, add notes, generate/view NDA (existing features)
+
+#### 5.1.5a Lead Edit
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | Allow admin to edit lead details from the detail view |
+| Mode | Inline editing — fields toggle between view and edit mode |
+
+**Editable Fields:**
+
+| Field | Type | Required |
+|-------|------|----------|
+| Project Name | Text input | Yes |
+| Customer Name | Text input | Yes |
+| Customer Email | Email input | Yes |
+| Project Description | Textarea | Yes |
+
+**Business Rules:**
+- "Edit" button toggles the project details card into edit mode
+- "Cancel" reverts to original values without saving
+- "Save Changes" validates all fields are non-empty, then sends PUT request
+- On save, the `updatedBy` field is set to the current admin's name
+- Edit button hidden during edit mode
+
+#### 5.1.5b Lead Delete
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | Allow admin to permanently remove a lead |
+| Confirmation | Browser confirm dialog with project name |
+
+**Business Rules:**
+- Confirmation message warns about permanent deletion of associated notes, status history, and NDA
+- On confirm, sends DELETE request to API
+- On success, redirects admin to the dashboard
+- Cascade delete: all associated notes, status history, and NDA records are removed
+
+#### 5.1.5c Audit Trail
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | Track who created, edited, and updated leads |
+| Scope | Lead creation, lead edit, status changes, notes |
+
+**Tracked Actions:**
+
+| Action | Field | Stored Value |
+|--------|-------|-------------|
+| Lead created (admin UI) | `lead.createdBy` | Admin user's name |
+| Lead created (external API) | `lead.createdBy` | "API" |
+| Lead edited | `lead.updatedBy` | Admin user's name |
+| Status changed | `statusHistory.changedBy` | Admin user's name |
+| Note added | `note.createdBy` | Admin user's name |
+
+**Display:**
+- Lead detail page shows "Created by {name} on {date}" and "Last updated by {name} on {date}"
+- Status history timeline shows "{admin name}" before the timestamp
+- Notes show "{admin name}" before the timestamp
 
 #### 5.1.6 Status Management
 
@@ -206,6 +274,67 @@ A public-facing, interactive web application for customers to view their project
 - New status displayed prominently
 - Call-to-action button linking to Customer Portal
 - The link contains the lead's unique ID
+
+#### 5.1.9 Admin User Management
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | Create, edit, and manage admin user accounts |
+| Access | Dashboard header "Admin Users" button → `/admin-users` |
+
+**Admin User Fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| Name | Text input | Yes | Full name of the admin |
+| Email | Email input | Yes | Email address (unique) |
+| Username | Text input | Yes | Login username (unique) |
+| Password | Password input | Yes (create) / Optional (edit) | Minimum 4 characters, hashed with bcryptjs |
+| Active | Checkbox | No | Whether the user can log in (default: true) |
+
+**Pages:**
+
+| Page | Route | Purpose |
+|------|-------|---------|
+| Admin Users List | `/admin-users` | Table of all admin users with name, email, username, status, created date |
+| Create Admin User | `/admin-users/new` | Form to create a new admin account |
+| Edit Admin User | `/admin-users/[id]` | Edit admin details, change password, toggle active, delete |
+
+**Business Rules:**
+- Email and username must be unique across all admin users
+- Password is hashed with bcryptjs (10 salt rounds) before storage
+- On creation, a welcome email is sent to the admin's email with the admin portal URL and username
+- Deactivating an admin (`active: false`) blocks them from logging in
+- Admins can be deleted from the edit page with a confirmation dialog
+- Admin list shows active/inactive status as a color-coded badge
+
+#### 5.1.10 Admin Welcome Email
+
+| Aspect | Detail |
+|--------|--------|
+| Trigger | New admin user created via `/admin-users/new` |
+| Recipient | New admin's email address |
+| Subject | "Welcome to {Company Name} Admin Portal" |
+
+**Email Content:**
+- Personalized greeting with admin name
+- Username and admin portal URL displayed in a card
+- Instruction to use the password provided by the administrator
+- CTA button: "Go to Admin Portal"
+
+#### 5.1.11 Dark Mode
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | Toggle between light and dark themes in the admin portal |
+| Toggle | Sun/moon icon button in the header of every page |
+| Persistence | Theme preference saved in localStorage |
+
+**Business Rules:**
+- Default theme follows the user's preference from their last visit
+- Falls back to light mode on first visit
+- All pages and components support both themes via Tailwind CSS `dark:` classes
+- Theme context provided via React Context (ThemeProvider)
 
 ### 5.2 Customer Portal Features
 
@@ -604,6 +733,8 @@ User enters username and password
 | Source | Enum | How the lead was created (MANUAL or AGENT) |
 | Status | Enum | Current lead status (NEW through GO_LIVE) |
 | Email Sent | Boolean | Whether the welcome email was sent |
+| Created By | String (nullable) | Name of the admin who created the lead (or "API") |
+| Updated By | String (nullable) | Name of the admin who last edited the lead |
 | Created At | Timestamp | When the lead was created |
 | Updated At | Timestamp | When the lead was last modified |
 
@@ -614,6 +745,7 @@ User enters username and password
 | ID | UUID | Unique identifier |
 | Content | Text | Note content |
 | Lead ID | UUID | Foreign key to Lead |
+| Created By | String (nullable) | Name of the admin who created the note |
 | Created At | Timestamp | When the note was created |
 
 ### 7.3 Status History Record
@@ -624,6 +756,7 @@ User enters username and password
 | From Status | Enum (nullable) | Previous status (null for initial) |
 | To Status | Enum | New status |
 | Lead ID | UUID | Foreign key to Lead |
+| Changed By | String (nullable) | Name of the admin who changed the status |
 | Created At | Timestamp | When the status change occurred |
 
 ### 7.4 NDA Record
@@ -639,7 +772,20 @@ User enters username and password
 | Signed At | Timestamp (nullable) | When the NDA was signed |
 | Created At | Timestamp | When the NDA was generated |
 
-### 7.5 Content Record
+### 7.5 Admin User Record
+
+| Field | Type | Description |
+|-------|------|-------------|
+| ID | UUID | Unique identifier |
+| Name | String | Full name of the admin |
+| Email | String (unique) | Email address |
+| Username | String (unique) | Login username |
+| Password | String | Bcrypt-hashed password |
+| Active | Boolean | Whether the admin can log in (default: true) |
+| Created At | Timestamp | When the admin was created |
+| Updated At | Timestamp | When the admin was last modified |
+
+### 7.6 Content Record
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -680,7 +826,7 @@ _This section will be updated as new features are planned and developed._
 | ~~NDA System~~ | ~~Generate, send, and e-sign NDAs~~ — **Implemented v1.2** | ~~High~~ |
 | ~~API Integration~~ | ~~External BD agent API with auth token~~ — **Implemented v1.3** | ~~High~~ |
 | ~~Content Management~~ | ~~CRUD for social media content with external API~~ — **Implemented v1.4** | ~~High~~ |
-| Multiple Admin Users | Support for multiple admin accounts with roles | Medium |
+| ~~Multi-Admin & Audit~~ | ~~Admin user management, lead edit/delete, audit trail, dark mode~~ — **Implemented v1.5** | ~~High~~ |
 | Customer Portal Interactions | Allow customers to add comments/feedback on their project | Medium |
 | File Attachments | Allow admin to attach files (proposals, wireframes) to leads | Medium |
 | Search & Filter | Search and filter leads on the dashboard | Medium |
@@ -699,3 +845,4 @@ _This section will be updated as new features are planned and developed._
 | 1.2 | March 6, 2026 | Added NDA generation, e-signature, PDF download, and signed confirmation emails | — |
 | 1.3 | March 6, 2026 | Added external API integration with Bearer token auth, LeadSource tracking (MANUAL/AGENT), API documentation | — |
 | 1.4 | March 7, 2026 | Added content management system with CRUD, file upload, external API, Swagger/OpenAPI docs | — |
+| 1.5 | March 7, 2026 | Added multi-admin auth (database-backed users with bcrypt), lead edit/delete, audit trail (who created/edited/updated), admin user management (CRUD + welcome email), dark mode toggle | — |

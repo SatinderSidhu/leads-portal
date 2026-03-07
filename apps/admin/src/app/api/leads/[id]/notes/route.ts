@@ -1,5 +1,6 @@
 import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
+import { getAdminSession } from "../../../../../lib/session";
 
 export async function POST(
   req: Request,
@@ -7,6 +8,8 @@ export async function POST(
 ) {
   const { id } = await params;
   const { content } = await req.json();
+  const session = await getAdminSession();
+  const adminName = session?.name || "Unknown";
 
   const lead = await prisma.lead.findUnique({ where: { id } });
   if (!lead) {
@@ -14,7 +17,7 @@ export async function POST(
   }
 
   const note = await prisma.note.create({
-    data: { content, leadId: id },
+    data: { content, leadId: id, createdBy: adminName },
   });
 
   return NextResponse.json(note, { status: 201 });

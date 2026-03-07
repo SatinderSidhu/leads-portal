@@ -168,3 +168,62 @@ export async function sendNdaReadyEmail(lead: Lead) {
 
   console.log(`[Email] NDA ready email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
 }
+
+interface AdminUser {
+  name: string;
+  email: string;
+  username: string;
+}
+
+export async function sendAdminWelcomeEmail(admin: AdminUser) {
+  const adminUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
+  const companyName = process.env.COMPANY_NAME || "Leads Portal";
+
+  console.log(`[Email] Sending admin welcome email to ${admin.email}...`);
+  const start = Date.now();
+
+  const info = await transporter.sendMail({
+    from: process.env.SMTP_FROM || "noreply@leadsportal.com",
+    to: admin.email,
+    subject: `Welcome to ${companyName} Admin Portal`,
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
+          <h1 style="color: white; margin: 0; font-size: 28px;">Welcome, ${admin.name}!</h1>
+          <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">You've been added as an admin</p>
+        </div>
+
+        <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+          <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
+            Your admin account has been created for the <strong>${companyName}</strong> portal. Here are your login details:
+          </p>
+
+          <div style="background: white; border-radius: 8px; padding: 20px; margin: 20px 0; border: 1px solid #e0e0e0;">
+            <p style="margin: 0 0 8px 0; color: #666; font-size: 14px;">Username</p>
+            <p style="margin: 0 0 16px 0; color: #333; font-size: 18px; font-weight: 600;">${admin.username}</p>
+            <p style="margin: 0; color: #666; font-size: 14px;">Admin Portal URL</p>
+            <p style="margin: 4px 0 0 0;"><a href="${adminUrl}" style="color: #667eea; font-size: 16px;">${adminUrl}</a></p>
+          </div>
+
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            Please use the password provided by your administrator to log in.
+          </p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${adminUrl}"
+               style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 32px;
+                      border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">
+              Go to Admin Portal
+            </a>
+          </div>
+        </div>
+
+        <p style="color: #999; font-size: 13px; text-align: center;">
+          If you did not expect this email, please contact your administrator.
+        </p>
+      </div>
+    `,
+  });
+
+  console.log(`[Email] Admin welcome email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
+}

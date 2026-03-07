@@ -6,12 +6,18 @@
   "types": "./src/index.ts",
   "scripts": {
     "generate": "prisma generate",
-    "push": "prisma db push"
+    "push": "prisma db push",
+    "seed": "npx tsx prisma/seed.ts"
+  },
+  "prisma": {
+    "seed": "npx tsx prisma/seed.ts"
   },
   "dependencies": {
-    "@prisma/client": "^6.4.0"
+    "@prisma/client": "^6.4.0",
+    "bcryptjs": "^2.4.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
     "prisma": "^6.4.0"
   }
 }

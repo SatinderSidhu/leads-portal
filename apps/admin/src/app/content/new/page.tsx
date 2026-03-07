@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { ThemeToggle } from "../../../components/ThemeToggle";
 
 const PLATFORMS = [
   { value: "LINKEDIN", label: "LinkedIn" },
@@ -96,24 +97,27 @@ export default function NewContentPage() {
   const isValid = title.trim() && body.trim();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center gap-4">
-          <button
-            onClick={() => router.push("/content")}
-            className="text-gray-500 hover:text-gray-700 text-sm font-medium transition"
-          >
-            &larr; Back
-          </button>
-          <h1 className="text-xl font-bold text-gray-900">New Content</h1>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
+        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push("/content")}
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm font-medium transition"
+            >
+              &larr; Back
+            </button>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">New Content</h1>
+          </div>
+          <ThemeToggle />
         </div>
       </header>
 
       <main className="max-w-3xl mx-auto px-6 py-8">
-        <div className="bg-white rounded-xl border p-6 space-y-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6 space-y-6">
           {/* Title */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Title *
             </label>
             <input
@@ -121,13 +125,13 @@ export default function NewContentPage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter content title"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition text-gray-900"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
             />
           </div>
 
           {/* Body */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Post Content *
             </label>
             <textarea
@@ -135,13 +139,13 @@ export default function NewContentPage() {
               onChange={(e) => setBody(e.target.value)}
               placeholder="Write your post content..."
               rows={6}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition resize-none text-gray-900"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition resize-none text-gray-900 dark:text-white bg-white dark:bg-gray-700"
             />
           </div>
 
           {/* Media URL */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Media URL
             </label>
             <input
@@ -149,13 +153,13 @@ export default function NewContentPage() {
               value={mediaUrl}
               onChange={(e) => setMediaUrl(e.target.value)}
               placeholder="https://example.com/image.jpg"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition text-gray-900"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
             />
           </div>
 
           {/* File Upload */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Upload Media
             </label>
             <input
@@ -163,7 +167,7 @@ export default function NewContentPage() {
               accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm"
               onChange={handleFileUpload}
               disabled={uploading}
-              className="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100 transition"
+              className="w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-purple-50 dark:file:bg-purple-900 file:text-purple-700 dark:file:text-purple-300 hover:file:bg-purple-100 dark:hover:file:bg-purple-800 transition"
             />
             {uploading && (
               <p className="text-sm text-purple-600 mt-1">Uploading...</p>
@@ -177,7 +181,7 @@ export default function NewContentPage() {
 
           {/* Tags */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Tags
             </label>
             <input
@@ -185,13 +189,13 @@ export default function NewContentPage() {
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
               placeholder="marketing, launch, product (comma-separated)"
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition text-gray-900"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
             />
           </div>
 
           {/* Target Platforms */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Target Platforms
             </label>
             <div className="flex flex-wrap gap-3">
@@ -206,7 +210,7 @@ export default function NewContentPage() {
                     onChange={() => togglePlatform(p.value)}
                     className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
                   />
-                  <span className="text-sm text-gray-700">{p.label}</span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{p.label}</span>
                 </label>
               ))}
             </div>
@@ -214,13 +218,13 @@ export default function NewContentPage() {
 
           {/* Status */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Status
             </label>
             <select
               value={status}
               onChange={(e) => setStatus(e.target.value)}
-              className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition text-gray-900"
+              className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
             >
               <option value="DRAFT">Draft</option>
               <option value="PUBLISHED">Published</option>

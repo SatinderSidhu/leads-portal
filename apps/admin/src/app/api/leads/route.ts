@@ -1,6 +1,7 @@
 import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { sendWelcomeEmail } from "../../../lib/email";
+import { getAdminSession } from "../../../lib/session";
 
 export async function GET() {
   const leads = await prisma.lead.findMany({
@@ -11,6 +12,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
   const body = await req.json();
+  const session = await getAdminSession();
+  const adminName = session?.name || "Unknown";
 
   const lead = await prisma.lead.create({
     data: {
@@ -19,6 +22,7 @@ export async function POST(req: Request) {
       customerEmail: body.customerEmail,
       projectDescription: body.projectDescription,
       source: "MANUAL",
+      createdBy: adminName,
     },
   });
 
@@ -27,6 +31,7 @@ export async function POST(req: Request) {
       leadId: lead.id,
       fromStatus: null,
       toStatus: "NEW",
+      changedBy: adminName,
     },
   });
 

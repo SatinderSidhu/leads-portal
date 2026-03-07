@@ -10,7 +10,14 @@ export function middleware(request: NextRequest) {
   }
 
   const session = request.cookies.get("admin-session");
-  if (!session || session.value !== process.env.SESSION_SECRET) {
+  if (!session?.value) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  // Cookie format: "userId:secret"
+  const parts = session.value.split(":");
+  const secret = parts.slice(1).join(":");
+  if (!parts[0] || secret !== process.env.SESSION_SECRET) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

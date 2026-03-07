@@ -1,6 +1,7 @@
 import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { sendStatusUpdateEmail } from "../../../../../lib/email";
+import { getAdminSession } from "../../../../../lib/session";
 
 export async function PATCH(
   req: Request,
@@ -8,6 +9,8 @@ export async function PATCH(
 ) {
   const { id } = await params;
   const { status, sendEmail } = await req.json();
+  const session = await getAdminSession();
+  const adminName = session?.name || "Unknown";
 
   const lead = await prisma.lead.findUnique({ where: { id } });
   if (!lead) {
@@ -19,7 +22,7 @@ export async function PATCH(
   const updatedLead = await prisma.$transaction(async (tx) => {
     const updated = await tx.lead.update({
       where: { id },
-      data: { status },
+      data: { status, updatedBy: adminName },
     });
 
     await tx.statusHistory.create({
@@ -27,6 +30,7 @@ export async function PATCH(
         leadId: id,
         fromStatus: previousStatus,
         toStatus: status,
+        changedBy: adminName,
       },
     });
 

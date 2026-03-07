@@ -49,6 +49,7 @@ export async function POST(req: Request) {
         customerEmail: (customerEmail as string).trim(),
         projectDescription: (projectDescription as string).trim(),
         source: "AGENT",
+        createdBy: "API",
       },
     });
 
@@ -57,6 +58,7 @@ export async function POST(req: Request) {
         leadId: lead.id,
         fromStatus: null,
         toStatus: "NEW",
+        changedBy: "API",
       },
     });
 
