@@ -1,8 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ThemeToggle } from "../../../components/ThemeToggle";
+import dynamic from "next/dynamic";
+
+const RichTextEditor = dynamic(
+  () => import("../../../components/RichTextEditor"),
+  { ssr: false, loading: () => <div className="h-48 bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse" /> }
+);
 
 const STATUS_OPTIONS = [
   "NEW",
@@ -34,6 +40,30 @@ const STATUS_COLORS: Record<string, string> = {
   GO_LIVE: "bg-emerald-100 text-emerald-800",
 };
 
+const STAGE_OPTIONS = ["COLD", "WARM", "HOT", "ACTIVE", "CLOSED"] as const;
+
+const STAGE_LABELS: Record<string, string> = {
+  COLD: "Cold",
+  WARM: "Warm",
+  HOT: "Hot",
+  ACTIVE: "Active",
+  CLOSED: "Closed",
+};
+
+const STAGE_COLORS: Record<string, string> = {
+  COLD: "bg-blue-100 text-blue-800",
+  WARM: "bg-yellow-100 text-yellow-800",
+  HOT: "bg-orange-100 text-orange-800",
+  ACTIVE: "bg-green-100 text-green-800",
+  CLOSED: "bg-gray-100 text-gray-800",
+};
+
+const EMAIL_STATUS_COLORS: Record<string, string> = {
+  SENT: "bg-blue-100 text-blue-800",
+  OPENED: "bg-green-100 text-green-800",
+  FAILED: "bg-red-100 text-red-800",
+};
+
 interface Note {
   id: string;
   content: string;
@@ -57,6 +87,34 @@ interface Nda {
   createdAt: string;
 }
 
+interface SentEmail {
+  id: string;
+  subject: string;
+  status: string;
+  sentBy: string | null;
+  openedAt: string | null;
+  createdAt: string;
+  template: { title: string; purpose: string } | null;
+}
+
+interface EmailTemplateItem {
+  id: string;
+  title: string;
+  subject: string;
+  body: string;
+  purpose: string;
+}
+
+interface Recommendation {
+  templateId: string;
+  templateTitle: string;
+  templateSubject: string;
+  purpose: string;
+  flowName: string;
+  edgeLabel: string | null;
+  fromTemplateName: string;
+}
+
 const NDA_STATUS_DISPLAY: Record<string, { label: string; color: string }> = {
   GENERATED: { label: "Generated", color: "bg-yellow-100 text-yellow-800" },
   SENT: { label: "Sent to Customer", color: "bg-blue-100 text-blue-800" },
@@ -71,6 +129,10 @@ interface Lead {
   projectDescription: string;
   source: string;
   status: string;
+  stage: string;
+  linkedinUrl: string | null;
+  facebookUrl: string | null;
+  twitterUrl: string | null;
   emailSent: boolean;
   createdBy: string | null;
   updatedBy: string | null;
@@ -79,6 +141,7 @@ interface Lead {
   notes: Note[];
   statusHistory: StatusHistoryEntry[];
   nda: Nda | null;
+  sentEmails: SentEmail[];
 }
 
 export default function LeadDetailPage() {
@@ -101,12 +164,27 @@ export default function LeadDetailPage() {
   const [editCustomerName, setEditCustomerName] = useState("");
   const [editCustomerEmail, setEditCustomerEmail] = useState("");
   const [editProjectDescription, setEditProjectDescription] = useState("");
+  const [editStage, setEditStage] = useState("COLD");
+  const [editLinkedin, setEditLinkedin] = useState("");
+  const [editFacebook, setEditFacebook] = useState("");
+  const [editTwitter, setEditTwitter] = useState("");
   const [editSaving, setEditSaving] = useState(false);
 
   // Delete state
   const [deleting, setDeleting] = useState(false);
 
-  async function fetchLead() {
+  // Email compose state
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [composeSubject, setComposeSubject] = useState("");
+  const [composeBody, setComposeBody] = useState("");
+  const [composeTemplateId, setComposeTemplateId] = useState("");
+  const [composeSending, setComposeSending] = useState(false);
+  const [templates, setTemplates] = useState<EmailTemplateItem[]>([]);
+
+  // Recommendations
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+
+  const fetchLead = useCallback(async () => {
     const res = await fetch(`/api/leads/${params.id}`);
     if (res.ok) {
       const data = await res.json();
@@ -114,12 +192,30 @@ export default function LeadDetailPage() {
       setNewStatus(data.status);
     }
     setLoading(false);
-  }
+  }, [params.id]);
 
   useEffect(() => {
     fetchLead();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id]);
+  }, [fetchLead]);
+
+  // Load templates for compose
+  useEffect(() => {
+    fetch("/api/email-templates")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setTemplates(data);
+      });
+  }, []);
+
+  // Load recommendations
+  useEffect(() => {
+    if (!params.id) return;
+    fetch(`/api/leads/${params.id}/recommendations`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setRecommendations(data);
+      });
+  }, [params.id, lead?.sentEmails?.length]);
 
   function startEditing() {
     if (!lead) return;
@@ -127,6 +223,10 @@ export default function LeadDetailPage() {
     setEditCustomerName(lead.customerName);
     setEditCustomerEmail(lead.customerEmail);
     setEditProjectDescription(lead.projectDescription);
+    setEditStage(lead.stage || "COLD");
+    setEditLinkedin(lead.linkedinUrl || "");
+    setEditFacebook(lead.facebookUrl || "");
+    setEditTwitter(lead.twitterUrl || "");
     setEditing(true);
   }
 
@@ -146,6 +246,10 @@ export default function LeadDetailPage() {
           customerName: editCustomerName.trim(),
           customerEmail: editCustomerEmail.trim(),
           projectDescription: editProjectDescription.trim(),
+          stage: editStage,
+          linkedinUrl: editLinkedin.trim() || null,
+          facebookUrl: editFacebook.trim() || null,
+          twitterUrl: editTwitter.trim() || null,
         }),
       });
       if (res.ok) {
@@ -246,6 +350,59 @@ export default function LeadDetailPage() {
     }
   }
 
+  function handleTemplateSelect(templateId: string) {
+    setComposeTemplateId(templateId);
+    if (!templateId) return;
+    const template = templates.find((t) => t.id === templateId);
+    if (template) {
+      setComposeSubject(template.subject);
+      setComposeBody(template.body);
+    }
+  }
+
+  function loadRecommendation(rec: Recommendation) {
+    const template = templates.find((t) => t.id === rec.templateId);
+    if (template) {
+      setComposeTemplateId(template.id);
+      setComposeSubject(template.subject);
+      setComposeBody(template.body);
+    } else {
+      setComposeSubject(rec.templateSubject);
+      setComposeBody("");
+    }
+    setComposeOpen(true);
+  }
+
+  async function handleSendEmail() {
+    if (!lead || !composeSubject.trim() || !composeBody.trim()) return;
+    setComposeSending(true);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/emails`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          subject: composeSubject.trim(),
+          body: composeBody.trim(),
+          templateId: composeTemplateId || undefined,
+        }),
+      });
+      if (res.ok) {
+        setComposeOpen(false);
+        setComposeSubject("");
+        setComposeBody("");
+        setComposeTemplateId("");
+        await fetchLead();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to send email");
+      }
+    } catch {
+      alert("Failed to send email");
+    } finally {
+      setComposeSending(false);
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
@@ -286,6 +443,11 @@ export default function LeadDetailPage() {
               className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[lead.status] || "bg-gray-100 text-gray-800"}`}
             >
               {STATUS_LABELS[lead.status] || lead.status}
+            </span>
+            <span
+              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STAGE_COLORS[lead.stage] || "bg-gray-100 text-gray-800"}`}
+            >
+              {STAGE_LABELS[lead.stage] || lead.stage}
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -388,6 +550,64 @@ export default function LeadDetailPage() {
                       className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition resize-none text-gray-900 dark:text-white bg-white dark:bg-gray-700"
                     />
                   </div>
+
+                  {/* Stage */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Lead Stage
+                    </label>
+                    <select
+                      value={editStage}
+                      onChange={(e) => setEditStage(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                    >
+                      {STAGE_OPTIONS.map((s) => (
+                        <option key={s} value={s}>
+                          {STAGE_LABELS[s]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Social Links */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        LinkedIn URL
+                      </label>
+                      <input
+                        type="url"
+                        value={editLinkedin}
+                        onChange={(e) => setEditLinkedin(e.target.value)}
+                        placeholder="https://linkedin.com/in/..."
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Facebook URL
+                      </label>
+                      <input
+                        type="url"
+                        value={editFacebook}
+                        onChange={(e) => setEditFacebook(e.target.value)}
+                        placeholder="https://facebook.com/..."
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Twitter URL
+                      </label>
+                      <input
+                        type="url"
+                        value={editTwitter}
+                        onChange={(e) => setEditTwitter(e.target.value)}
+                        placeholder="https://twitter.com/..."
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                      />
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <>
@@ -422,6 +642,18 @@ export default function LeadDetailPage() {
                     </div>
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
+                        Stage
+                      </p>
+                      <p className="text-gray-900 dark:text-white font-medium">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STAGE_COLORS[lead.stage] || "bg-gray-100 text-gray-800"}`}
+                        >
+                          {STAGE_LABELS[lead.stage] || lead.stage}
+                        </span>
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
                         Created
                       </p>
                       <p className="text-gray-900 dark:text-white font-medium">
@@ -437,6 +669,43 @@ export default function LeadDetailPage() {
                       </p>
                     </div>
                   </div>
+
+                  {/* Social Links */}
+                  {(lead.linkedinUrl || lead.facebookUrl || lead.twitterUrl) && (
+                    <div className="flex flex-wrap gap-3 mb-4">
+                      {lead.linkedinUrl && (
+                        <a
+                          href={lead.linkedinUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition"
+                        >
+                          LinkedIn
+                        </a>
+                      )}
+                      {lead.facebookUrl && (
+                        <a
+                          href={lead.facebookUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition"
+                        >
+                          Facebook
+                        </a>
+                      )}
+                      {lead.twitterUrl && (
+                        <a
+                          href={lead.twitterUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-medium hover:bg-gray-100 dark:hover:bg-gray-600 transition"
+                        >
+                          Twitter
+                        </a>
+                      )}
+                    </div>
+                  )}
+
                   <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
                       Project Description
@@ -470,6 +739,197 @@ export default function LeadDetailPage() {
                     </div>
                   )}
                 </>
+              )}
+            </div>
+
+            {/* Email Compose */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Send Email
+                </h2>
+                {!composeOpen && (
+                  <button
+                    onClick={() => setComposeOpen(true)}
+                    className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition"
+                  >
+                    Compose Email
+                  </button>
+                )}
+              </div>
+
+              {composeOpen && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Use Template
+                    </label>
+                    <select
+                      value={composeTemplateId}
+                      onChange={(e) => handleTemplateSelect(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                    >
+                      <option value="">-- No template (blank) --</option>
+                      {templates.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.title}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      To
+                    </label>
+                    <input
+                      type="text"
+                      value={lead.customerEmail}
+                      disabled
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Subject *
+                    </label>
+                    <input
+                      type="text"
+                      value={composeSubject}
+                      onChange={(e) => setComposeSubject(e.target.value)}
+                      placeholder="Email subject..."
+                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Body *
+                    </label>
+                    <RichTextEditor
+                      content={composeBody}
+                      onChange={setComposeBody}
+                      placeholder="Compose your email..."
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleSendEmail}
+                      disabled={!composeSubject.trim() || !composeBody.trim() || composeSending}
+                      className="bg-teal-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
+                      {composeSending ? "Sending..." : "Send Email"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setComposeOpen(false);
+                        setComposeSubject("");
+                        setComposeBody("");
+                        setComposeTemplateId("");
+                      }}
+                      className="px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Recommended Next Email */}
+            {recommendations.length > 0 && (
+              <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Recommended Next Email
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {recommendations.map((rec) => (
+                    <button
+                      key={rec.templateId}
+                      onClick={() => loadRecommendation(rec)}
+                      className="text-left p-4 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition"
+                    >
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {rec.templateTitle}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {rec.templateSubject}
+                      </div>
+                      <div className="text-xs text-teal-600 dark:text-teal-400 mt-2">
+                        {rec.edgeLabel
+                          ? `After: ${rec.fromTemplateName} → ${rec.edgeLabel}`
+                          : `From flow: ${rec.flowName}`}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Email Audit Log */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Email History
+              </h2>
+
+              {lead.sentEmails.length === 0 ? (
+                <p className="text-gray-400 text-sm">No emails sent yet</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead>
+                      <tr className="border-b border-gray-100 dark:border-gray-700">
+                        <th className="text-left pb-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                          Subject
+                        </th>
+                        <th className="text-left pb-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                          Template
+                        </th>
+                        <th className="text-left pb-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                          Status
+                        </th>
+                        <th className="text-left pb-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                          Sent By
+                        </th>
+                        <th className="text-left pb-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+                          Date
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                      {lead.sentEmails.map((email) => (
+                        <tr key={email.id}>
+                          <td className="py-3 text-sm text-gray-900 dark:text-white">
+                            {email.subject}
+                          </td>
+                          <td className="py-3 text-sm text-gray-500 dark:text-gray-400">
+                            {email.template?.title || "—"}
+                          </td>
+                          <td className="py-3">
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${EMAIL_STATUS_COLORS[email.status] || "bg-gray-100 text-gray-800"}`}
+                            >
+                              {email.status}
+                            </span>
+                            {email.openedAt && (
+                              <span className="text-xs text-gray-400 ml-1">
+                                {new Date(email.openedAt).toLocaleDateString()}
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 text-sm text-gray-500 dark:text-gray-400">
+                            {email.sentBy || "—"}
+                          </td>
+                          <td className="py-3 text-sm text-gray-500 dark:text-gray-400">
+                            {new Date(email.createdAt).toLocaleString()}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
 

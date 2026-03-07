@@ -14,6 +14,22 @@ const STATUS_LABELS: Record<string, string> = {
   GO_LIVE: "Go Live",
 };
 
+const STAGE_LABELS: Record<string, string> = {
+  COLD: "Cold",
+  WARM: "Warm",
+  HOT: "Hot",
+  ACTIVE: "Active",
+  CLOSED: "Closed",
+};
+
+const STAGE_COLORS: Record<string, string> = {
+  COLD: "bg-blue-100 text-blue-800",
+  WARM: "bg-yellow-100 text-yellow-800",
+  HOT: "bg-orange-100 text-orange-800",
+  ACTIVE: "bg-green-100 text-green-800",
+  CLOSED: "bg-gray-100 text-gray-800",
+};
+
 const STATUS_COLORS: Record<string, string> = {
   NEW: "bg-blue-100 text-blue-800",
   DESIGN_READY: "bg-yellow-100 text-yellow-800",
@@ -32,6 +48,7 @@ interface Lead {
   projectDescription: string;
   source: string;
   status: string;
+  stage: string;
   emailSent: boolean;
   createdAt: string;
 }
@@ -65,6 +82,18 @@ export default function DashboardPage() {
               className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition"
             >
               Admin Users
+            </button>
+            <button
+              onClick={() => router.push("/email-templates")}
+              className="bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 transition"
+            >
+              Email Templates
+            </button>
+            <button
+              onClick={() => router.push("/email-flows")}
+              className="bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 transition"
+            >
+              Email Flows
             </button>
             <button
               onClick={() => router.push("/content")}
@@ -125,6 +154,9 @@ export default function DashboardPage() {
                       Status
                     </th>
                     <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                      Stage
+                    </th>
+                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                       Created
                     </th>
                   </tr>
@@ -157,6 +189,13 @@ export default function DashboardPage() {
                           className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_COLORS[lead.status] || "bg-gray-100 text-gray-800"}`}
                         >
                           {STATUS_LABELS[lead.status] || lead.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STAGE_COLORS[lead.stage] || "bg-gray-100 text-gray-800"}`}
+                        >
+                          {STAGE_LABELS[lead.stage] || lead.stage}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
