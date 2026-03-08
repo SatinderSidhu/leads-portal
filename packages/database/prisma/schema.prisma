@@ -29,6 +29,7 @@ enum NdaStatus {
 enum LeadSource {
   MANUAL
   AGENT
+  BARK
 }
 
 enum LeadStatus {
@@ -70,6 +71,11 @@ model Lead {
   createdAt          DateTime     @default(now()) @map("created_at")
   updatedAt          DateTime     @updatedAt @map("updated_at")
 
+  phone          String?
+  city           String?
+  zip            String?
+  dateCreated    DateTime?    @map("date_created")
+
   stage          LeadStage    @default(COLD)
   linkedinUrl    String?      @map("linkedin_url")
   facebookUrl    String?      @map("facebook_url")
@@ -79,6 +85,7 @@ model Lead {
   statusHistory StatusHistory[]
   nda           Nda?
   sentEmails    SentEmail[]
+  files         LeadFile[]
 
   @@map("leads")
 }
@@ -118,6 +125,20 @@ model Nda {
   createdAt  DateTime  @default(now()) @map("created_at")
 
   @@map("ndas")
+}
+
+model LeadFile {
+  id         String   @id @default(uuid())
+  leadId     String   @map("lead_id")
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  fileName   String   @map("file_name")
+  filePath   String   @map("file_path")
+  fileSize   Int      @map("file_size")
+  fileType   String   @map("file_type")
+  uploadedBy String?  @map("uploaded_by")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("lead_files")
 }
 
 enum LeadStage {

@@ -185,9 +185,9 @@ export default function DashboardPage() {
                       </td>
                       <td className="px-6 py-4">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${lead.source === "AGENT" ? "bg-cyan-100 text-cyan-800" : "bg-gray-100 text-gray-800"}`}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${lead.source === "AGENT" ? "bg-cyan-100 text-cyan-800" : lead.source === "BARK" ? "bg-orange-100 text-orange-800" : "bg-gray-100 text-gray-800"}`}
                         >
-                          {lead.source === "AGENT" ? "Agent" : "Manual"}
+                          {lead.source === "AGENT" ? "Agent" : lead.source === "BARK" ? "Bark" : "Manual"}
                         </span>
                       </td>
                       <td className="px-6 py-4">

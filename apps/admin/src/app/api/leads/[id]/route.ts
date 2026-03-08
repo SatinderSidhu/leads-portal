@@ -18,6 +18,7 @@ export async function GET(
         include: { template: { select: { title: true, purpose: true } } },
         orderBy: { createdAt: "desc" },
       },
+      files: { orderBy: { createdAt: "desc" } },
       _count: { select: { sentEmails: true } },
     },
   });
@@ -64,6 +65,10 @@ export async function PUT(
         ...(body.linkedinUrl !== undefined && { linkedinUrl: body.linkedinUrl?.trim() || null }),
         ...(body.facebookUrl !== undefined && { facebookUrl: body.facebookUrl?.trim() || null }),
         ...(body.twitterUrl !== undefined && { twitterUrl: body.twitterUrl?.trim() || null }),
+        ...(body.phone !== undefined && { phone: body.phone?.trim() || null }),
+        ...(body.city !== undefined && { city: body.city?.trim() || null }),
+        ...(body.zip !== undefined && { zip: body.zip?.trim() || null }),
+        ...(body.dateCreated !== undefined && { dateCreated: body.dateCreated ? new Date(body.dateCreated) : null }),
         updatedBy: session?.name || "Unknown",
       },
     });

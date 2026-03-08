@@ -17,11 +17,16 @@ export async function POST(req: Request) {
     );
   }
 
-  const { projectName, customerName, customerEmail, projectDescription } = body as {
+  const { projectName, customerName, customerEmail, projectDescription, phone, city, zip, dateCreated, source } = body as {
     projectName?: string;
     customerName?: string;
     customerEmail?: string;
     projectDescription?: string;
+    phone?: string;
+    city?: string;
+    zip?: string;
+    dateCreated?: string;
+    source?: string;
   };
 
   const errors: string[] = [];
@@ -48,7 +53,11 @@ export async function POST(req: Request) {
         customerName: (customerName as string).trim(),
         customerEmail: (customerEmail as string).trim(),
         projectDescription: (projectDescription as string).trim(),
-        source: "AGENT",
+        phone: phone?.trim() || null,
+        city: city?.trim() || null,
+        zip: zip?.trim() || null,
+        dateCreated: dateCreated ? new Date(dateCreated) : null,
+        source: source === "MANUAL" ? "MANUAL" : source === "BARK" ? "BARK" : "AGENT",
         createdBy: "API",
       },
     });
@@ -69,6 +78,10 @@ export async function POST(req: Request) {
         customerName: lead.customerName,
         customerEmail: lead.customerEmail,
         projectDescription: lead.projectDescription,
+        phone: lead.phone,
+        city: lead.city,
+        zip: lead.zip,
+        dateCreated: lead.dateCreated,
         source: lead.source,
         status: lead.status,
         createdAt: lead.createdAt,

@@ -133,6 +133,10 @@ interface Lead {
   linkedinUrl: string | null;
   facebookUrl: string | null;
   twitterUrl: string | null;
+  phone: string | null;
+  city: string | null;
+  zip: string | null;
+  dateCreated: string | null;
   emailSent: boolean;
   createdBy: string | null;
   updatedBy: string | null;
@@ -142,6 +146,17 @@ interface Lead {
   statusHistory: StatusHistoryEntry[];
   nda: Nda | null;
   sentEmails: SentEmail[];
+  files: LeadFileItem[];
+}
+
+interface LeadFileItem {
+  id: string;
+  fileName: string;
+  filePath: string;
+  fileSize: number;
+  fileType: string;
+  uploadedBy: string | null;
+  createdAt: string;
 }
 
 export default function LeadDetailPage() {
@@ -168,7 +183,14 @@ export default function LeadDetailPage() {
   const [editLinkedin, setEditLinkedin] = useState("");
   const [editFacebook, setEditFacebook] = useState("");
   const [editTwitter, setEditTwitter] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editCity, setEditCity] = useState("");
+  const [editZip, setEditZip] = useState("");
+  const [editDateCreated, setEditDateCreated] = useState("");
   const [editSaving, setEditSaving] = useState(false);
+
+  // File upload state
+  const [fileUploading, setFileUploading] = useState(false);
 
   // Delete state
   const [deleting, setDeleting] = useState(false);
@@ -183,6 +205,7 @@ export default function LeadDetailPage() {
 
   const [includeSignature, setIncludeSignature] = useState(false);
   const [adminSignature, setAdminSignature] = useState<string | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // Recommendations
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
@@ -239,6 +262,10 @@ export default function LeadDetailPage() {
     setEditLinkedin(lead.linkedinUrl || "");
     setEditFacebook(lead.facebookUrl || "");
     setEditTwitter(lead.twitterUrl || "");
+    setEditPhone(lead.phone || "");
+    setEditCity(lead.city || "");
+    setEditZip(lead.zip || "");
+    setEditDateCreated(lead.dateCreated ? lead.dateCreated.slice(0, 10) : "");
     setEditing(true);
   }
 
@@ -262,6 +289,10 @@ export default function LeadDetailPage() {
           linkedinUrl: editLinkedin.trim() || null,
           facebookUrl: editFacebook.trim() || null,
           twitterUrl: editTwitter.trim() || null,
+          phone: editPhone.trim() || null,
+          city: editCity.trim() || null,
+          zip: editZip.trim() || null,
+          dateCreated: editDateCreated || null,
         }),
       });
       if (res.ok) {
@@ -415,6 +446,51 @@ export default function LeadDetailPage() {
     } finally {
       setComposeSending(false);
     }
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !lead) return;
+    setFileUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(`/api/leads/${lead.id}/files`, {
+        method: "POST",
+        body: formData,
+      });
+      if (res.ok) {
+        await fetchLead();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to upload file");
+      }
+    } catch {
+      alert("Failed to upload file");
+    } finally {
+      setFileUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  async function handleDeleteFile(fileId: string) {
+    if (!lead || !confirm("Delete this file?")) return;
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/files/${fileId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        await fetchLead();
+      }
+    } catch {
+      alert("Failed to delete file");
+    }
+  }
+
+  function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
   if (loading) {
@@ -583,6 +659,59 @@ export default function LeadDetailPage() {
                     </select>
                   </div>
 
+                  {/* Phone */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      value={editPhone}
+                      onChange={(e) => setEditPhone(e.target.value)}
+                      placeholder="e.g. +1 (416) 555-0123"
+                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                    />
+                  </div>
+
+                  {/* City, Zip, Date Created */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        City
+                      </label>
+                      <input
+                        type="text"
+                        value={editCity}
+                        onChange={(e) => setEditCity(e.target.value)}
+                        placeholder="e.g. Toronto"
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Zip Code
+                      </label>
+                      <input
+                        type="text"
+                        value={editZip}
+                        onChange={(e) => setEditZip(e.target.value)}
+                        placeholder="e.g. M5V 2T6"
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Date Created
+                      </label>
+                      <input
+                        type="date"
+                        value={editDateCreated}
+                        onChange={(e) => setEditDateCreated(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                      />
+                    </div>
+                  </div>
+
                   {/* Social Links */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
@@ -648,9 +777,9 @@ export default function LeadDetailPage() {
                       </p>
                       <p className="text-gray-900 dark:text-white font-medium">
                         <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${lead.source === "AGENT" ? "bg-cyan-100 text-cyan-800" : "bg-gray-100 text-gray-800"}`}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${lead.source === "AGENT" ? "bg-cyan-100 text-cyan-800" : lead.source === "BARK" ? "bg-orange-100 text-orange-800" : "bg-gray-100 text-gray-800"}`}
                         >
-                          {lead.source === "AGENT" ? "Agent" : "Manual"}
+                          {lead.source === "AGENT" ? "Agent" : lead.source === "BARK" ? "Bark" : "Manual"}
                         </span>
                       </p>
                     </div>
@@ -666,6 +795,46 @@ export default function LeadDetailPage() {
                         </span>
                       </p>
                     </div>
+                    {lead.phone && (
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Phone
+                        </p>
+                        <p className="text-gray-900 dark:text-white font-medium">
+                          {lead.phone}
+                        </p>
+                      </div>
+                    )}
+                    {lead.city && (
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          City
+                        </p>
+                        <p className="text-gray-900 dark:text-white font-medium">
+                          {lead.city}
+                        </p>
+                      </div>
+                    )}
+                    {lead.zip && (
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Zip Code
+                        </p>
+                        <p className="text-gray-900 dark:text-white font-medium">
+                          {lead.zip}
+                        </p>
+                      </div>
+                    )}
+                    {lead.dateCreated && (
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">
+                          Date Created
+                        </p>
+                        <p className="text-gray-900 dark:text-white font-medium">
+                          {new Date(lead.dateCreated).toLocaleDateString()}
+                        </p>
+                      </div>
+                    )}
                     <div>
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         Created
@@ -863,6 +1032,13 @@ export default function LeadDetailPage() {
                       {composeSending ? "Sending..." : "Send Email"}
                     </button>
                     <button
+                      onClick={() => setPreviewOpen(true)}
+                      disabled={!composeBody.trim()}
+                      className="px-4 py-2.5 border border-blue-300 dark:border-blue-600 rounded-lg text-sm text-blue-600 dark:text-blue-400 font-medium hover:bg-blue-50 dark:hover:bg-blue-900/30 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
+                      Preview Email
+                    </button>
+                    <button
                       onClick={() => {
                         setComposeOpen(false);
                         setComposeSubject("");
@@ -878,6 +1054,62 @@ export default function LeadDetailPage() {
                 </div>
               )}
             </div>
+
+            {/* Email Preview Modal */}
+            {previewOpen && (
+              <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+                  <div className="flex items-center justify-between px-6 py-4 border-b dark:border-gray-700">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Email Preview</h3>
+                    <button
+                      onClick={() => setPreviewOpen(false)}
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl leading-none"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                  <div className="px-6 py-3 bg-gray-50 dark:bg-gray-900 border-b dark:border-gray-700 space-y-1">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      <span className="font-medium">To:</span> {lead?.customerEmail}
+                    </p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      <span className="font-medium">Subject:</span> {composeSubject || "(no subject)"}
+                    </p>
+                  </div>
+                  <div className="flex-1 overflow-auto p-6 bg-white">
+                    <div
+                      className="mx-auto"
+                      style={{ maxWidth: 600 }}
+                    >
+                      <iframe
+                        title="Email Preview"
+                        srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.6;color:#333;background:#fff}img{max-width:100%}a{color:#2563eb}</style></head><body>${composeBody}${includeSignature && adminSignature ? '<hr style="border:none;border-top:1px solid #eee;margin:20px 0" />' + adminSignature : ""}</body></html>`}
+                        className="w-full border border-gray-200 rounded-lg"
+                        style={{ minHeight: 400, background: "#fff" }}
+                      />
+                    </div>
+                  </div>
+                  <div className="px-6 py-4 border-t dark:border-gray-700 flex justify-end gap-3">
+                    <button
+                      onClick={() => setPreviewOpen(false)}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                    >
+                      Back to Editor
+                    </button>
+                    <button
+                      onClick={() => {
+                        setPreviewOpen(false);
+                        handleSendEmail();
+                      }}
+                      disabled={!composeSubject.trim() || !composeBody.trim() || composeSending}
+                      className="bg-teal-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
+                      Send Email
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Recommended Next Email */}
             {recommendations.length > 0 && (
@@ -1015,6 +1247,63 @@ export default function LeadDetailPage() {
                         )}
                         {new Date(note.createdAt).toLocaleString()}
                       </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Files Section */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Attached Files
+                </h2>
+                <label className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition cursor-pointer">
+                  {fileUploading ? "Uploading..." : "Upload File"}
+                  <input
+                    type="file"
+                    onChange={handleFileUpload}
+                    disabled={fileUploading}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+              <p className="text-xs text-gray-400 mb-4">
+                Any file type, max 25MB per file.
+              </p>
+
+              {lead.files.length === 0 ? (
+                <p className="text-gray-400 text-sm">No files attached yet</p>
+              ) : (
+                <div className="space-y-2">
+                  {lead.files.map((file) => (
+                    <div
+                      key={file.id}
+                      className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-100 dark:border-gray-600"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <a
+                          href={file.filePath}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline truncate block"
+                        >
+                          {file.fileName}
+                        </a>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {formatFileSize(file.fileSize)}
+                          {file.uploadedBy && ` · ${file.uploadedBy}`}
+                          {" · "}
+                          {new Date(file.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteFile(file.id)}
+                        className="ml-3 text-red-500 hover:text-red-700 text-xs font-medium transition"
+                      >
+                        Remove
+                      </button>
                     </div>
                   ))}
                 </div>

@@ -31,7 +31,11 @@
           "customerName": { "type": "string" },
           "customerEmail": { "type": "string", "format": "email" },
           "projectDescription": { "type": "string" },
-          "source": { "type": "string", "enum": ["MANUAL", "AGENT"] },
+          "phone": { "type": "string", "nullable": true },
+          "city": { "type": "string", "nullable": true },
+          "zip": { "type": "string", "nullable": true },
+          "dateCreated": { "type": "string", "format": "date-time", "nullable": true },
+          "source": { "type": "string", "enum": ["MANUAL", "AGENT", "BARK"] },
           "status": { "type": "string", "enum": ["NEW", "DESIGN_READY", "DESIGN_APPROVED", "BUILD_IN_PROGRESS", "BUILD_READY_FOR_REVIEW", "BUILD_SUBMITTED", "GO_LIVE"] },
           "createdAt": { "type": "string", "format": "date-time" }
         }
@@ -43,7 +47,12 @@
           "projectName": { "type": "string", "description": "Name of the project or opportunity" },
           "customerName": { "type": "string", "description": "Full name of the customer" },
           "customerEmail": { "type": "string", "format": "email", "description": "Customer's email address" },
-          "projectDescription": { "type": "string", "description": "Detailed project description" }
+          "projectDescription": { "type": "string", "description": "Detailed project description" },
+          "phone": { "type": "string", "description": "Customer's phone number" },
+          "city": { "type": "string", "description": "City of the lead/customer" },
+          "zip": { "type": "string", "description": "Zip/postal code of the lead/customer" },
+          "dateCreated": { "type": "string", "format": "date", "description": "Custom date created for the lead (ISO 8601 format, e.g. 2025-01-15)" },
+          "source": { "type": "string", "enum": ["MANUAL", "AGENT", "BARK"], "description": "Lead source. Defaults to AGENT if not provided" }
         }
       },
       "Content": {
@@ -105,7 +114,7 @@
       "post": {
         "tags": ["Leads"],
         "summary": "Create a new lead",
-        "description": "Creates a new lead with source set to AGENT. No email is sent to the customer.",
+        "description": "Creates a new lead. Source defaults to AGENT if not provided. No email is sent to the customer.",
         "requestBody": {
           "required": true,
           "content": {
@@ -115,7 +124,12 @@
                 "projectName": "Mobile Banking App",
                 "customerName": "Jane Smith",
                 "customerEmail": "jane@example.com",
-                "projectDescription": "A mobile banking app with account management and payment features."
+                "projectDescription": "A mobile banking app with account management and payment features.",
+                "phone": "+1 (416) 555-0123",
+                "city": "Toronto",
+                "zip": "M5V 2T6",
+                "dateCreated": "2025-01-15",
+                "source": "MANUAL"
               }
             }
           }

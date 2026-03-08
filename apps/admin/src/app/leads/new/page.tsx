@@ -12,6 +12,10 @@ export default function NewLeadPage() {
     customerName: "",
     customerEmail: "",
     projectDescription: "",
+    phone: "",
+    city: "",
+    zip: "",
+    dateCreated: "",
   });
 
   function updateField(field: string, value: string) {
@@ -138,6 +142,73 @@ export default function NewLeadPage() {
                 className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition resize-none text-gray-900 dark:text-white bg-white dark:bg-gray-700"
                 placeholder="Describe the project requirements..."
               />
+            </div>
+
+            <div>
+              <label
+                htmlFor="phone"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
+                Phone Number
+              </label>
+              <input
+                id="phone"
+                type="tel"
+                value={form.phone}
+                onChange={(e) => updateField("phone", e.target.value)}
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                placeholder="e.g. +1 (416) 555-0123"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label
+                  htmlFor="city"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
+                  City
+                </label>
+                <input
+                  id="city"
+                  type="text"
+                  value={form.city}
+                  onChange={(e) => updateField("city", e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                  placeholder="e.g. Toronto"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="zip"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
+                  Zip Code
+                </label>
+                <input
+                  id="zip"
+                  type="text"
+                  value={form.zip}
+                  onChange={(e) => updateField("zip", e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                  placeholder="e.g. M5V 2T6"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="dateCreated"
+                  className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+                >
+                  Date Created
+                </label>
+                <input
+                  id="dateCreated"
+                  type="date"
+                  value={form.dateCreated}
+                  onChange={(e) => updateField("dateCreated", e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                />
+              </div>
             </div>
 
             <div className="flex gap-3 pt-4">
