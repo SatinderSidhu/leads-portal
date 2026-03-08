@@ -16,7 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       image_tag: ${{ steps.meta.outputs.tag }}
-      ecr_registry: ${{ steps.ecr-login.outputs.registry }}
 
     steps:
       - name: Checkout code
@@ -93,18 +92,18 @@ jobs:
           $SCP nginx/conf.d/default.conf.template ubuntu@${{ secrets.EC2_HOST }}:~/leads-portal/nginx/conf.d/default.conf.template
 
       - name: Deploy
-        env:
-          ECR_REGISTRY: ${{ needs.build-and-push.outputs.ecr_registry }}
-          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
         run: |
+          ECR_URL="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com"
+          IMAGE_TAG="${{ needs.build-and-push.outputs.image_tag }}"
+
           ssh -i ~/.ssh/deploy_key ubuntu@${{ secrets.EC2_HOST }} << DEPLOY
             set -e
             cd ~/leads-portal
 
             # Write .env
             cat > .env << 'EOF'
-          ECR_REGISTRY=${{ needs.build-and-push.outputs.ecr_registry }}/leads-portal
-          IMAGE_TAG=${{ needs.build-and-push.outputs.image_tag }}
+          ECR_REGISTRY=${ECR_URL}/leads-portal
+          IMAGE_TAG=${IMAGE_TAG}
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
           SESSION_SECRET=${{ secrets.SESSION_SECRET }}
           SMTP_HOST=${{ secrets.SMTP_HOST }}
@@ -122,7 +121,7 @@ jobs:
             # Login to ECR
             aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
               docker login --username AWS --password-stdin \
-              ${{ needs.build-and-push.outputs.ecr_registry }}
+              ${ECR_URL}
 
             # Pull new images and deploy
             docker compose pull admin customer
@@ -131,7 +130,7 @@ jobs:
             # Clean up old images
             docker image prune -f
 
-            echo "Deployed tag: ${{ needs.build-and-push.outputs.image_tag }}"
+            echo "Deployed tag: ${IMAGE_TAG}"
           DEPLOY
 
       - name: Health check
