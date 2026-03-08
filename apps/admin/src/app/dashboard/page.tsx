@@ -60,10 +60,16 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetch("/api/leads")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          if (res.redirected || res.status === 401) router.push("/login");
+          return [];
+        }
+        return res.json();
+      })
       .then(setLeads)
       .finally(() => setLoading(false));
-  }, []);
+  }, [router]);
 
   async function handleLogout() {
     await fetch("/api/auth", { method: "DELETE" });

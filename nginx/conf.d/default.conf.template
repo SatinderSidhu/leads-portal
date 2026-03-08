@@ -1,0 +1,63 @@
+# Redirect HTTP to HTTPS
+server {
+    listen 80;
+    server_name DOMAIN_ADMIN_PLACEHOLDER DOMAIN_CUSTOMER_PLACEHOLDER;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# Admin Portal
+server {
+    listen 443 ssl;
+    server_name DOMAIN_ADMIN_PLACEHOLDER;
+
+    ssl_certificate /etc/letsencrypt/live/DOMAIN_ADMIN_PLACEHOLDER/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/DOMAIN_ADMIN_PLACEHOLDER/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    client_max_body_size 25M;
+
+    location / {
+        proxy_pass http://admin:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+
+# Customer Portal
+server {
+    listen 443 ssl;
+    server_name DOMAIN_CUSTOMER_PLACEHOLDER;
+
+    ssl_certificate /etc/letsencrypt/live/DOMAIN_CUSTOMER_PLACEHOLDER/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/DOMAIN_CUSTOMER_PLACEHOLDER/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    client_max_body_size 25M;
+
+    location / {
+        proxy_pass http://customer:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+}

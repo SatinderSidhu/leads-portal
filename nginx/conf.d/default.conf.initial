@@ -1,0 +1,21 @@
+# Initial HTTP-only config — used for first-time SSL certificate provisioning
+# After obtaining certs, replace this with default.conf and restart nginx
+
+server {
+    listen 80;
+    server_name _;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # Temporary: proxy without SSL until certs are obtained
+    location / {
+        proxy_pass http://admin:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

@@ -49,10 +49,16 @@ export default function ContentListPage() {
 
   useEffect(() => {
     fetch("/api/content")
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          if (res.redirected || res.status === 401) router.push("/login");
+          return [];
+        }
+        return res.json();
+      })
       .then(setContent)
       .finally(() => setLoading(false));
-  }, []);
+  }, [router]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">

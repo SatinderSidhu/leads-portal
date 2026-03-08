@@ -1,0 +1,147 @@
+name: Build & Deploy to AWS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
+  ECR_ADMIN: leads-portal-admin
+  ECR_CUSTOMER: leads-portal-customer
+
+jobs:
+  build-and-push:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.tag }}
+      ecr_registry: ${{ steps.ecr-login.outputs.registry }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: meta
+        run: echo "tag=$(echo $GITHUB_SHA | head -c 7)" >> $GITHUB_OUTPUT
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Admin image
+        run: |
+          ECR=${{ steps.ecr-login.outputs.registry }}
+          docker build --target admin \
+            -t $ECR/${{ env.ECR_ADMIN }}:${{ steps.meta.outputs.tag }} \
+            -t $ECR/${{ env.ECR_ADMIN }}:latest \
+            .
+          docker push $ECR/${{ env.ECR_ADMIN }}:${{ steps.meta.outputs.tag }}
+          docker push $ECR/${{ env.ECR_ADMIN }}:latest
+
+      - name: Build and push Customer image
+        run: |
+          ECR=${{ steps.ecr-login.outputs.registry }}
+          docker build --target customer \
+            -t $ECR/${{ env.ECR_CUSTOMER }}:${{ steps.meta.outputs.tag }} \
+            -t $ECR/${{ env.ECR_CUSTOMER }}:latest \
+            .
+          docker push $ECR/${{ env.ECR_CUSTOMER }}:${{ steps.meta.outputs.tag }}
+          docker push $ECR/${{ env.ECR_CUSTOMER }}:latest
+
+  deploy:
+    name: Deploy to EC2
+    needs: build-and-push
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.EC2_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Copy files to EC2
+        run: |
+          SSH="ssh -i ~/.ssh/deploy_key ubuntu@${{ secrets.EC2_HOST }}"
+          SCP="scp -i ~/.ssh/deploy_key"
+
+          # Ensure directories exist
+          $SSH "mkdir -p ~/leads-portal/nginx/conf.d"
+
+          # Generate nginx config from template with real domain names
+          sed -e "s/DOMAIN_ADMIN_PLACEHOLDER/${{ secrets.DOMAIN_ADMIN }}/g" \
+              -e "s/DOMAIN_CUSTOMER_PLACEHOLDER/${{ secrets.DOMAIN_CUSTOMER }}/g" \
+              nginx/conf.d/default.conf.template > nginx/conf.d/default.conf
+
+          # Copy docker-compose and nginx configs
+          $SCP docker-compose.prod.yml ubuntu@${{ secrets.EC2_HOST }}:~/leads-portal/docker-compose.yml
+          $SCP nginx/conf.d/default.conf ubuntu@${{ secrets.EC2_HOST }}:~/leads-portal/nginx/conf.d/default.conf
+          $SCP nginx/conf.d/default.conf.initial ubuntu@${{ secrets.EC2_HOST }}:~/leads-portal/nginx/conf.d/default.conf.initial
+          $SCP nginx/conf.d/default.conf.template ubuntu@${{ secrets.EC2_HOST }}:~/leads-portal/nginx/conf.d/default.conf.template
+
+      - name: Deploy
+        env:
+          ECR_REGISTRY: ${{ needs.build-and-push.outputs.ecr_registry }}
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+        run: |
+          ssh -i ~/.ssh/deploy_key ubuntu@${{ secrets.EC2_HOST }} << DEPLOY
+            set -e
+            cd ~/leads-portal
+
+            # Write .env
+            cat > .env << 'EOF'
+          ECR_REGISTRY=${{ needs.build-and-push.outputs.ecr_registry }}/leads-portal
+          IMAGE_TAG=${{ needs.build-and-push.outputs.image_tag }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          SESSION_SECRET=${{ secrets.SESSION_SECRET }}
+          SMTP_HOST=${{ secrets.SMTP_HOST }}
+          SMTP_PORT=${{ secrets.SMTP_PORT || '587' }}
+          SMTP_USER=${{ secrets.SMTP_USER }}
+          SMTP_PASS=${{ secrets.SMTP_PASS }}
+          SMTP_FROM=${{ secrets.SMTP_FROM }}
+          CUSTOMER_PORTAL_URL=https://${{ secrets.DOMAIN_CUSTOMER }}
+          COMPANY_NAME=KITLabs Inc
+          API_TOKEN=${{ secrets.API_TOKEN }}
+          DOMAIN_ADMIN=${{ secrets.DOMAIN_ADMIN }}
+          DOMAIN_CUSTOMER=${{ secrets.DOMAIN_CUSTOMER }}
+          EOF
+
+            # Login to ECR
+            aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
+              docker login --username AWS --password-stdin \
+              ${{ needs.build-and-push.outputs.ecr_registry }}
+
+            # Pull new images and deploy
+            docker compose pull admin customer
+            docker compose up -d --remove-orphans
+
+            # Clean up old images
+            docker image prune -f
+
+            echo "Deployed tag: ${{ needs.build-and-push.outputs.image_tag }}"
+          DEPLOY
+
+      - name: Health check
+        run: |
+          echo "Waiting 30s for services to start..."
+          sleep 30
+          ssh -i ~/.ssh/deploy_key ubuntu@${{ secrets.EC2_HOST }} << 'HEALTH'
+            echo "=== Container Status ==="
+            cd ~/leads-portal && docker compose ps
+            echo ""
+            curl -sf http://localhost:3000/login > /dev/null && echo "Admin:    OK" || echo "Admin:    FAILED"
+            curl -sf http://localhost:3001 > /dev/null && echo "Customer: OK" || echo "Customer: FAILED"
+          HEALTH
