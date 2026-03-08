@@ -78,6 +78,12 @@ export default function DashboardPage() {
           <div className="flex items-center gap-4">
             <ThemeToggle />
             <button
+              onClick={() => router.push("/profile")}
+              className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+            >
+              My Profile
+            </button>
+            <button
               onClick={() => router.push("/admin-users")}
               className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition"
             >

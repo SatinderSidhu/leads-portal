@@ -181,6 +181,9 @@ export default function LeadDetailPage() {
   const [composeSending, setComposeSending] = useState(false);
   const [templates, setTemplates] = useState<EmailTemplateItem[]>([]);
 
+  const [includeSignature, setIncludeSignature] = useState(false);
+  const [adminSignature, setAdminSignature] = useState<string | null>(null);
+
   // Recommendations
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
 
@@ -204,6 +207,15 @@ export default function LeadDetailPage() {
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) setTemplates(data);
+      });
+  }, []);
+
+  // Load admin signature
+  useEffect(() => {
+    fetch("/api/admin-users/me")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.emailSignature) setAdminSignature(data.emailSignature);
       });
   }, []);
 
@@ -384,6 +396,7 @@ export default function LeadDetailPage() {
           subject: composeSubject.trim(),
           body: composeBody.trim(),
           templateId: composeTemplateId || undefined,
+          includeSignature,
         }),
       });
       if (res.ok) {
@@ -391,6 +404,7 @@ export default function LeadDetailPage() {
         setComposeSubject("");
         setComposeBody("");
         setComposeTemplateId("");
+        setIncludeSignature(false);
         await fetchLead();
       } else {
         const data = await res.json();
@@ -814,6 +828,32 @@ export default function LeadDetailPage() {
                     />
                   </div>
 
+                  {/* Signature checkbox */}
+                  {adminSignature && (
+                    <div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={includeSignature}
+                          onChange={(e) => setIncludeSignature(e.target.checked)}
+                          className="w-4 h-4 text-teal-600 rounded border-gray-300 focus:ring-teal-500"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          Include email signature
+                        </span>
+                      </label>
+                      {includeSignature && (
+                        <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                          <p className="text-xs text-gray-400 mb-1">Signature preview:</p>
+                          <div
+                            className="text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none"
+                            dangerouslySetInnerHTML={{ __html: adminSignature }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div className="flex gap-3">
                     <button
                       onClick={handleSendEmail}
@@ -828,6 +868,7 @@ export default function LeadDetailPage() {
                         setComposeSubject("");
                         setComposeBody("");
                         setComposeTemplateId("");
+                        setIncludeSignature(false);
                       }}
                       className="px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
                     >

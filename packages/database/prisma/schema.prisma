@@ -47,9 +47,11 @@ model AdminUser {
   email     String   @unique
   username  String   @unique
   password  String
-  active    Boolean  @default(true)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  active         Boolean  @default(true)
+  profilePicture String?  @map("profile_picture")
+  emailSignature String?  @db.Text @map("email_signature")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   @@map("admin_users")
 }

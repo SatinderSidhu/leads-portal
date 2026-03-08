@@ -31,10 +31,11 @@ export async function POST(
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { subject, body: emailBody, templateId } = body as {
+  const { subject, body: emailBody, templateId, includeSignature } = body as {
     subject?: string;
     body?: string;
     templateId?: string;
+    includeSignature?: boolean;
   };
 
   if (!subject?.trim() || !emailBody?.trim()) {
@@ -66,9 +67,15 @@ export async function POST(
     },
   });
 
+  // Append signature if requested
+  let finalBody = emailBody.trim();
+  if (includeSignature && session?.emailSignature) {
+    finalBody += `<hr style="border:none;border-top:1px solid #eee;margin:20px 0" />${session.emailSignature}`;
+  }
+
   // Inject tracking pixel
   const trackingUrl = `${process.env.ADMIN_PORTAL_URL || "http://localhost:3000"}/api/track/${sentEmail.id}`;
-  const bodyWithPixel = `${emailBody}<img src="${trackingUrl}" width="1" height="1" style="display:none" alt="" />`;
+  const bodyWithPixel = `${finalBody}<img src="${trackingUrl}" width="1" height="1" style="display:none" alt="" />`;
 
   try {
     await transporter.sendMail({

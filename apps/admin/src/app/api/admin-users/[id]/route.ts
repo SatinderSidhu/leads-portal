@@ -15,6 +15,8 @@ export async function GET(
       email: true,
       username: true,
       active: true,
+      profilePicture: true,
+      emailSignature: true,
       createdAt: true,
     },
   });
@@ -65,6 +67,7 @@ export async function PUT(
   if (body.email !== undefined) data.email = body.email.trim();
   if (body.username !== undefined) data.username = body.username.trim();
   if (body.active !== undefined) data.active = body.active;
+  if (body.emailSignature !== undefined) data.emailSignature = body.emailSignature || null;
   if (body.password) data.password = await bcrypt.hash(body.password, 10);
 
   const updated = await prisma.adminUser.update({
@@ -76,6 +79,8 @@ export async function PUT(
       email: true,
       username: true,
       active: true,
+      profilePicture: true,
+      emailSignature: true,
       createdAt: true,
     },
   });
