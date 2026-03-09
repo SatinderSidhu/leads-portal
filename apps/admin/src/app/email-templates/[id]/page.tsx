@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ThemeToggle } from "../../../components/ThemeToggle";
 import RichTextEditor from "../../../components/RichTextEditor";
+import EmailPreviewPanel from "../../../components/EmailPreviewPanel";
+import TemplateTags from "../../../components/TemplateTags";
+import TestEmailModal from "../../../components/TestEmailModal";
 
 const PURPOSE_OPTIONS = [
   { value: "WELCOME", label: "Welcome" },
@@ -42,6 +45,7 @@ export default function EditEmailTemplatePage() {
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showTestEmail, setShowTestEmail] = useState(false);
 
   useEffect(() => {
     fetch(`/api/email-templates/${params.id}`)
@@ -148,6 +152,16 @@ export default function EditEmailTemplatePage() {
           <div className="flex items-center gap-3">
             <ThemeToggle />
             <button
+              onClick={() => setShowTestEmail(true)}
+              disabled={!body.trim() || body === "<p></p>"}
+              className="px-4 py-2 border border-teal-300 dark:border-teal-700 rounded-lg text-sm font-medium text-teal-600 dark:text-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 disabled:opacity-50 disabled:cursor-not-allowed transition flex items-center gap-1.5"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+              </svg>
+              Send Test
+            </button>
+            <button
               onClick={handleDelete}
               disabled={deleting}
               className="px-4 py-2 border border-red-300 dark:border-red-700 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition"
@@ -158,8 +172,8 @@ export default function EditEmailTemplatePage() {
         </div>
       </header>
 
-      <main className="max-w-3xl mx-auto px-6 py-8">
-        <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6 space-y-6">
+      <main className="max-w-7xl mx-auto px-6 py-8">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6 space-y-6 max-w-3xl">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Title *
@@ -194,6 +208,8 @@ export default function EditEmailTemplatePage() {
               placeholder="Write your email template content..."
             />
           </div>
+
+          <TemplateTags />
 
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -265,6 +281,19 @@ export default function EditEmailTemplatePage() {
             {saving ? "Saving..." : "Save Changes"}
           </button>
         </div>
+
+        {/* Email Preview - full width */}
+        <div className="mt-8">
+          <EmailPreviewPanel html={body} subject={subject} />
+        </div>
+
+        {showTestEmail && (
+          <TestEmailModal
+            subject={subject}
+            html={body}
+            onClose={() => setShowTestEmail(false)}
+          />
+        )}
       </main>
     </div>
   );
