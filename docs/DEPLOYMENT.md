@@ -187,6 +187,16 @@ docker compose ps
 
 ---
 
+## Live Deployment
+
+| | URL |
+|---|---|
+| Admin Portal | `https://leadsportaladmin.kitlabs.us` |
+| Customer Portal | `https://leadsportal.kitlabs.us` |
+| EC2 Elastic IP | `100.52.66.158` |
+
+---
+
 ## File Structure (Production)
 
 ```
