@@ -51,6 +51,12 @@ services:
       - "3001:3001"
     environment:
       DATABASE_URL: postgresql://${DB_USER:-postgres}:${DB_PASSWORD}@db:5432/${DB_NAME:-leads_portal}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASS: ${SMTP_PASS}
+      SMTP_FROM: ${SMTP_FROM}
+      CUSTOMER_PORTAL_URL: ${CUSTOMER_PORTAL_URL}
       NODE_ENV: production
     depends_on:
       db:
