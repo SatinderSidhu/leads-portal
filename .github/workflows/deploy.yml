@@ -111,6 +111,7 @@ jobs:
           SMTP_USER=${{ secrets.SMTP_USER }}
           SMTP_PASS=${{ secrets.SMTP_PASS }}
           SMTP_FROM=${{ secrets.SMTP_FROM }}
+          ADMIN_PORTAL_URL=https://${{ secrets.DOMAIN_ADMIN }}
           CUSTOMER_PORTAL_URL=https://${{ secrets.DOMAIN_CUSTOMER }}
           COMPANY_NAME=KITLabs Inc
           API_TOKEN=${{ secrets.API_TOKEN }}
