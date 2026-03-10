@@ -87,6 +87,14 @@ interface Nda {
   createdAt: string;
 }
 
+interface EmailAttachmentItem {
+  id: string;
+  fileName: string;
+  filePath: string;
+  fileSize: number;
+  fileType: string;
+}
+
 interface SentEmail {
   id: string;
   subject: string;
@@ -94,8 +102,13 @@ interface SentEmail {
   status: string;
   sentBy: string | null;
   openedAt: string | null;
+  cc: string | null;
+  bcc: string | null;
+  replyToEmailId: string | null;
+  replyToType: string | null;
   createdAt: string;
   template: { title: string; purpose: string } | null;
+  attachments: EmailAttachmentItem[];
 }
 
 interface ReceivedEmail {
@@ -218,6 +231,23 @@ export default function LeadDetailPage() {
   const [includeSignature, setIncludeSignature] = useState(false);
   const [adminSignature, setAdminSignature] = useState<string | null>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
+
+  // CC/BCC
+  const [composeCc, setComposeCc] = useState("");
+  const [composeBcc, setComposeBcc] = useState("");
+  const [showCcBcc, setShowCcBcc] = useState(false);
+
+  // Attachments
+  const [composeAttachments, setComposeAttachments] = useState<File[]>([]);
+
+  // Reply mode
+  const [replyMode, setReplyMode] = useState(false);
+  const [replyToEmailId, setReplyToEmailId] = useState<string | null>(null);
+  const [replyToType, setReplyToType] = useState<string | null>(null);
+
+  // Thread state
+  const [threadCollapsed, setThreadCollapsed] = useState(true);
+  const [expandedEmails, setExpandedEmails] = useState<Set<string>>(new Set());
 
   // Recommendations
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
@@ -428,26 +458,77 @@ export default function LeadDetailPage() {
     setComposeOpen(true);
   }
 
+  function resetCompose() {
+    setComposeOpen(false);
+    setComposeSubject("");
+    setComposeBody("");
+    setComposeTemplateId("");
+    setIncludeSignature(false);
+    setComposeCc("");
+    setComposeBcc("");
+    setShowCcBcc(false);
+    setComposeAttachments([]);
+    setReplyMode(false);
+    setReplyToEmailId(null);
+    setReplyToType(null);
+  }
+
+  function handleReply(item: { id: string; type: string; subject: string; date: string; fromName: string | null; fromEmail: string | null; body: string | null; bodyText: string | null }) {
+    setReplyMode(true);
+    setReplyToEmailId(item.id);
+    setReplyToType(item.type);
+    const subj = item.subject.startsWith("Re:") ? item.subject : `Re: ${item.subject}`;
+    setComposeSubject(subj);
+    const sender = item.type === "received" ? (item.fromName || item.fromEmail || "customer") : "you";
+    const quotedContent = `<br/><br/><div style="border-left:2px solid #ccc;padding-left:12px;margin-left:4px;color:#666"><p><strong>On ${new Date(item.date).toLocaleString()}, ${sender} wrote:</strong></p>${item.body || (item.bodyText ? `<p>${item.bodyText}</p>` : "")}</div>`;
+    setComposeBody(quotedContent);
+    setComposeTemplateId("");
+    setComposeCc("");
+    setComposeBcc("");
+    setShowCcBcc(false);
+    setComposeAttachments([]);
+    setIncludeSignature(false);
+    setComposeOpen(true);
+  }
+
+  function toggleEmailExpanded(emailKey: string) {
+    setExpandedEmails((prev) => {
+      const next = new Set(prev);
+      if (next.has(emailKey)) next.delete(emailKey);
+      else next.add(emailKey);
+      return next;
+    });
+  }
+
+  function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
   async function handleSendEmail() {
     if (!lead || !composeSubject.trim() || !composeBody.trim()) return;
     setComposeSending(true);
     try {
+      const formData = new FormData();
+      formData.append("subject", composeSubject.trim());
+      formData.append("body", composeBody.trim());
+      if (composeTemplateId) formData.append("templateId", composeTemplateId);
+      formData.append("includeSignature", String(includeSignature));
+      if (composeCc.trim()) formData.append("cc", composeCc.trim());
+      if (composeBcc.trim()) formData.append("bcc", composeBcc.trim());
+      if (replyToEmailId && replyToType) {
+        formData.append("replyToEmailId", replyToEmailId);
+        formData.append("replyToType", replyToType);
+      }
+      composeAttachments.forEach((f) => formData.append("attachments", f));
+
       const res = await fetch(`/api/leads/${lead.id}/emails`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          subject: composeSubject.trim(),
-          body: composeBody.trim(),
-          templateId: composeTemplateId || undefined,
-          includeSignature,
-        }),
+        body: formData,
       });
       if (res.ok) {
-        setComposeOpen(false);
-        setComposeSubject("");
-        setComposeBody("");
-        setComposeTemplateId("");
-        setIncludeSignature(false);
+        resetCompose();
         await fetchLead();
       } else {
         const data = await res.json();
@@ -497,12 +578,6 @@ export default function LeadDetailPage() {
     } catch {
       alert("Failed to delete file");
     }
-  }
-
-  function formatFileSize(bytes: number): string {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   }
 
   if (loading) {
@@ -941,11 +1016,11 @@ export default function LeadDetailPage() {
             <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Send Email
+                  {replyMode ? "Reply to Email" : "Send Email"}
                 </h2>
                 {!composeOpen && (
                   <button
-                    onClick={() => setComposeOpen(true)}
+                    onClick={() => { resetCompose(); setComposeOpen(true); }}
                     className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition"
                   >
                     Compose Email
@@ -955,28 +1030,56 @@ export default function LeadDetailPage() {
 
               {composeOpen && (
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Use Template
-                    </label>
-                    <select
-                      value={composeTemplateId}
-                      onChange={(e) => handleTemplateSelect(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
-                    >
-                      <option value="">-- No template (blank) --</option>
-                      {templates.map((t) => (
-                        <option key={t.id} value={t.id}>
-                          {t.title}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  {/* Reply mode banner */}
+                  {replyMode && (
+                    <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                      <span className="text-sm text-blue-700 dark:text-blue-300">
+                        Replying to: <strong>{composeSubject.replace(/^Re:\s*/, "")}</strong>
+                      </span>
+                      <button
+                        onClick={() => { resetCompose(); setComposeOpen(true); }}
+                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        Switch to new email
+                      </button>
+                    </div>
+                  )}
+
+                  {!replyMode && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Use Template
+                      </label>
+                      <select
+                        value={composeTemplateId}
+                        onChange={(e) => handleTemplateSelect(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                      >
+                        <option value="">-- No template (blank) --</option>
+                        {templates.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.title}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      To
-                    </label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        To
+                      </label>
+                      {!showCcBcc && (
+                        <button
+                          type="button"
+                          onClick={() => setShowCcBcc(true)}
+                          className="text-xs text-teal-600 dark:text-teal-400 hover:underline"
+                        >
+                          CC/BCC
+                        </button>
+                      )}
+                    </div>
                     <input
                       type="text"
                       value={lead.customerEmail}
@@ -984,6 +1087,36 @@ export default function LeadDetailPage() {
                       className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
                     />
                   </div>
+
+                  {/* CC / BCC */}
+                  {showCcBcc && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          CC
+                        </label>
+                        <input
+                          type="text"
+                          value={composeCc}
+                          onChange={(e) => setComposeCc(e.target.value)}
+                          placeholder="email1@example.com, email2@example.com"
+                          className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          BCC
+                        </label>
+                        <input
+                          type="text"
+                          value={composeBcc}
+                          onChange={(e) => setComposeBcc(e.target.value)}
+                          placeholder="email@example.com"
+                          className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1007,6 +1140,47 @@ export default function LeadDetailPage() {
                       onChange={setComposeBody}
                       placeholder="Compose your email..."
                     />
+                  </div>
+
+                  {/* Attachments */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Attachments
+                    </label>
+                    <label className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+                      </svg>
+                      Add files
+                      <input
+                        type="file"
+                        multiple
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          setComposeAttachments((prev) => [...prev, ...files]);
+                          e.target.value = "";
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                    <span className="text-xs text-gray-400 ml-2">Max 10MB per file, 25MB total</span>
+                    {composeAttachments.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {composeAttachments.map((file, idx) => (
+                          <div key={idx} className="flex items-center justify-between px-3 py-1.5 bg-gray-50 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600">
+                            <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                              {file.name} <span className="text-xs text-gray-400">({formatFileSize(file.size)})</span>
+                            </span>
+                            <button
+                              onClick={() => setComposeAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                              className="text-red-500 hover:text-red-700 text-xs ml-2"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Signature checkbox */}
@@ -1041,23 +1215,17 @@ export default function LeadDetailPage() {
                       disabled={!composeSubject.trim() || !composeBody.trim() || composeSending}
                       className="bg-teal-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                     >
-                      {composeSending ? "Sending..." : "Send Email"}
+                      {composeSending ? "Sending..." : replyMode ? "Send Reply" : "Send Email"}
                     </button>
                     <button
                       onClick={() => setPreviewOpen(true)}
                       disabled={!composeBody.trim()}
                       className="px-4 py-2.5 border border-blue-300 dark:border-blue-600 rounded-lg text-sm text-blue-600 dark:text-blue-400 font-medium hover:bg-blue-50 dark:hover:bg-blue-900/30 disabled:opacity-50 disabled:cursor-not-allowed transition"
                     >
-                      Preview Email
+                      Preview
                     </button>
                     <button
-                      onClick={() => {
-                        setComposeOpen(false);
-                        setComposeSubject("");
-                        setComposeBody("");
-                        setComposeTemplateId("");
-                        setIncludeSignature(false);
-                      }}
+                      onClick={resetCompose}
                       className="px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
                     >
                       Cancel
@@ -1084,15 +1252,27 @@ export default function LeadDetailPage() {
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       <span className="font-medium">To:</span> {lead?.customerEmail}
                     </p>
+                    {composeCc.trim() && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        <span className="font-medium">CC:</span> {composeCc}
+                      </p>
+                    )}
+                    {composeBcc.trim() && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        <span className="font-medium">BCC:</span> {composeBcc}
+                      </p>
+                    )}
                     <p className="text-sm text-gray-500 dark:text-gray-400">
                       <span className="font-medium">Subject:</span> {composeSubject || "(no subject)"}
                     </p>
+                    {composeAttachments.length > 0 && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        <span className="font-medium">Attachments:</span> {composeAttachments.map((f) => f.name).join(", ")}
+                      </p>
+                    )}
                   </div>
                   <div className="flex-1 overflow-auto p-6 bg-white">
-                    <div
-                      className="mx-auto"
-                      style={{ maxWidth: 600 }}
-                    >
+                    <div className="mx-auto" style={{ maxWidth: 600 }}>
                       <iframe
                         title="Email Preview"
                         srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.6;color:#333;background:#fff}img{max-width:100%}a{color:#2563eb}</style></head><body>${composeBody}${includeSignature && adminSignature ? '<hr style="border:none;border-top:1px solid #eee;margin:20px 0" />' + adminSignature : ""}</body></html>`}
@@ -1109,10 +1289,7 @@ export default function LeadDetailPage() {
                       Back to Editor
                     </button>
                     <button
-                      onClick={() => {
-                        setPreviewOpen(false);
-                        handleSendEmail();
-                      }}
+                      onClick={() => { setPreviewOpen(false); handleSendEmail(); }}
                       disabled={!composeSubject.trim() || !composeBody.trim() || composeSending}
                       className="bg-teal-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
                     >
@@ -1154,124 +1331,234 @@ export default function LeadDetailPage() {
             )}
 
             {/* Email Conversation Thread */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Email Conversation
-                </h2>
-                <div className="flex items-center gap-2 text-xs text-gray-400">
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-teal-500 inline-block" /> Sent
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Received
-                  </span>
-                </div>
-              </div>
+            {(() => {
+              const allEmails = [
+                ...lead.sentEmails.map((e) => ({
+                  type: "sent" as const,
+                  id: e.id,
+                  subject: e.subject,
+                  date: e.createdAt,
+                  status: e.status,
+                  openedAt: e.openedAt,
+                  sentBy: e.sentBy,
+                  template: e.template,
+                  body: e.body,
+                  cc: e.cc,
+                  bcc: e.bcc,
+                  attachments: e.attachments,
+                  fromName: null as string | null,
+                  fromEmail: null as string | null,
+                  bodyText: null as string | null,
+                  bodyHtml: null as string | null,
+                })),
+                ...lead.receivedEmails.map((e) => ({
+                  type: "received" as const,
+                  id: e.id,
+                  subject: e.subject,
+                  date: e.receivedAt,
+                  status: null as string | null,
+                  openedAt: null as string | null,
+                  sentBy: null as string | null,
+                  template: null as { title: string; purpose: string } | null,
+                  body: null as string | null,
+                  cc: null as string | null,
+                  bcc: null as string | null,
+                  attachments: [] as EmailAttachmentItem[],
+                  fromName: e.fromName,
+                  fromEmail: e.fromEmail,
+                  bodyText: e.bodyText,
+                  bodyHtml: e.bodyHtml,
+                })),
+              ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-              {lead.sentEmails.length === 0 && lead.receivedEmails.length === 0 ? (
-                <p className="text-gray-400 text-sm">No email activity yet</p>
-              ) : (
-                <div className="space-y-4">
-                  {/* Merge sent and received into chronological thread */}
-                  {[
-                    ...lead.sentEmails.map((e) => ({
-                      type: "sent" as const,
-                      id: e.id,
-                      subject: e.subject,
-                      date: e.createdAt,
-                      status: e.status,
-                      openedAt: e.openedAt,
-                      sentBy: e.sentBy,
-                      template: e.template,
-                      body: e.body,
-                      fromName: null as string | null,
-                      fromEmail: null as string | null,
-                      bodyText: null as string | null,
-                    })),
-                    ...lead.receivedEmails.map((e) => ({
-                      type: "received" as const,
-                      id: e.id,
-                      subject: e.subject,
-                      date: e.receivedAt,
-                      status: null as string | null,
-                      openedAt: null as string | null,
-                      sentBy: null as string | null,
-                      template: null as { title: string; purpose: string } | null,
-                      body: e.bodyHtml || null,
-                      fromName: e.fromName,
-                      fromEmail: e.fromEmail,
-                      bodyText: e.bodyText,
-                    })),
-                  ]
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                    .map((item) => (
-                      <div
-                        key={`${item.type}-${item.id}`}
-                        className={`rounded-lg border p-4 ${
-                          item.type === "sent"
-                            ? "border-teal-200 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-900/10 ml-8"
-                            : "border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10 mr-8"
-                        }`}
-                      >
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <div className="flex items-center gap-2">
-                            {item.type === "sent" ? (
-                              <span className="flex items-center gap-1.5 text-xs font-medium text-teal-700 dark:text-teal-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                                </svg>
-                                Sent {item.sentBy ? `by ${item.sentBy}` : ""}
-                              </span>
-                            ) : (
-                              <span className="flex items-center gap-1.5 text-xs font-medium text-blue-700 dark:text-blue-400">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 3.75H6.912a2.25 2.25 0 00-2.15 1.588L2.35 13.177a2.25 2.25 0 00-.1.661V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 00-2.15-1.588H15M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859" />
-                                </svg>
-                                From {item.fromName || item.fromEmail}
-                              </span>
-                            )}
-                            {item.status && (
-                              <span
-                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${EMAIL_STATUS_COLORS[item.status] || "bg-gray-100 text-gray-800"}`}
-                              >
-                                {item.status}
-                              </span>
-                            )}
-                            {item.openedAt && (
-                              <span className="text-xs text-gray-400">
-                                Opened {new Date(item.openedAt).toLocaleDateString()}
-                              </span>
-                            )}
-                          </div>
-                          <span className="text-xs text-gray-400 whitespace-nowrap">
-                            {new Date(item.date).toLocaleString()}
-                          </span>
-                        </div>
+              const totalCount = allEmails.length;
+              const visibleEmails = threadCollapsed ? allEmails.slice(0, 3) : allEmails;
 
-                        <p className="text-sm font-medium text-gray-900 dark:text-white">
-                          {item.subject}
-                        </p>
-
-                        {item.template && (
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            Template: {item.template.title}
-                          </p>
-                        )}
-
-                        {/* Show reply body text for received emails */}
-                        {item.type === "received" && item.bodyText && (
-                          <div className="mt-2 p-3 bg-white dark:bg-gray-700 rounded border border-blue-100 dark:border-blue-900">
-                            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                              {item.bodyText}
-                            </p>
-                          </div>
-                        )}
+              return (
+                <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
+                  <button
+                    onClick={() => setThreadCollapsed(!threadCollapsed)}
+                    className="flex items-center justify-between w-full mb-4"
+                  >
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Email Conversation ({totalCount})
+                    </h2>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 text-xs text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-teal-500 inline-block" /> Sent
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Received
+                        </span>
                       </div>
-                    ))}
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={2}
+                        stroke="currentColor"
+                        className={`w-4 h-4 text-gray-400 transition-transform ${threadCollapsed ? "" : "rotate-180"}`}
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                      </svg>
+                    </div>
+                  </button>
+
+                  {totalCount === 0 ? (
+                    <p className="text-gray-400 text-sm">No email activity yet</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {visibleEmails.map((item) => {
+                        const emailKey = `${item.type}-${item.id}`;
+                        const isExpanded = expandedEmails.has(emailKey);
+
+                        return (
+                          <div
+                            key={emailKey}
+                            className={`rounded-lg border p-4 ${
+                              item.type === "sent"
+                                ? "border-teal-200 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-900/10 ml-8"
+                                : "border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10 mr-8"
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {item.type === "sent" ? (
+                                  <span className="flex items-center gap-1.5 text-xs font-medium text-teal-700 dark:text-teal-400">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                                    </svg>
+                                    Sent {item.sentBy ? `by ${item.sentBy}` : ""}
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-1.5 text-xs font-medium text-blue-700 dark:text-blue-400">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 3.75H6.912a2.25 2.25 0 00-2.15 1.588L2.35 13.177a2.25 2.25 0 00-.1.661V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 00-2.15-1.588H15M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859" />
+                                    </svg>
+                                    From {item.fromName || item.fromEmail}
+                                  </span>
+                                )}
+                                {item.status && (
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${EMAIL_STATUS_COLORS[item.status] || "bg-gray-100 text-gray-800"}`}>
+                                    {item.status}
+                                  </span>
+                                )}
+                                {item.openedAt && (
+                                  <span className="text-xs text-gray-400">
+                                    Opened {new Date(item.openedAt).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-xs text-gray-400 whitespace-nowrap">
+                                {new Date(item.date).toLocaleString()}
+                              </span>
+                            </div>
+
+                            {/* Subject */}
+                            <p className="text-sm font-medium text-gray-900 dark:text-white">
+                              {item.subject}
+                            </p>
+
+                            {/* CC/BCC info */}
+                            {item.cc && (
+                              <p className="text-xs text-gray-400 mt-0.5">CC: {item.cc}</p>
+                            )}
+                            {item.bcc && (
+                              <p className="text-xs text-gray-400">BCC: {item.bcc}</p>
+                            )}
+
+                            {item.template && (
+                              <p className="text-xs text-gray-400 mt-0.5">
+                                Template: {item.template.title}
+                              </p>
+                            )}
+
+                            {/* Attachments */}
+                            {item.attachments.length > 0 && (
+                              <div className="flex flex-wrap gap-2 mt-2">
+                                {item.attachments.map((att) => (
+                                  <a
+                                    key={att.id}
+                                    href={att.filePath}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
+                                  >
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3 h-3">
+                                      <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+                                    </svg>
+                                    {att.fileName}
+                                    <span className="text-gray-400">({formatFileSize(att.fileSize)})</span>
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+
+                            {/* Action buttons row */}
+                            <div className="flex items-center gap-2 mt-2">
+                              <button
+                                onClick={() => toggleEmailExpanded(emailKey)}
+                                className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition"
+                              >
+                                {isExpanded ? "Hide body" : "Show body"}
+                              </button>
+                              <button
+                                onClick={() => handleReply(item)}
+                                className={`text-xs font-medium transition ${
+                                  item.type === "received"
+                                    ? "text-blue-600 dark:text-blue-400 hover:text-blue-800"
+                                    : "text-teal-600 dark:text-teal-400 hover:text-teal-800"
+                                }`}
+                              >
+                                Reply
+                              </button>
+                            </div>
+
+                            {/* Expanded body */}
+                            {isExpanded && (
+                              <div className="mt-3 p-3 bg-white dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 overflow-auto max-h-96">
+                                {item.type === "sent" && item.body ? (
+                                  <div
+                                    className="text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none"
+                                    dangerouslySetInnerHTML={{ __html: item.body }}
+                                  />
+                                ) : item.type === "received" && (item.bodyHtml || item.bodyText) ? (
+                                  item.bodyHtml ? (
+                                    <div
+                                      className="text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none"
+                                      dangerouslySetInnerHTML={{ __html: item.bodyHtml }}
+                                    />
+                                  ) : (
+                                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                      {item.bodyText}
+                                    </p>
+                                  )
+                                ) : (
+                                  <p className="text-sm text-gray-400 italic">No body content available</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+
+                      {/* Show more / less toggle */}
+                      {totalCount > 3 && (
+                        <button
+                          onClick={() => setThreadCollapsed(!threadCollapsed)}
+                          className="w-full text-center py-2 text-sm text-teal-600 dark:text-teal-400 hover:underline"
+                        >
+                          {threadCollapsed
+                            ? `Show all ${totalCount} emails`
+                            : "Collapse thread"}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              );
+            })()}
 
             {/* Notes Section */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">

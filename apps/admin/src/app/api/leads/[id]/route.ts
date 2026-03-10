@@ -15,7 +15,10 @@ export async function GET(
       statusHistory: { orderBy: { createdAt: "desc" } },
       nda: true,
       sentEmails: {
-        include: { template: { select: { title: true, purpose: true } } },
+        include: {
+          template: { select: { title: true, purpose: true } },
+          attachments: true,
+        },
         orderBy: { createdAt: "desc" },
       },
       receivedEmails: { orderBy: { receivedAt: "desc" } },

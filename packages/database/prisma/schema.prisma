@@ -206,12 +206,30 @@ model SentEmail {
   status     SentEmailStatus @default(SENT)
   openedAt   DateTime?       @map("opened_at")
   sentBy     String?         @map("sent_by")
+  cc         String?         @db.Text
+  bcc        String?         @db.Text
+  replyToEmailId String?     @map("reply_to_email_id")
+  replyToType    String?     @map("reply_to_type")
   createdAt  DateTime        @default(now()) @map("created_at")
 
-  lead     Lead           @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  template EmailTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  lead        Lead              @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  template    EmailTemplate?    @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  attachments EmailAttachment[]
 
   @@map("sent_emails")
+}
+
+model EmailAttachment {
+  id          String    @id @default(uuid())
+  sentEmailId String    @map("sent_email_id")
+  sentEmail   SentEmail @relation(fields: [sentEmailId], references: [id], onDelete: Cascade)
+  fileName    String    @map("file_name")
+  filePath    String    @map("file_path")
+  fileSize    Int       @map("file_size")
+  fileType    String    @map("file_type")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@map("email_attachments")
 }
 
 model ReceivedEmail {
