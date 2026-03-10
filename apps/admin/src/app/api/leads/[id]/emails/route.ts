@@ -137,8 +137,12 @@ export async function POST(
     finalBody += `<hr style="border:none;border-top:1px solid #eee;margin:20px 0" />${session.emailSignature}`;
   }
 
+  // Convert relative /uploads/ paths to absolute URLs so images render in email clients
+  const baseUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
+  finalBody = finalBody.replace(/(src=["'])\/uploads\//g, `$1${baseUrl}/uploads/`);
+
   // Inject tracking pixel
-  const trackingUrl = `${process.env.ADMIN_PORTAL_URL || "http://localhost:3000"}/api/track/${sentEmail.id}`;
+  const trackingUrl = `${baseUrl}/api/track/${sentEmail.id}`;
   const bodyWithPixel = `${finalBody}<img src="${trackingUrl}" width="1" height="1" style="display:none" alt="" />`;
 
   try {
