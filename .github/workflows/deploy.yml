@@ -132,6 +132,9 @@ jobs:
             docker compose pull admin customer
             docker compose up -d --remove-orphans
 
+            # Restart nginx to reconnect to new containers
+            docker compose restart nginx
+
             # Clean up dangling images
             docker image prune -f
 
