@@ -16,7 +16,7 @@ A leads management system for KITLabs Inc. Two Next.js apps in a Turborepo monor
 | UI | React 19, Tailwind CSS 4 |
 | Database | PostgreSQL 16 + Prisma 6.x ORM |
 | Email | Nodemailer (Gmail SMTP) |
-| Auth | Session cookies + bcryptjs (admin), no auth (customer — accessed via lead ID) |
+| Auth | Session cookies + bcryptjs (admin + customer) |
 | Rich Text | TipTap (@tiptap/react, @tiptap/starter-kit) |
 | Flow Builder | @xyflow/react (drag-and-drop visual email flows) |
 | PDF | jsPDF (NDA PDF generation on customer side) |
@@ -37,9 +37,9 @@ leads-portal/
 │   │   └── next.config.ts
 │   └── customer/        # Customer portal (port 3001)
 │       ├── src/
-│       │   ├── app/     # Single page + NDA API routes
-│       │   ├── components/  # NdaSection.tsx
-│       │   └── lib/     # email.ts, generate-pdf.ts
+│       │   ├── app/     # Pages (login, register, project) + API routes (auth, nda, sow)
+│       │   ├── components/  # NdaSection.tsx, SowSection.tsx
+│       │   └── lib/     # session.ts, email.ts, generate-pdf.ts
 │       └── next.config.ts
 ├── packages/
 │   └── database/        # Shared Prisma schema + client
@@ -70,11 +70,13 @@ leads-portal/
 | EmailTemplate | email_templates | Reusable email templates with HTML body |
 | EmailFlow | email_flows | Visual email automation flows (JSON nodes/edges) |
 | SentEmail | sent_emails | Email tracking (sent, opened, failed) |
+| ScopeOfWork | scope_of_works | SOW document uploads with versioning (per lead) |
 | Content | content | Social media content posts |
+| CustomerUser | customer_users | Customer portal users (email, name, password, leadIds) |
 
 ### Key Enums
 - `LeadSource`: MANUAL, AGENT, BARK
-- `LeadStatus`: NEW → DESIGN_READY → DESIGN_APPROVED → BUILD_IN_PROGRESS → BUILD_READY_FOR_REVIEW → BUILD_SUBMITTED → GO_LIVE
+- `LeadStatus`: NEW → SOW_READY → DESIGN_READY → DESIGN_APPROVED → BUILD_IN_PROGRESS → BUILD_READY_FOR_REVIEW → BUILD_SUBMITTED → GO_LIVE
 - `LeadStage`: COLD, WARM, HOT, ACTIVE, CLOSED
 - `NdaStatus`: GENERATED, SENT, SIGNED
 - `SentEmailStatus`: SENT, OPENED, FAILED
@@ -85,7 +87,8 @@ leads-portal/
 | Route | Purpose |
 |-------|---------|
 | `/login` | Authentication |
-| `/dashboard` | Main leads grid view |
+| `/` | Activity feed — latest emails, status changes, notes across all leads |
+| `/dashboard` | Leads grid with pagination, search, and filters (status/stage/source) |
 | `/leads/new` | Create lead |
 | `/leads/[id]` | Lead detail — edit, notes, files, email compose, status |
 | `/leads/[id]/nda` | NDA management |
@@ -124,6 +127,9 @@ leads-portal/
 - `GET/PUT/DELETE /api/admin-users[/id]` — Admin user management
 - `POST /api/admin-users/[id]/upload-picture` — Profile picture upload
 - `GET /api/admin-users/me` — Current admin profile
+- `GET /api/activity` — Unified activity feed (emails, status changes, notes)
+- `GET/POST /api/leads/[id]/sow` — SOW list/upload
+- `POST /api/leads/[id]/sow/[sowId]/share` — Share SOW with customer (sends email)
 - `GET /api/track/[id]` — Email open tracking pixel
 
 ### External API (Bearer token auth via API_TOKEN)
@@ -133,24 +139,41 @@ leads-portal/
 
 ## Customer Portal
 
-Single page at `/` — accessed via `?id=<leadId>` query parameter. Shows:
-- Project details and current status
-- Status history timeline
-- Admin notes
-- NDA signing section (if NDA exists)
+Multi-page portal with session-based authentication (bcryptjs + cookie).
 
-Customer API routes:
+### Pages
+| Route | Purpose |
+|-------|---------|
+| `/` | Landing — project list (logged in) or login/register prompt; redirects `?id=X` to `/project?id=X` for backward compat |
+| `/login` | Customer login |
+| `/register` | Customer registration (optional `?leadId=` to pre-link a project) |
+| `/project` | Project detail with tab navigation (Overview, SOW, NDA) via `?id=X&tab=Y` |
+
+### Features
+- **Registration** auto-links leads by matching customer email address
+- **Tab navigation**: Overview (status, timeline, notes), Scope of Work (versioned docs, PDF preview), NDA (view/sign)
+- Old email links (`?id=leadId`) preserved via redirect from `/` to `/project`
+- SOW file paths converted to absolute URLs using `ADMIN_PORTAL_URL` env var
+
+### Customer API Routes
+- `POST /api/auth` — Login
+- `DELETE /api/auth` — Logout
+- `GET /api/auth?logout=1` — Logout via link (server-rendered pages)
+- `POST /api/auth/register` — Register (auto-links leads by email)
+- `GET /api/auth/me` — Current session
 - `GET /api/nda?leadId=X` — Fetch NDA
 - `POST /api/nda/sign` — Sign NDA (captures name, IP)
+- `GET /api/sow?leadId=X` — Fetch shared SOWs
 
 ## Key Lib Files
 
 | File | Exports |
 |------|---------|
 | `apps/admin/src/lib/session.ts` | `getAdminSession()` — reads session cookie, returns admin user |
-| `apps/admin/src/lib/email.ts` | `sendWelcomeEmail()`, `sendStatusUpdateEmail()`, `sendNdaReadyEmail()`, `sendAdminWelcomeEmail()` |
+| `apps/admin/src/lib/email.ts` | `sendWelcomeEmail()`, `sendStatusUpdateEmail()`, `sendNdaReadyEmail()`, `sendAdminWelcomeEmail()`, `sendSowReadyEmail()` |
 | `apps/admin/src/lib/api-auth.ts` | `validateToken()`, `unauthorized()` — Bearer token auth for v1 API |
 | `apps/admin/src/lib/nda-template.ts` | `generateNdaContent()` — NDA text template |
+| `apps/customer/src/lib/session.ts` | `getCustomerSession()` — reads customer-session cookie, returns CustomerSession |
 | `apps/customer/src/lib/email.ts` | `sendNdaSignedEmail()` — confirmation after NDA signing |
 | `apps/customer/src/lib/generate-pdf.ts` | `downloadNdaPdf()` — jsPDF NDA generation |
 | `packages/database/src/index.ts` | Singleton `PrismaClient` export |
@@ -163,6 +186,7 @@ Customer API routes:
 | FlowBuilder | `apps/admin/src/components/FlowBuilder.tsx` | @xyflow drag-and-drop email flow builder |
 | ThemeProvider | `apps/admin/src/components/ThemeProvider.tsx` | Dark mode context provider |
 | NdaSection | `apps/customer/src/components/NdaSection.tsx` | NDA display + signing UI |
+| SowSection | `apps/customer/src/components/SowSection.tsx` | SOW version selector, PDF preview, download |
 
 ## Development
 
@@ -240,13 +264,19 @@ docker compose exec db pg_dump -U postgres leads_portal > backup.sql  # DB backu
 - Email compose on lead detail page has RichTextEditor with code/visual toggle
 - "Include signature" checkbox appends admin's email signature (set in profile page)
 - Signature appended server-side in the email API route
+- Relative image paths (`/uploads/...`) converted to absolute URLs before sending (for Gmail compatibility)
 - Email open tracking via 1x1 pixel at `/api/track/[sentEmailId]`
 - Preview modal renders email HTML in an iframe
 
 ## Important Patterns
-- All API routes use `getAdminSession()` for auth (returns null if not logged in)
+- All admin API routes use `getAdminSession()` for auth (returns null if not logged in)
+- Customer API routes use `getCustomerSession()` for auth
 - Database seed is idempotent (checks by title/username before inserting)
 - File uploads go to `public/uploads/` (admin), volume-mounted in Docker
+- Nginx serves `/uploads/` directly from shared Docker volume (Next.js production doesn't serve dynamically added files)
 - Dark mode supported via ThemeProvider + ThemeToggle
 - RichTextEditor uses `lastContentRef` to prevent infinite update loops when syncing external content
 - Swagger/OpenAPI spec at `public/openapi.json`, UI at `/api-docs`
+- Leads API supports pagination (`page`, `limit`), search, and filters (`status`, `stage`, `source`)
+- SOW uploads saved to `public/uploads/sow/` with auto-incrementing version numbers
+- Customer portal uses `ADMIN_PORTAL_URL` env var for cross-domain file access (SOW documents)

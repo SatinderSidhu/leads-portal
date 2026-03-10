@@ -124,11 +124,15 @@ jobs:
               docker login --username AWS --password-stdin \
               ${ECR_URL}
 
+            # Clean up old/unused images before pulling to free disk space
+            docker image prune -af --filter "until=24h"
+            docker builder prune -af 2>/dev/null || true
+
             # Pull new images and deploy
             docker compose pull admin customer
             docker compose up -d --remove-orphans
 
-            # Clean up old images
+            # Clean up dangling images
             docker image prune -f
 
             echo "Deployed tag: ${IMAGE_TAG}"
