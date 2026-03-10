@@ -3,6 +3,7 @@
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Link from "@tiptap/extension-link";
+import Image from "@tiptap/extension-image";
 import Placeholder from "@tiptap/extension-placeholder";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -48,10 +49,14 @@ export default function RichTextEditor({
   const [codeContent, setCodeContent] = useState(content);
   const lastContentRef = useRef(content);
 
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const [imageUploading, setImageUploading] = useState(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
       Link.configure({ openOnClick: false }),
+      Image.configure({ inline: false, allowBase64: false }),
       Placeholder.configure({ placeholder }),
     ],
     content,
@@ -82,6 +87,29 @@ export default function RichTextEditor({
       return;
     }
     editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+  }, [editor]);
+
+  const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !editor) return;
+    setImageUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/upload-image", { method: "POST", body: formData });
+      if (res.ok) {
+        const { url } = await res.json();
+        editor.chain().focus().setImage({ src: url }).run();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to upload image");
+      }
+    } catch {
+      alert("Failed to upload image");
+    } finally {
+      setImageUploading(false);
+      if (imageInputRef.current) imageInputRef.current.value = "";
+    }
   }, [editor]);
 
   function switchToCode() {
@@ -165,6 +193,19 @@ export default function RichTextEditor({
             >
               Link
             </ToolbarButton>
+            <ToolbarButton
+              onClick={() => imageInputRef.current?.click()}
+              title="Insert Image"
+            >
+              {imageUploading ? "..." : "Img"}
+            </ToolbarButton>
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
             <div className="w-px bg-gray-300 dark:bg-gray-600 mx-1 h-5" />
             <ToolbarButton
               onClick={() => editor.chain().focus().undo().run()}

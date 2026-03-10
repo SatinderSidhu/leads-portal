@@ -90,11 +90,22 @@ interface Nda {
 interface SentEmail {
   id: string;
   subject: string;
+  body: string;
   status: string;
   sentBy: string | null;
   openedAt: string | null;
   createdAt: string;
   template: { title: string; purpose: string } | null;
+}
+
+interface ReceivedEmail {
+  id: string;
+  fromEmail: string;
+  fromName: string | null;
+  subject: string;
+  bodyText: string | null;
+  bodyHtml: string | null;
+  receivedAt: string;
 }
 
 interface EmailTemplateItem {
@@ -146,6 +157,7 @@ interface Lead {
   statusHistory: StatusHistoryEntry[];
   nda: Nda | null;
   sentEmails: SentEmail[];
+  receivedEmails: ReceivedEmail[];
   files: LeadFileItem[];
 }
 
@@ -1141,67 +1153,122 @@ export default function LeadDetailPage() {
               </div>
             )}
 
-            {/* Email Audit Log */}
+            {/* Email Conversation Thread */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Email History
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Email Conversation
+                </h2>
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-teal-500 inline-block" /> Sent
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Received
+                  </span>
+                </div>
+              </div>
 
-              {lead.sentEmails.length === 0 ? (
-                <p className="text-gray-400 text-sm">No emails sent yet</p>
+              {lead.sentEmails.length === 0 && lead.receivedEmails.length === 0 ? (
+                <p className="text-gray-400 text-sm">No email activity yet</p>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-100 dark:border-gray-700">
-                        <th className="text-left pb-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                          Subject
-                        </th>
-                        <th className="text-left pb-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                          Template
-                        </th>
-                        <th className="text-left pb-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                          Status
-                        </th>
-                        <th className="text-left pb-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                          Sent By
-                        </th>
-                        <th className="text-left pb-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
-                          Date
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                      {lead.sentEmails.map((email) => (
-                        <tr key={email.id}>
-                          <td className="py-3 text-sm text-gray-900 dark:text-white">
-                            {email.subject}
-                          </td>
-                          <td className="py-3 text-sm text-gray-500 dark:text-gray-400">
-                            {email.template?.title || "—"}
-                          </td>
-                          <td className="py-3">
-                            <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${EMAIL_STATUS_COLORS[email.status] || "bg-gray-100 text-gray-800"}`}
-                            >
-                              {email.status}
-                            </span>
-                            {email.openedAt && (
-                              <span className="text-xs text-gray-400 ml-1">
-                                {new Date(email.openedAt).toLocaleDateString()}
+                <div className="space-y-4">
+                  {/* Merge sent and received into chronological thread */}
+                  {[
+                    ...lead.sentEmails.map((e) => ({
+                      type: "sent" as const,
+                      id: e.id,
+                      subject: e.subject,
+                      date: e.createdAt,
+                      status: e.status,
+                      openedAt: e.openedAt,
+                      sentBy: e.sentBy,
+                      template: e.template,
+                      body: e.body,
+                      fromName: null as string | null,
+                      fromEmail: null as string | null,
+                      bodyText: null as string | null,
+                    })),
+                    ...lead.receivedEmails.map((e) => ({
+                      type: "received" as const,
+                      id: e.id,
+                      subject: e.subject,
+                      date: e.receivedAt,
+                      status: null as string | null,
+                      openedAt: null as string | null,
+                      sentBy: null as string | null,
+                      template: null as { title: string; purpose: string } | null,
+                      body: e.bodyHtml || null,
+                      fromName: e.fromName,
+                      fromEmail: e.fromEmail,
+                      bodyText: e.bodyText,
+                    })),
+                  ]
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .map((item) => (
+                      <div
+                        key={`${item.type}-${item.id}`}
+                        className={`rounded-lg border p-4 ${
+                          item.type === "sent"
+                            ? "border-teal-200 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-900/10 ml-8"
+                            : "border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10 mr-8"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2">
+                            {item.type === "sent" ? (
+                              <span className="flex items-center gap-1.5 text-xs font-medium text-teal-700 dark:text-teal-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                                </svg>
+                                Sent {item.sentBy ? `by ${item.sentBy}` : ""}
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1.5 text-xs font-medium text-blue-700 dark:text-blue-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 3.75H6.912a2.25 2.25 0 00-2.15 1.588L2.35 13.177a2.25 2.25 0 00-.1.661V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 00-2.15-1.588H15M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859" />
+                                </svg>
+                                From {item.fromName || item.fromEmail}
                               </span>
                             )}
-                          </td>
-                          <td className="py-3 text-sm text-gray-500 dark:text-gray-400">
-                            {email.sentBy || "—"}
-                          </td>
-                          <td className="py-3 text-sm text-gray-500 dark:text-gray-400">
-                            {new Date(email.createdAt).toLocaleString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                            {item.status && (
+                              <span
+                                className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${EMAIL_STATUS_COLORS[item.status] || "bg-gray-100 text-gray-800"}`}
+                              >
+                                {item.status}
+                              </span>
+                            )}
+                            {item.openedAt && (
+                              <span className="text-xs text-gray-400">
+                                Opened {new Date(item.openedAt).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-400 whitespace-nowrap">
+                            {new Date(item.date).toLocaleString()}
+                          </span>
+                        </div>
+
+                        <p className="text-sm font-medium text-gray-900 dark:text-white">
+                          {item.subject}
+                        </p>
+
+                        {item.template && (
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            Template: {item.template.title}
+                          </p>
+                        )}
+
+                        {/* Show reply body text for received emails */}
+                        {item.type === "received" && item.bodyText && (
+                          <div className="mt-2 p-3 bg-white dark:bg-gray-700 rounded border border-blue-100 dark:border-blue-900">
+                            <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                              {item.bodyText}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
                 </div>
               )}
             </div>

@@ -18,6 +18,7 @@ export async function GET(
         include: { template: { select: { title: true, purpose: true } } },
         orderBy: { createdAt: "desc" },
       },
+      receivedEmails: { orderBy: { receivedAt: "desc" } },
       files: { orderBy: { createdAt: "desc" } },
       _count: { select: { sentEmails: true } },
     },

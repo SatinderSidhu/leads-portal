@@ -1,7 +1,7 @@
 import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { getAdminSession } from "../../../../../lib/session";
-import { transporter } from "../../../../../lib/email";
+import { transporter, getReplyToAddress } from "../../../../../lib/email";
 
 export async function GET(
   _req: Request,
@@ -9,13 +9,19 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  const emails = await prisma.sentEmail.findMany({
-    where: { leadId: id },
-    include: { template: { select: { title: true, purpose: true } } },
-    orderBy: { createdAt: "desc" },
-  });
+  const [sent, received] = await Promise.all([
+    prisma.sentEmail.findMany({
+      where: { leadId: id },
+      include: { template: { select: { title: true, purpose: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.receivedEmail.findMany({
+      where: { leadId: id },
+      orderBy: { receivedAt: "desc" },
+    }),
+  ]);
 
-  return NextResponse.json(emails);
+  return NextResponse.json({ sent, received });
 }
 
 export async function POST(
@@ -80,6 +86,7 @@ export async function POST(
   try {
     await transporter.sendMail({
       from: process.env.SMTP_FROM || "noreply@leadsportal.com",
+      replyTo: getReplyToAddress(id),
       to: lead.customerEmail,
       subject: subject.trim(),
       html: bodyWithPixel,

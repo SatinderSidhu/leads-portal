@@ -17,6 +17,16 @@ interface Lead {
   projectName: string;
 }
 
+/**
+ * Generate a Reply-To address that routes replies back to the portal.
+ * Format: reply+{leadId}@{domain}
+ * SES inbound rules match on the reply+ prefix and extract the lead ID.
+ */
+export function getReplyToAddress(leadId: string): string {
+  const replyDomain = process.env.REPLY_TO_DOMAIN || "reply.kitlabs.us";
+  return `reply+${leadId}@${replyDomain}`;
+}
+
 export async function sendWelcomeEmail(lead: Lead) {
   const customerPortalUrl = `${process.env.CUSTOMER_PORTAL_URL}?id=${lead.id}`;
 
@@ -25,6 +35,7 @@ export async function sendWelcomeEmail(lead: Lead) {
 
   const info = await transporter.sendMail({
     from: process.env.SMTP_FROM || "noreply@leadsportal.com",
+    replyTo: getReplyToAddress(lead.id),
     to: lead.customerEmail,
     subject: `Welcome to ${lead.projectName}!`,
     html: `
@@ -83,6 +94,7 @@ export async function sendStatusUpdateEmail(
 
   const info = await transporter.sendMail({
     from: process.env.SMTP_FROM || "noreply@leadsportal.com",
+    replyTo: getReplyToAddress(lead.id),
     to: lead.customerEmail,
     subject: `${lead.projectName} — Status Update: ${statusLabel}`,
     html: `
@@ -132,6 +144,7 @@ export async function sendNdaReadyEmail(lead: Lead) {
 
   const info = await transporter.sendMail({
     from: process.env.SMTP_FROM || "noreply@leadsportal.com",
+    replyTo: getReplyToAddress(lead.id),
     to: lead.customerEmail,
     subject: `NDA Ready for Review — ${lead.projectName}`,
     html: `

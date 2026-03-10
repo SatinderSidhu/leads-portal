@@ -84,8 +84,9 @@ model Lead {
   notes         Note[]
   statusHistory StatusHistory[]
   nda           Nda?
-  sentEmails    SentEmail[]
-  files         LeadFile[]
+  sentEmails      SentEmail[]
+  receivedEmails  ReceivedEmail[]
+  files           LeadFile[]
 
   @@map("leads")
 }
@@ -211,6 +212,21 @@ model SentEmail {
   template EmailTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
 
   @@map("sent_emails")
+}
+
+model ReceivedEmail {
+  id          String   @id @default(uuid())
+  leadId      String   @map("lead_id")
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  messageId   String?  @unique @map("message_id")
+  fromEmail   String   @map("from_email")
+  fromName    String?  @map("from_name")
+  subject     String
+  bodyText    String?  @db.Text @map("body_text")
+  bodyHtml    String?  @db.Text @map("body_html")
+  receivedAt  DateTime @default(now()) @map("received_at")
+
+  @@map("received_emails")
 }
 
 model Content {
