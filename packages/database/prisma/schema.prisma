@@ -34,6 +34,7 @@ enum LeadSource {
 
 enum LeadStatus {
   NEW
+  SOW_READY
   DESIGN_READY
   DESIGN_APPROVED
   BUILD_IN_PROGRESS
@@ -87,6 +88,7 @@ model Lead {
   sentEmails      SentEmail[]
   receivedEmails  ReceivedEmail[]
   files           LeadFile[]
+  scopeOfWorks    ScopeOfWork[]
 
   @@map("leads")
 }
@@ -260,4 +262,34 @@ model Content {
   updatedAt DateTime      @updatedAt @map("updated_at")
 
   @@map("content")
+}
+
+model ScopeOfWork {
+  id          String   @id @default(uuid())
+  leadId      String   @map("lead_id")
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  version     Int      @default(1)
+  fileName    String   @map("file_name")
+  filePath    String   @map("file_path")
+  fileSize    Int      @map("file_size")
+  fileType    String   @map("file_type")
+  comments    String?  @db.Text
+  uploadedBy  String?  @map("uploaded_by")
+  sharedAt    DateTime? @map("shared_at")
+  sharedBy    String?  @map("shared_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("scope_of_works")
+}
+
+model CustomerUser {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String
+  password  String
+  leadIds   Json     @default("[]") @map("lead_ids")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("customer_users")
 }

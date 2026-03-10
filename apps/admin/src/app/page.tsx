@@ -6,6 +6,7 @@ import { ThemeToggle } from "../components/ThemeToggle";
 
 const STATUS_LABELS: Record<string, string> = {
   NEW: "New",
+  SOW_READY: "SOW Ready",
   DESIGN_READY: "Design Ready",
   DESIGN_APPROVED: "Design Approved",
   BUILD_IN_PROGRESS: "Build In Progress",

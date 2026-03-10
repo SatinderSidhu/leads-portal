@@ -73,6 +73,7 @@ export async function sendWelcomeEmail(lead: Lead) {
 
 const STATUS_LABELS: Record<string, string> = {
   NEW: "New",
+  SOW_READY: "Scope of Work Ready",
   DESIGN_READY: "Design Ready",
   DESIGN_APPROVED: "Design Approved",
   BUILD_IN_PROGRESS: "Build In Progress",
@@ -241,4 +242,67 @@ export async function sendAdminWelcomeEmail(admin: AdminUser) {
   });
 
   console.log(`[Email] Admin welcome email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
+}
+
+export async function sendSowReadyEmail(
+  lead: { customerName: string; customerEmail: string; projectName: string },
+  leadId: string,
+  version: number
+) {
+  const customerPortalUrl = `${process.env.CUSTOMER_PORTAL_URL}?id=${leadId}&tab=sow`;
+  const sowDirectUrl = `${process.env.CUSTOMER_PORTAL_URL}?id=${leadId}&tab=sow&v=${version}`;
+
+  console.log(`[Email] Sending SOW ready email to ${lead.customerEmail} for v${version}...`);
+  const start = Date.now();
+
+  const info = await transporter.sendMail({
+    from: process.env.SMTP_FROM || "noreply@leadsportal.com",
+    replyTo: getReplyToAddress(leadId),
+    to: lead.customerEmail,
+    subject: `Scope of Work Ready — ${lead.projectName}`,
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">Scope of Work</h1>
+          <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">Ready for Your Review</p>
+        </div>
+
+        <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+          <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
+            Hi ${lead.customerName},
+          </p>
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            ${version > 1
+              ? `An updated Scope of Work (Version ${version}) for <strong>${lead.projectName}</strong> has been prepared and is ready for your review.`
+              : `The Scope of Work for <strong>${lead.projectName}</strong> has been prepared and is ready for your review.`
+            }
+          </p>
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            This document outlines the project deliverables, timeline, and key milestones. Please review it carefully and let us know if you have any questions.
+          </p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${sowDirectUrl}"
+               style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 32px;
+                      border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">
+              View Scope of Work
+            </a>
+          </div>
+
+          <div style="text-align: center;">
+            <a href="${customerPortalUrl}"
+               style="color: #667eea; font-size: 14px; text-decoration: none;">
+              Or visit your project portal
+            </a>
+          </div>
+        </div>
+
+        <p style="color: #999; font-size: 13px; text-align: center;">
+          If you have any questions, simply reply to this email.
+        </p>
+      </div>
+    `,
+  });
+
+  console.log(`[Email] SOW ready email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
 }

@@ -12,6 +12,7 @@ const RichTextEditor = dynamic(
 
 const STATUS_OPTIONS = [
   "NEW",
+  "SOW_READY",
   "DESIGN_READY",
   "DESIGN_APPROVED",
   "BUILD_IN_PROGRESS",
@@ -22,6 +23,7 @@ const STATUS_OPTIONS = [
 
 const STATUS_LABELS: Record<string, string> = {
   NEW: "New",
+  SOW_READY: "SOW Ready",
   DESIGN_READY: "Design Ready",
   DESIGN_APPROVED: "Design Approved",
   BUILD_IN_PROGRESS: "Build In Progress",
@@ -32,6 +34,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 const STATUS_COLORS: Record<string, string> = {
   NEW: "bg-blue-100 text-blue-800",
+  SOW_READY: "bg-cyan-100 text-cyan-800",
   DESIGN_READY: "bg-yellow-100 text-yellow-800",
   DESIGN_APPROVED: "bg-green-100 text-green-800",
   BUILD_IN_PROGRESS: "bg-orange-100 text-orange-800",
@@ -184,6 +187,20 @@ interface LeadFileItem {
   createdAt: string;
 }
 
+interface SowItem {
+  id: string;
+  version: number;
+  fileName: string;
+  filePath: string;
+  fileSize: number;
+  fileType: string;
+  comments: string | null;
+  uploadedBy: string | null;
+  sharedAt: string | null;
+  sharedBy: string | null;
+  createdAt: string;
+}
+
 export default function LeadDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -252,6 +269,12 @@ export default function LeadDetailPage() {
   // Recommendations
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
 
+  // SOW state
+  const [sows, setSows] = useState<SowItem[]>([]);
+  const [sowUploading, setSowUploading] = useState(false);
+  const [sowComments, setSowComments] = useState("");
+  const [sowSharing, setSowSharing] = useState<string | null>(null);
+
   const fetchLead = useCallback(async () => {
     const res = await fetch(`/api/leads/${params.id}`);
     if (res.ok) {
@@ -293,6 +316,68 @@ export default function LeadDetailPage() {
         if (Array.isArray(data)) setRecommendations(data);
       });
   }, [params.id, lead?.sentEmails?.length]);
+
+  // Load SOWs
+  const fetchSows = useCallback(async () => {
+    if (!params.id) return;
+    const res = await fetch(`/api/leads/${params.id}/sow`);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) setSows(data);
+    }
+  }, [params.id]);
+
+  useEffect(() => {
+    fetchSows();
+  }, [fetchSows]);
+
+  async function handleSowUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !lead) return;
+    setSowUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      if (sowComments.trim()) formData.append("comments", sowComments.trim());
+      const res = await fetch(`/api/leads/${lead.id}/sow`, {
+        method: "POST",
+        body: formData,
+      });
+      if (res.ok) {
+        setSowComments("");
+        await fetchSows();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to upload SOW");
+      }
+    } catch {
+      alert("Failed to upload SOW");
+    } finally {
+      setSowUploading(false);
+      e.target.value = "";
+    }
+  }
+
+  async function handleShareSow(sowId: string) {
+    if (!lead) return;
+    setSowSharing(sowId);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/sow/${sowId}/share`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        await fetchSows();
+        await fetchLead();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to share SOW");
+      }
+    } catch {
+      alert("Failed to share SOW");
+    } finally {
+      setSowSharing(null);
+    }
+  }
 
   function startEditing() {
     if (!lead) return;
@@ -1658,6 +1743,107 @@ export default function LeadDetailPage() {
                       >
                         Remove
                       </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Scope of Work Section */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Scope of Work
+              </h2>
+
+              {/* Upload new SOW */}
+              <div className="mb-4">
+                <textarea
+                  value={sowComments}
+                  onChange={(e) => setSowComments(e.target.value)}
+                  placeholder="What changed in this version? (optional)"
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white outline-none mb-2"
+                />
+                <label className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition cursor-pointer">
+                  {sowUploading ? "Uploading..." : sows.length === 0 ? "Upload SOW" : "Upload New Version"}
+                  <input
+                    type="file"
+                    accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    onChange={handleSowUpload}
+                    disabled={sowUploading}
+                    className="hidden"
+                  />
+                </label>
+                <p className="text-xs text-gray-400 mt-1">PDF or Word document, max 25MB</p>
+              </div>
+
+              {/* SOW version history */}
+              {sows.length === 0 ? (
+                <p className="text-gray-400 text-sm">No scope of work uploaded yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {sows.map((sow) => (
+                    <div
+                      key={sow.id}
+                      className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-100 dark:border-gray-600"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                              Version {sow.version}
+                            </span>
+                            {sow.sharedAt && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                Shared
+                              </span>
+                            )}
+                          </div>
+                          <a
+                            href={sow.filePath}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 dark:text-blue-400 hover:underline truncate block mt-0.5"
+                          >
+                            {sow.fileName}
+                          </a>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {formatFileSize(sow.fileSize)}
+                            {sow.uploadedBy && ` · ${sow.uploadedBy}`}
+                            {" · "}
+                            {new Date(sow.createdAt).toLocaleString()}
+                          </p>
+                          {sow.comments && (
+                            <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 italic">
+                              {sow.comments}
+                            </p>
+                          )}
+                          {sow.sharedAt && (
+                            <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                              Shared by {sow.sharedBy} on {new Date(sow.sharedAt).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {sow.fileType === "application/pdf" && (
+                            <a
+                              href={sow.filePath}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-3 py-1.5 text-xs font-medium border border-gray-300 dark:border-gray-500 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition"
+                            >
+                              Preview
+                            </a>
+                          )}
+                          <button
+                            onClick={() => handleShareSow(sow.id)}
+                            disabled={sowSharing === sow.id}
+                            className="px-3 py-1.5 text-xs font-medium bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 transition"
+                          >
+                            {sowSharing === sow.id ? "Sharing..." : sow.sharedAt ? "Re-share" : "Share with Customer"}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
