@@ -3,11 +3,51 @@ import { NextResponse } from "next/server";
 import { sendWelcomeEmail } from "../../../lib/email";
 import { getAdminSession } from "../../../lib/session";
 
-export async function GET() {
-  const leads = await prisma.lead.findMany({
-    orderBy: { createdAt: "desc" },
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+
+  const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
+  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
+  const search = searchParams.get("search")?.trim() || "";
+  const status = searchParams.get("status") || "";
+  const stage = searchParams.get("stage") || "";
+  const source = searchParams.get("source") || "";
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const where: any = {};
+
+  if (search) {
+    where.OR = [
+      { projectName: { contains: search, mode: "insensitive" } },
+      { customerName: { contains: search, mode: "insensitive" } },
+      { customerEmail: { contains: search, mode: "insensitive" } },
+      { city: { contains: search, mode: "insensitive" } },
+    ];
+  }
+
+  if (status) where.status = status;
+  if (stage) where.stage = stage;
+  if (source) where.source = source;
+
+  const [leads, total] = await Promise.all([
+    prisma.lead.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.lead.count({ where }),
+  ]);
+
+  return NextResponse.json({
+    leads,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
   });
-  return NextResponse.json(leads);
 }
 
 export async function POST(req: Request) {
