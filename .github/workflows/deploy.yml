@@ -125,7 +125,7 @@ jobs:
               ${ECR_URL}
 
             # Clean up old/unused images before pulling to free disk space
-            docker image prune -af --filter "until=24h"
+            docker image prune -af --filter "until=24h" || true
             docker builder prune -af 2>/dev/null || true
 
             # Pull new images and deploy
@@ -136,7 +136,7 @@ jobs:
             docker compose restart nginx
 
             # Clean up dangling images
-            docker image prune -f
+            docker image prune -f || true
 
             echo "Deployed tag: ${IMAGE_TAG}"
           DEPLOY
