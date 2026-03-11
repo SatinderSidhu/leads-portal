@@ -81,7 +81,7 @@ export async function POST(req: Request) {
 
   if (body.sendEmail) {
     try {
-      await sendWelcomeEmail(lead);
+      await sendWelcomeEmail(lead, session ? { name: session.name } : undefined);
       await prisma.lead.update({
         where: { id: lead.id },
         data: { emailSent: true },

@@ -55,7 +55,7 @@ export async function POST(
 
   // Send email to customer
   try {
-    await sendSowReadyEmail(lead, id, sow.version);
+    await sendSowReadyEmail(lead, id, sow.version, session ? { name: session.name } : undefined);
   } catch (error) {
     console.error("Failed to send SOW email:", error);
     return NextResponse.json(

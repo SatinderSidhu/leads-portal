@@ -18,24 +18,49 @@ interface Lead {
 }
 
 /**
- * Generate a Reply-To address that routes replies back to the portal.
- * Format: reply+{leadId}@{domain}
- * SES inbound rules match on the reply+ prefix and extract the lead ID.
+ * Build the "From" header using the admin's name + the SMTP sender address.
+ * Gmail SMTP forces the authenticated account as sender, but the display name
+ * is shown to the recipient — e.g. "Satinder Sidhu <leads@kitlabs.us>".
  */
-export function getReplyToAddress(leadId: string): string {
-  const replyDomain = process.env.REPLY_TO_DOMAIN || "reply.kitlabs.us";
-  return `reply+${leadId}@${replyDomain}`;
+export function getFromAddress(adminName?: string): string {
+  const smtpFrom = process.env.SMTP_FROM || "noreply@leadsportal.com";
+  if (adminName) {
+    // RFC 5322: display name with special chars gets quoted
+    const safeName = adminName.replace(/"/g, '\\"');
+    return `"${safeName}" <${smtpFrom}>`;
+  }
+  return smtpFrom;
 }
 
-export async function sendWelcomeEmail(lead: Lead) {
+/**
+ * Get reply-to address. Uses the lead-specific reply address for inbound
+ * email routing (SES extracts lead ID from reply+{leadId}@domain), but
+ * wraps it with the admin's display name so customers see a real person.
+ * e.g. "Satinder Sidhu" <reply+abc123@reply.kitlabs.us>
+ */
+export function getReplyToAddress(leadId: string, adminName?: string): string {
+  const replyDomain = process.env.REPLY_TO_DOMAIN || "reply.kitlabs.us";
+  const replyAddr = `reply+${leadId}@${replyDomain}`;
+  if (adminName) {
+    const safeName = adminName.replace(/"/g, '\\"');
+    return `"${safeName}" <${replyAddr}>`;
+  }
+  return replyAddr;
+}
+
+interface AdminInfo {
+  name: string;
+}
+
+export async function sendWelcomeEmail(lead: Lead, admin?: AdminInfo) {
   const customerPortalUrl = `${process.env.CUSTOMER_PORTAL_URL}?id=${lead.id}`;
 
   console.log(`[Email] Sending welcome email to ${lead.customerEmail} for project "${lead.projectName}"...`);
   const start = Date.now();
 
   const info = await transporter.sendMail({
-    from: process.env.SMTP_FROM || "noreply@leadsportal.com",
-    replyTo: getReplyToAddress(lead.id),
+    from: getFromAddress(admin?.name),
+    replyTo: getReplyToAddress(lead.id, admin?.name),
     to: lead.customerEmail,
     subject: `Welcome to ${lead.projectName}!`,
     html: `
@@ -85,7 +110,8 @@ const STATUS_LABELS: Record<string, string> = {
 export async function sendStatusUpdateEmail(
   lead: Lead,
   fromStatus: string,
-  toStatus: string
+  toStatus: string,
+  admin?: AdminInfo
 ) {
   const customerPortalUrl = `${process.env.CUSTOMER_PORTAL_URL}?id=${lead.id}`;
   const statusLabel = STATUS_LABELS[toStatus] || toStatus;
@@ -94,8 +120,8 @@ export async function sendStatusUpdateEmail(
   const start = Date.now();
 
   const info = await transporter.sendMail({
-    from: process.env.SMTP_FROM || "noreply@leadsportal.com",
-    replyTo: getReplyToAddress(lead.id),
+    from: getFromAddress(admin?.name),
+    replyTo: getReplyToAddress(lead.id, admin?.name),
     to: lead.customerEmail,
     subject: `${lead.projectName} — Status Update: ${statusLabel}`,
     html: `
@@ -137,15 +163,15 @@ export async function sendStatusUpdateEmail(
   console.log(`[Email] Status email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
 }
 
-export async function sendNdaReadyEmail(lead: Lead) {
+export async function sendNdaReadyEmail(lead: Lead, admin?: AdminInfo) {
   const ndaUrl = `${process.env.CUSTOMER_PORTAL_URL}?id=${lead.id}&tab=nda`;
 
   console.log(`[Email] Sending NDA ready email to ${lead.customerEmail}...`);
   const start = Date.now();
 
   const info = await transporter.sendMail({
-    from: process.env.SMTP_FROM || "noreply@leadsportal.com",
-    replyTo: getReplyToAddress(lead.id),
+    from: getFromAddress(admin?.name),
+    replyTo: getReplyToAddress(lead.id, admin?.name),
     to: lead.customerEmail,
     subject: `NDA Ready for Review — ${lead.projectName}`,
     html: `
@@ -247,7 +273,8 @@ export async function sendAdminWelcomeEmail(admin: AdminUser) {
 export async function sendSowReadyEmail(
   lead: { customerName: string; customerEmail: string; projectName: string },
   leadId: string,
-  version: number
+  version: number,
+  admin?: AdminInfo
 ) {
   const customerPortalUrl = `${process.env.CUSTOMER_PORTAL_URL}?id=${leadId}&tab=sow`;
   const sowDirectUrl = `${process.env.CUSTOMER_PORTAL_URL}?id=${leadId}&tab=sow&v=${version}`;
@@ -256,8 +283,8 @@ export async function sendSowReadyEmail(
   const start = Date.now();
 
   const info = await transporter.sendMail({
-    from: process.env.SMTP_FROM || "noreply@leadsportal.com",
-    replyTo: getReplyToAddress(leadId),
+    from: getFromAddress(admin?.name),
+    replyTo: getReplyToAddress(leadId, admin?.name),
     to: lead.customerEmail,
     subject: `Scope of Work Ready — ${lead.projectName}`,
     html: `

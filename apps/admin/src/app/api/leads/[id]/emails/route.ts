@@ -1,7 +1,8 @@
 import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { getAdminSession } from "../../../../../lib/session";
-import { transporter, getReplyToAddress } from "../../../../../lib/email";
+import { transporter, getFromAddress, getReplyToAddress } from "../../../../../lib/email";
+
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
@@ -147,8 +148,8 @@ export async function POST(
 
   try {
     await transporter.sendMail({
-      from: process.env.SMTP_FROM || "noreply@leadsportal.com",
-      replyTo: getReplyToAddress(id),
+      from: getFromAddress(session?.name),
+      replyTo: getReplyToAddress(id, session?.name),
       to: lead.customerEmail,
       cc: cc?.trim() || undefined,
       bcc: bcc?.trim() || undefined,

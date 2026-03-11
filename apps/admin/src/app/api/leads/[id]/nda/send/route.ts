@@ -1,12 +1,14 @@
 import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { sendNdaReadyEmail } from "../../../../../../lib/email";
+import { getAdminSession } from "../../../../../../lib/session";
 
 export async function POST(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const session = await getAdminSession();
 
   const lead = await prisma.lead.findUnique({ where: { id } });
   if (!lead) {
@@ -26,7 +28,7 @@ export async function POST(
   }
 
   try {
-    await sendNdaReadyEmail(lead);
+    await sendNdaReadyEmail(lead, session ? { name: session.name } : undefined);
     const updated = await prisma.nda.update({
       where: { id: nda.id },
       data: { status: "SENT" },

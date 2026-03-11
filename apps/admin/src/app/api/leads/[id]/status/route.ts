@@ -39,7 +39,7 @@ export async function PATCH(
 
   if (sendEmail) {
     try {
-      await sendStatusUpdateEmail(updatedLead, previousStatus, status);
+      await sendStatusUpdateEmail(updatedLead, previousStatus, status, session ? { name: session.name } : undefined);
     } catch (error) {
       console.error("Failed to send status update email:", error);
       return NextResponse.json({
