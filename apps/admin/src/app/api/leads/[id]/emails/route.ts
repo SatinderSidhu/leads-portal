@@ -84,7 +84,10 @@ export async function POST(
 
   const lead = await prisma.lead.findUnique({
     where: { id },
-    select: { customerEmail: true, customerName: true, projectName: true },
+    select: {
+      customerEmail: true, customerName: true, projectName: true,
+      phone: true, city: true, status: true, stage: true, source: true, dateCreated: true,
+    },
   });
 
   if (!lead) {
@@ -133,14 +136,28 @@ export async function POST(
   });
 
   // Replace template tags with actual lead values
+  const STATUS_LABELS: Record<string, string> = {
+    NEW: "New", SOW_READY: "SOW Ready", DESIGN_READY: "Design Ready",
+    DESIGN_APPROVED: "Design Approved", BUILD_IN_PROGRESS: "Build In Progress",
+    BUILD_READY_FOR_REVIEW: "Build Ready for Review", BUILD_SUBMITTED: "Build Submitted", GO_LIVE: "Go Live",
+  };
+  const STAGE_LABELS: Record<string, string> = {
+    COLD: "Cold", WARM: "Warm", HOT: "Hot", ACTIVE: "Active", CLOSED: "Closed",
+  };
+  const dateLabel = lead.dateCreated
+    ? new Date(lead.dateCreated).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+    : "";
   const mergeTemplateTags = (text: string) =>
     text
       .replace(/\{\{customerName\}\}/g, lead.customerName)
-      .replace(/\{\{customer_name\}\}/g, lead.customerName)
       .replace(/\{\{projectName\}\}/g, lead.projectName || "")
-      .replace(/\{\{project_name\}\}/g, lead.projectName || "")
       .replace(/\{\{customerEmail\}\}/g, lead.customerEmail)
-      .replace(/\{\{customer_email\}\}/g, lead.customerEmail);
+      .replace(/\{\{customerPhone\}\}/g, lead.phone || "")
+      .replace(/\{\{customerCity\}\}/g, lead.city || "")
+      .replace(/\{\{status\}\}/g, STATUS_LABELS[lead.status] || lead.status)
+      .replace(/\{\{stage\}\}/g, STAGE_LABELS[lead.stage] || lead.stage)
+      .replace(/\{\{source\}\}/g, lead.source || "")
+      .replace(/\{\{dateCreated\}\}/g, dateLabel);
 
   // Append signature if requested
   let finalBody = mergeTemplateTags(emailBody.trim());

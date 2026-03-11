@@ -522,13 +522,21 @@ export default function LeadDetailPage() {
 
   function mergeTags(text: string): string {
     if (!lead) return text;
+    const statusLabel = STATUS_LABELS[lead.status] || lead.status;
+    const stageLabel = STAGE_LABELS[lead.stage] || lead.stage;
+    const dateLabel = lead.dateCreated
+      ? new Date(lead.dateCreated).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
+      : "";
     return text
       .replace(/\{\{customerName\}\}/g, lead.customerName)
-      .replace(/\{\{customer_name\}\}/g, lead.customerName)
       .replace(/\{\{projectName\}\}/g, lead.projectName)
-      .replace(/\{\{project_name\}\}/g, lead.projectName)
       .replace(/\{\{customerEmail\}\}/g, lead.customerEmail)
-      .replace(/\{\{customer_email\}\}/g, lead.customerEmail);
+      .replace(/\{\{customerPhone\}\}/g, lead.phone || "")
+      .replace(/\{\{customerCity\}\}/g, lead.city || "")
+      .replace(/\{\{status\}\}/g, statusLabel)
+      .replace(/\{\{stage\}\}/g, stageLabel)
+      .replace(/\{\{source\}\}/g, lead.source || "")
+      .replace(/\{\{dateCreated\}\}/g, dateLabel);
   }
 
   function handleTemplateSelect(templateId: string) {
@@ -1159,7 +1167,7 @@ export default function LeadDetailPage() {
                         ))}
                       </select>
                       <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                        Available tags: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerName}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{projectName}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerEmail}}"}</code>
+                        Tags auto-merge on send: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerName}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{projectName}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerEmail}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerPhone}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerCity}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{status}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{stage}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{source}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{dateCreated}}"}</code>
                       </p>
                     </div>
                   )}
