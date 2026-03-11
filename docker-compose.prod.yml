@@ -31,6 +31,7 @@ services:
       CUSTOMER_PORTAL_URL: ${CUSTOMER_PORTAL_URL}
       COMPANY_NAME: ${COMPANY_NAME:-KITLabs Inc}
       API_TOKEN: ${API_TOKEN}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
       NODE_ENV: production
     volumes:
       - uploads:/app/apps/admin/public/uploads

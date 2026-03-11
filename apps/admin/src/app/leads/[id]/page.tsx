@@ -190,10 +190,12 @@ interface LeadFileItem {
 interface SowItem {
   id: string;
   version: number;
-  fileName: string;
-  filePath: string;
-  fileSize: number;
-  fileType: string;
+  fileName: string | null;
+  filePath: string | null;
+  fileSize: number | null;
+  fileType: string | null;
+  content: string | null;
+  isDraft: boolean;
   comments: string | null;
   uploadedBy: string | null;
   sharedAt: string | null;
@@ -320,7 +322,7 @@ export default function LeadDetailPage() {
   // Load SOWs
   const fetchSows = useCallback(async () => {
     if (!params.id) return;
-    const res = await fetch(`/api/leads/${params.id}/sow`);
+    const res = await fetch(`/api/leads/${params.id}/sow?includeDrafts=true`);
     if (res.ok) {
       const data = await res.json();
       if (Array.isArray(data)) setSows(data);
@@ -1773,9 +1775,20 @@ export default function LeadDetailPage() {
 
             {/* Scope of Work Section */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Scope of Work
-              </h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Scope of Work
+                </h2>
+                <button
+                  onClick={() => router.push(`/leads/${lead.id}/sow-builder`)}
+                  className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-lg hover:from-purple-700 hover:to-indigo-700 transition flex items-center gap-1.5"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+                  </svg>
+                  Build with AI
+                </button>
+              </div>
 
               {/* Upload new SOW */}
               <div className="mb-4">
@@ -1815,23 +1828,42 @@ export default function LeadDetailPage() {
                             <span className="text-sm font-semibold text-gray-900 dark:text-white">
                               Version {sow.version}
                             </span>
+                            {sow.content && !sow.filePath && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200">
+                                AI Generated
+                              </span>
+                            )}
+                            {sow.isDraft && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                                Draft
+                              </span>
+                            )}
                             {sow.sharedAt && (
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
                                 Shared
                               </span>
                             )}
                           </div>
-                          <a
-                            href={sow.filePath}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 dark:text-blue-400 hover:underline truncate block mt-0.5"
-                          >
-                            {sow.fileName}
-                          </a>
+                          {sow.filePath ? (
+                            <a
+                              href={sow.filePath}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 dark:text-blue-400 hover:underline truncate block mt-0.5"
+                            >
+                              {sow.fileName}
+                            </a>
+                          ) : sow.content ? (
+                            <button
+                              onClick={() => router.push(`/leads/${lead.id}/sow-builder`)}
+                              className="text-sm text-purple-600 dark:text-purple-400 hover:underline mt-0.5"
+                            >
+                              Open in SOW Builder
+                            </button>
+                          ) : null}
                           <p className="text-xs text-gray-400 mt-1">
-                            {formatFileSize(sow.fileSize)}
-                            {sow.uploadedBy && ` · ${sow.uploadedBy}`}
+                            {sow.fileSize ? formatFileSize(sow.fileSize) : ""}
+                            {sow.uploadedBy && `${sow.fileSize ? " · " : ""}${sow.uploadedBy}`}
                             {" · "}
                             {new Date(sow.createdAt).toLocaleString()}
                           </p>
@@ -1847,7 +1879,7 @@ export default function LeadDetailPage() {
                           )}
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          {sow.fileType === "application/pdf" && (
+                          {sow.fileType === "application/pdf" && sow.filePath && (
                             <a
                               href={sow.filePath}
                               target="_blank"
@@ -1859,7 +1891,7 @@ export default function LeadDetailPage() {
                           )}
                           <button
                             onClick={() => handleShareSow(sow.id)}
-                            disabled={sowSharing === sow.id}
+                            disabled={sowSharing === sow.id || sow.isDraft}
                             className="px-3 py-1.5 text-xs font-medium bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 transition"
                           >
                             {sowSharing === sow.id ? "Sharing..." : sow.sharedAt ? "Re-share" : "Share with Customer"}

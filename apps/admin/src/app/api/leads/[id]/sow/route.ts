@@ -13,13 +13,20 @@ const ALLOWED_TYPES = [
 ];
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
+  const { searchParams } = new URL(req.url);
+  const includeDrafts = searchParams.get("includeDrafts") === "true";
+
+  const where: Record<string, unknown> = { leadId: id };
+  if (!includeDrafts) {
+    where.isDraft = false;
+  }
 
   const sows = await prisma.scopeOfWork.findMany({
-    where: { leadId: id },
+    where,
     orderBy: { version: "desc" },
   });
 
@@ -37,6 +44,62 @@ export async function POST(
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
 
+  const session = await getAdminSession();
+  const contentType = req.headers.get("content-type") || "";
+
+  // JSON body — AI-generated content save
+  if (contentType.includes("application/json")) {
+    const body = await req.json();
+    const { content, comments, isDraft, sowId } = body;
+
+    if (!content?.trim()) {
+      return NextResponse.json(
+        { error: "Content is required" },
+        { status: 400 }
+      );
+    }
+
+    // If sowId is provided, update existing SOW
+    if (sowId) {
+      const existing = await prisma.scopeOfWork.findFirst({
+        where: { id: sowId, leadId: id },
+      });
+      if (!existing) {
+        return NextResponse.json({ error: "SOW not found" }, { status: 404 });
+      }
+      const updated = await prisma.scopeOfWork.update({
+        where: { id: sowId },
+        data: {
+          content: content.trim(),
+          comments: comments?.trim() || existing.comments,
+          isDraft: isDraft ?? existing.isDraft,
+        },
+      });
+      return NextResponse.json(updated);
+    }
+
+    // Create new version
+    const latestSow = await prisma.scopeOfWork.findFirst({
+      where: { leadId: id },
+      orderBy: { version: "desc" },
+    });
+    const nextVersion = (latestSow?.version || 0) + 1;
+
+    const sow = await prisma.scopeOfWork.create({
+      data: {
+        leadId: id,
+        version: nextVersion,
+        content: content.trim(),
+        isDraft: isDraft ?? false,
+        comments: comments?.trim() || null,
+        uploadedBy: session?.name || "Unknown",
+      },
+    });
+
+    return NextResponse.json(sow, { status: 201 });
+  }
+
+  // FormData — file upload (existing logic)
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
   const comments = formData.get("comments") as string | null;
@@ -58,8 +121,6 @@ export async function POST(
       { status: 400 }
     );
   }
-
-  const session = await getAdminSession();
 
   // Determine next version number
   const latestSow = await prisma.scopeOfWork.findFirst({

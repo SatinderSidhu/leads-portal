@@ -115,6 +115,7 @@ jobs:
           CUSTOMER_PORTAL_URL=https://${{ secrets.DOMAIN_CUSTOMER }}
           COMPANY_NAME=KITLabs Inc
           API_TOKEN=${{ secrets.API_TOKEN }}
+          ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
           DOMAIN_ADMIN=${{ secrets.DOMAIN_ADMIN }}
           DOMAIN_CUSTOMER=${{ secrets.DOMAIN_CUSTOMER }}
           EOF

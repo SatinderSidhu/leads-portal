@@ -265,19 +265,21 @@ model Content {
 }
 
 model ScopeOfWork {
-  id          String   @id @default(uuid())
-  leadId      String   @map("lead_id")
-  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  version     Int      @default(1)
-  fileName    String   @map("file_name")
-  filePath    String   @map("file_path")
-  fileSize    Int      @map("file_size")
-  fileType    String   @map("file_type")
-  comments    String?  @db.Text
-  uploadedBy  String?  @map("uploaded_by")
+  id          String    @id @default(uuid())
+  leadId      String    @map("lead_id")
+  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  version     Int       @default(1)
+  fileName    String?   @map("file_name")
+  filePath    String?   @map("file_path")
+  fileSize    Int?      @map("file_size")
+  fileType    String?   @map("file_type")
+  content     String?   @db.Text
+  isDraft     Boolean   @default(false) @map("is_draft")
+  comments    String?   @db.Text
+  uploadedBy  String?   @map("uploaded_by")
   sharedAt    DateTime? @map("shared_at")
-  sharedBy    String?  @map("shared_by")
-  createdAt   DateTime @default(now()) @map("created_at")
+  sharedBy    String?   @map("shared_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
 
   @@map("scope_of_works")
 }
