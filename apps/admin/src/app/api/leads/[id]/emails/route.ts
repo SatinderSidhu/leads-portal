@@ -84,7 +84,7 @@ export async function POST(
 
   const lead = await prisma.lead.findUnique({
     where: { id },
-    select: { customerEmail: true, customerName: true },
+    select: { customerEmail: true, customerName: true, projectName: true },
   });
 
   if (!lead) {
@@ -132,8 +132,18 @@ export async function POST(
     include: { attachments: true },
   });
 
+  // Replace template tags with actual lead values
+  const mergeTemplateTags = (text: string) =>
+    text
+      .replace(/\{\{customerName\}\}/g, lead.customerName)
+      .replace(/\{\{customer_name\}\}/g, lead.customerName)
+      .replace(/\{\{projectName\}\}/g, lead.projectName || "")
+      .replace(/\{\{project_name\}\}/g, lead.projectName || "")
+      .replace(/\{\{customerEmail\}\}/g, lead.customerEmail)
+      .replace(/\{\{customer_email\}\}/g, lead.customerEmail);
+
   // Append signature if requested
-  let finalBody = emailBody.trim();
+  let finalBody = mergeTemplateTags(emailBody.trim());
   if (includeSignature && session?.emailSignature) {
     finalBody += `<hr style="border:none;border-top:1px solid #eee;margin:20px 0" />${session.emailSignature}`;
   }
@@ -153,7 +163,7 @@ export async function POST(
       to: lead.customerEmail,
       cc: cc?.trim() || undefined,
       bcc: bcc?.trim() || undefined,
-      subject: subject.trim(),
+      subject: mergeTemplateTags(subject.trim()),
       html: bodyWithPixel,
       attachments: savedAttachments.map((a) => ({
         filename: a.fileName,

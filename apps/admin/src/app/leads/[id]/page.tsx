@@ -520,13 +520,24 @@ export default function LeadDetailPage() {
     }
   }
 
+  function mergeTags(text: string): string {
+    if (!lead) return text;
+    return text
+      .replace(/\{\{customerName\}\}/g, lead.customerName)
+      .replace(/\{\{customer_name\}\}/g, lead.customerName)
+      .replace(/\{\{projectName\}\}/g, lead.projectName)
+      .replace(/\{\{project_name\}\}/g, lead.projectName)
+      .replace(/\{\{customerEmail\}\}/g, lead.customerEmail)
+      .replace(/\{\{customer_email\}\}/g, lead.customerEmail);
+  }
+
   function handleTemplateSelect(templateId: string) {
     setComposeTemplateId(templateId);
     if (!templateId) return;
     const template = templates.find((t) => t.id === templateId);
     if (template) {
-      setComposeSubject(template.subject);
-      setComposeBody(template.body);
+      setComposeSubject(mergeTags(template.subject));
+      setComposeBody(mergeTags(template.body));
     }
   }
 
@@ -534,10 +545,10 @@ export default function LeadDetailPage() {
     const template = templates.find((t) => t.id === rec.templateId);
     if (template) {
       setComposeTemplateId(template.id);
-      setComposeSubject(template.subject);
-      setComposeBody(template.body);
+      setComposeSubject(mergeTags(template.subject));
+      setComposeBody(mergeTags(template.body));
     } else {
-      setComposeSubject(rec.templateSubject);
+      setComposeSubject(mergeTags(rec.templateSubject));
       setComposeBody("");
     }
     setComposeOpen(true);
@@ -1147,6 +1158,9 @@ export default function LeadDetailPage() {
                           </option>
                         ))}
                       </select>
+                      <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                        Available tags: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerName}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{projectName}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerEmail}}"}</code>
+                      </p>
                     </div>
                   )}
 
