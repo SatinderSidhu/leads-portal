@@ -267,6 +267,9 @@ docker compose exec db pg_dump -U postgres leads_portal > backup.sql  # DB backu
 - Relative image paths (`/uploads/...`) converted to absolute URLs before sending (for Gmail compatibility)
 - Email open tracking via 1x1 pixel at `/api/track/[sentEmailId]`
 - Preview modal renders email HTML in an iframe
+- From address uses logged-in admin's name as display name (e.g. `"Satinder Sidhu" <leads@kitlabs.us>`)
+- Reply-To uses lead-specific `reply+{leadId}@reply.kitlabs.us` for SES inbound routing, wrapped with admin's display name
+- Inbound email replies processed via SES → SNS → `/api/webhooks/ses-inbound` webhook, stored as ReceivedEmail
 
 ## Important Patterns
 - All admin API routes use `getAdminSession()` for auth (returns null if not logged in)
