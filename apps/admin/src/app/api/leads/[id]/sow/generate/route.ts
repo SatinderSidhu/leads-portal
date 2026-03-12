@@ -66,12 +66,22 @@ export async function POST(
 
   const client = new Anthropic({ apiKey });
 
-  const stream = await client.messages.stream({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 8192,
-    system,
-    messages: [{ role: "user", content: user }],
-  });
+  let stream;
+  try {
+    stream = await client.messages.stream({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 8192,
+      system,
+      messages: [{ role: "user", content: user }],
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
+    console.error("[SOW Generate] API error:", message);
+    return NextResponse.json(
+      { error: `AI generation failed: ${message}` },
+      { status: 502 }
+    );
+  }
 
   const encoder = new TextEncoder();
   const readable = new ReadableStream({
@@ -90,9 +100,10 @@ export async function POST(
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
       } catch (err) {
-        console.error("[SOW Generate] Stream error:", err);
+        const message = err instanceof Error ? err.message : "Stream error";
+        console.error("[SOW Generate] Stream error:", message);
         controller.enqueue(
-          encoder.encode(`data: ${JSON.stringify("[ERROR]")}\n\n`)
+          encoder.encode(`data: ${JSON.stringify(`[ERROR] ${message}`)}\n\n`)
         );
         controller.close();
       }

@@ -203,11 +203,11 @@ export default function SowBuilderPage() {
 
           try {
             const text = JSON.parse(payload);
-            if (typeof text === "string" && text !== "[ERROR]") {
+            if (typeof text === "string" && !text.startsWith("[ERROR]")) {
               accumulated += text;
               setStreamText(accumulated);
-            } else if (text === "[ERROR]") {
-              alert("An error occurred during generation");
+            } else if (typeof text === "string" && text.startsWith("[ERROR]")) {
+              alert(text);
             }
           } catch {
             // skip malformed
