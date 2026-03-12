@@ -2,6 +2,7 @@ import { prisma } from "@leads-portal/database";
 import NdaSection from "../../components/NdaSection";
 import SowSection from "../../components/SowSection";
 import AppFlowSection from "../../components/AppFlowSection";
+import ProjectDescriptionEnhancer from "../../components/ProjectDescriptionEnhancer";
 import { getCustomerSession } from "../../lib/session";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -203,6 +204,12 @@ export default async function ProjectPage({
               <div className="border-t border-gray-100 dark:border-gray-700 pt-6">
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Project Description</p>
                 <p className="text-gray-700 dark:text-gray-300 text-lg leading-relaxed whitespace-pre-wrap">{lead.projectDescription}</p>
+                {isLoggedIn && (
+                  <ProjectDescriptionEnhancer
+                    leadId={lead.id}
+                    currentDescription={lead.projectDescription}
+                  />
+                )}
               </div>
 
               {/* Contact Info */}

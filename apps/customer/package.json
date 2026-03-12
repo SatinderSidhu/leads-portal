@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
     "@leads-portal/database": "*",
     "@xyflow/react": "^12.10.1",
     "bcryptjs": "^3.0.3",
