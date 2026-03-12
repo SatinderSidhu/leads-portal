@@ -59,7 +59,7 @@ function RegisterForm() {
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-gray-900"
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d] outline-none transition text-gray-900"
             placeholder="John Doe"
           />
         </div>
@@ -74,7 +74,7 @@ function RegisterForm() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-gray-900"
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d] outline-none transition text-gray-900"
             placeholder="your@email.com"
           />
           <p className="text-xs text-gray-400 mt-1">
@@ -92,7 +92,7 @@ function RegisterForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-gray-900"
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d] outline-none transition text-gray-900"
             placeholder="At least 6 characters"
           />
         </div>
@@ -104,7 +104,7 @@ function RegisterForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-indigo-600 text-white py-2.5 rounded-lg font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+          className="w-full bg-[#f9556d] text-white py-2.5 rounded-lg font-medium hover:bg-[#e8445c] disabled:opacity-50 disabled:cursor-not-allowed transition"
         >
           {loading ? "Creating account..." : "Create Account"}
         </button>
@@ -113,7 +113,7 @@ function RegisterForm() {
       <div className="mt-6 text-center">
         <p className="text-sm text-gray-500">
           Already have an account?{" "}
-          <a href="/login" className="text-indigo-600 font-medium hover:underline">
+          <a href="/login" className="text-[#01358d] font-medium hover:underline">
             Sign in
           </a>
         </p>
@@ -124,10 +124,11 @@ function RegisterForm() {
 
 export default function RegisterPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
+    <div className="min-h-screen bg-gradient-to-br from-[#2870a8] via-[#01358d] to-[#101b63]">
       <div className="min-h-screen flex items-center justify-center px-4 py-16">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
+            <img src="/kitlabs-logo.jpg" alt="KITLabs Inc" className="h-16 object-contain mx-auto mb-4" />
             <h1 className="text-4xl font-bold text-white mb-3">Customer Portal</h1>
             <p className="text-white/80 text-lg">Create your account</p>
           </div>

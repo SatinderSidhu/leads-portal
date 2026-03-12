@@ -101,7 +101,10 @@ export default function LoginPage() {
       {/* Login Section */}
       <div className="flex items-center justify-center pt-16 pb-12">
         <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white text-center mb-2">
+          <div className="flex justify-center mb-4">
+            <img src="/kitlabs-logo.jpg" alt="KITLabs Inc" className="h-20 object-contain" />
+          </div>
+          <h1 className="text-2xl font-bold text-[#01358d] dark:text-white text-center mb-2">
             Leads Portal
           </h1>
           <p className="text-gray-500 dark:text-gray-400 text-center mb-8">Admin Login</p>
@@ -120,7 +123,7 @@ export default function LoginPage() {
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 required
-                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d] outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
                 placeholder="Enter username"
               />
             </div>
@@ -138,7 +141,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d] outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
                 placeholder="Enter password"
               />
             </div>
@@ -150,7 +153,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              className="w-full bg-[#01358d] text-white py-2.5 rounded-lg font-medium hover:bg-[#012a70] disabled:opacity-50 disabled:cursor-not-allowed transition"
             >
               {loading ? "Signing in..." : "Sign In"}
             </button>
@@ -175,7 +178,7 @@ export default function LoginPage() {
               key={i}
               className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition"
             >
-              <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-lg flex items-center justify-center mb-4">
+              <div className="w-10 h-10 bg-[#01358d]/10 dark:bg-[#01358d]/30 text-[#01358d] dark:text-blue-300 rounded-lg flex items-center justify-center mb-4">
                 {feature.icon}
               </div>
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">

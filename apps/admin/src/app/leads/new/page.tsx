@@ -83,7 +83,7 @@ export default function NewLeadPage() {
                 value={form.projectName}
                 onChange={(e) => updateField("projectName", e.target.value)}
                 required
-                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d] outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
                 placeholder="e.g. Mobile Banking App"
               />
             </div>
@@ -101,7 +101,7 @@ export default function NewLeadPage() {
                 value={form.customerName}
                 onChange={(e) => updateField("customerName", e.target.value)}
                 required
-                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d] outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
                 placeholder="e.g. John Smith"
               />
             </div>
@@ -119,7 +119,7 @@ export default function NewLeadPage() {
                 value={form.customerEmail}
                 onChange={(e) => updateField("customerEmail", e.target.value)}
                 required
-                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d] outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
                 placeholder="e.g. john@example.com"
               />
             </div>
@@ -139,7 +139,7 @@ export default function NewLeadPage() {
                 }
                 required
                 rows={4}
-                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition resize-none text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d] outline-none transition resize-none text-gray-900 dark:text-white bg-white dark:bg-gray-700"
                 placeholder="Describe the project requirements..."
               />
             </div>
@@ -156,7 +156,7 @@ export default function NewLeadPage() {
                 type="tel"
                 value={form.phone}
                 onChange={(e) => updateField("phone", e.target.value)}
-                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d] outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
                 placeholder="e.g. +1 (416) 555-0123"
               />
             </div>
@@ -174,7 +174,7 @@ export default function NewLeadPage() {
                   type="text"
                   value={form.city}
                   onChange={(e) => updateField("city", e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d] outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
                   placeholder="e.g. Toronto"
                 />
               </div>
@@ -190,7 +190,7 @@ export default function NewLeadPage() {
                   type="text"
                   value={form.zip}
                   onChange={(e) => updateField("zip", e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d] outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
                   placeholder="e.g. M5V 2T6"
                 />
               </div>
@@ -206,7 +206,7 @@ export default function NewLeadPage() {
                   type="date"
                   value={form.dateCreated}
                   onChange={(e) => updateField("dateCreated", e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d] outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
                 />
               </div>
             </div>
@@ -222,7 +222,7 @@ export default function NewLeadPage() {
               <button
                 onClick={() => handleSubmit(true)}
                 disabled={!isValid || loading}
-                className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                className="flex-1 bg-[#01358d] text-white py-2.5 rounded-lg font-medium hover:bg-[#012a70] disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
                 {loading ? "Saving..." : "Save and Inform Client"}
               </button>

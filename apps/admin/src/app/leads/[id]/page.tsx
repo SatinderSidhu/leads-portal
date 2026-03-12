@@ -844,7 +844,7 @@ export default function LeadDetailPage() {
                     <button
                       onClick={handleSaveEdit}
                       disabled={!editValid || editSaving}
-                      className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition"
+                      className="px-3 py-1.5 bg-[#01358d] text-white rounded-lg text-sm font-medium hover:bg-[#012a70] disabled:opacity-50 transition"
                     >
                       {editSaving ? "Saving..." : "Save Changes"}
                     </button>
@@ -1755,7 +1755,7 @@ export default function LeadDetailPage() {
                 <button
                   onClick={handleAddNote}
                   disabled={!noteContent.trim() || noteAdding}
-                  className="self-end bg-blue-600 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="self-end bg-[#01358d] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#012a70] disabled:opacity-50 disabled:cursor-not-allowed transition"
                 >
                   {noteAdding ? "Adding..." : "Add Note"}
                 </button>
@@ -1791,7 +1791,7 @@ export default function LeadDetailPage() {
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                   Attached Files
                 </h2>
-                <label className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition cursor-pointer">
+                <label className="px-4 py-2 bg-[#01358d] text-white rounded-lg text-sm font-medium hover:bg-[#012a70] transition cursor-pointer">
                   {fileUploading ? "Uploading..." : "Upload File"}
                   <input
                     type="file"
@@ -1868,7 +1868,7 @@ export default function LeadDetailPage() {
                   rows={2}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white outline-none mb-2"
                 />
-                <label className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition cursor-pointer">
+                <label className="inline-flex items-center px-4 py-2 bg-[#01358d] text-white rounded-lg text-sm font-medium hover:bg-[#012a70] transition cursor-pointer">
                   {sowUploading ? "Uploading..." : sows.length === 0 ? "Upload SOW" : "Upload New Version"}
                   <input
                     type="file"
@@ -2096,7 +2096,7 @@ export default function LeadDetailPage() {
               <button
                 onClick={handleStatusUpdate}
                 disabled={newStatus === lead.status || statusUpdating}
-                className="w-full bg-blue-600 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                className="w-full bg-[#01358d] text-white py-2.5 rounded-lg text-sm font-medium hover:bg-[#012a70] disabled:opacity-50 disabled:cursor-not-allowed transition"
               >
                 {statusUpdating ? "Updating..." : "Update Status"}
               </button>

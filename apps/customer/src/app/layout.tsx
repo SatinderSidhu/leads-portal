@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Customer Portal",
-  description: "View your project details",
+  title: "KITLabs - Customer Portal",
+  description: "KITLabs Inc - View your project details",
 };
 
 export default function RootLayout({

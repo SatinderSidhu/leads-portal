@@ -207,7 +207,7 @@ export default function NdaPreviewPage() {
                   <button
                     onClick={handleSave}
                     disabled={saving || content === nda.content}
-                    className="px-3 py-1.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition"
+                    className="px-3 py-1.5 bg-[#01358d] text-white rounded-lg text-sm font-medium hover:bg-[#012a70] disabled:opacity-50 transition"
                   >
                     {saving ? "Saving..." : "Save Changes"}
                   </button>

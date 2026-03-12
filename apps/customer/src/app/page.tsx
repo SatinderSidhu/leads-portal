@@ -5,6 +5,7 @@ import { getCustomerSession } from "../lib/session";
 const STATUS_LABELS: Record<string, string> = {
   NEW: "New",
   SOW_READY: "SOW Ready",
+  APP_FLOW_READY: "App Flow Ready",
   DESIGN_READY: "Design Ready",
   DESIGN_APPROVED: "Design Approved",
   BUILD_IN_PROGRESS: "Build In Progress",
@@ -16,6 +17,7 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
   NEW: "bg-blue-100 text-blue-800",
   SOW_READY: "bg-cyan-100 text-cyan-800",
+  APP_FLOW_READY: "bg-teal-100 text-teal-800",
   DESIGN_READY: "bg-yellow-100 text-yellow-800",
   DESIGN_APPROVED: "bg-green-100 text-green-800",
   BUILD_IN_PROGRESS: "bg-orange-100 text-orange-800",
@@ -44,9 +46,10 @@ export default async function HomePage({
 
   if (!session || session.leadIds.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
+      <div className="min-h-screen bg-gradient-to-br from-[#2870a8] via-[#01358d] to-[#101b63]">
         <div className="min-h-screen flex items-center justify-center px-4 py-16">
           <div className="w-full max-w-md text-center">
+            <img src="/kitlabs-logo.jpg" alt="KITLabs Inc" className="h-16 object-contain mx-auto mb-4" />
             <h1 className="text-4xl font-bold text-white mb-3">Customer Portal</h1>
             <p className="text-white/80 text-lg mb-8">
               View your project details, scope of work, and more.
@@ -63,7 +66,7 @@ export default async function HomePage({
                   </p>
                   <a
                     href="/login"
-                    className="block w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg font-medium transition text-center"
+                    className="block w-full bg-[#f9556d] hover:bg-[#e8445c] text-white py-3 rounded-lg font-medium transition text-center"
                   >
                     Sign In
                   </a>
@@ -96,10 +99,13 @@ export default async function HomePage({
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500">
+    <div className="min-h-screen bg-gradient-to-br from-[#2870a8] via-[#01358d] to-[#101b63]">
       <nav className="bg-white/10 backdrop-blur-sm border-b border-white/20">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-lg font-bold text-white">Customer Portal</h1>
+          <div className="flex items-center gap-3">
+            <img src="/kitlabs-logo.jpg" alt="KITLabs" className="h-8 object-contain" />
+            <h1 className="text-lg font-bold text-white">Customer Portal</h1>
+          </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-white/80">{session.name}</span>
             <a href="/api/auth?logout=1" className="text-sm text-white/70 hover:text-white transition">

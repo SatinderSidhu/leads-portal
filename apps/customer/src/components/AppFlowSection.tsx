@@ -164,7 +164,7 @@ export default function AppFlowSection({ flows, leadId }: AppFlowSectionProps) {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <p className="text-sm font-medium text-indigo-600 uppercase tracking-wider mb-1">
+          <p className="text-sm font-medium text-[#01358d] uppercase tracking-wider mb-1">
             App Flow
           </p>
           <h3 className="text-2xl font-bold text-gray-900">
@@ -237,7 +237,7 @@ export default function AppFlowSection({ flows, leadId }: AppFlowSectionProps) {
                 key={comment.id}
                 className={`rounded-lg p-4 border ${
                   comment.authorType === "customer"
-                    ? "bg-indigo-50 border-indigo-100"
+                    ? "bg-[#01358d]/5 border-[#01358d]/10"
                     : "bg-gray-50 border-gray-100"
                 }`}
               >
@@ -247,7 +247,7 @@ export default function AppFlowSection({ flows, leadId }: AppFlowSectionProps) {
                   </span>
                   <span className={`text-xs px-1.5 py-0.5 rounded ${
                     comment.authorType === "customer"
-                      ? "bg-indigo-100 text-indigo-600"
+                      ? "bg-[#01358d]/10 text-[#01358d]"
                       : "bg-gray-200 text-gray-600"
                   }`}>
                     {comment.authorType === "customer" ? "You" : "Team"}
@@ -271,7 +271,7 @@ export default function AppFlowSection({ flows, leadId }: AppFlowSectionProps) {
             onChange={(e) => setCommentText(e.target.value)}
             placeholder="Leave a comment or feedback..."
             rows={2}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 outline-none resize-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 outline-none resize-none focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d]"
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                 handleAddComment();
@@ -281,7 +281,7 @@ export default function AppFlowSection({ flows, leadId }: AppFlowSectionProps) {
           <button
             onClick={handleAddComment}
             disabled={!commentText.trim() || submitting}
-            className="px-4 py-2 text-sm font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 transition self-end"
+            className="px-4 py-2 text-sm font-medium bg-[#01358d] text-white rounded-lg hover:bg-[#012a70] disabled:opacity-50 transition self-end"
           >
             {submitting ? "Sending..." : "Comment"}
           </button>

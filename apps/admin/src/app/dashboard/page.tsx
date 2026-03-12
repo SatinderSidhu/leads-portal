@@ -121,12 +121,15 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Leads Portal</h1>
+          <div className="flex items-center gap-3">
+            <img src="/kitlabs-logo.jpg" alt="KITLabs" className="h-9 object-contain" />
+            <h1 className="text-xl font-bold text-[#01358d] dark:text-white">Leads Portal</h1>
+          </div>
           <div className="flex items-center gap-3 flex-wrap">
             <ThemeToggle />
             <button
               onClick={() => router.push("/")}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition"
+              className="bg-[#01358d] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#012a70] transition"
             >
               Activity Feed
             </button>
@@ -162,7 +165,7 @@ export default function DashboardPage() {
             </button>
             <button
               onClick={() => router.push("/leads/new")}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+              className="bg-[#f9556d] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#e8445c] transition"
             >
               + New Lead
             </button>
@@ -257,7 +260,7 @@ export default function DashboardPage() {
             {!(debouncedSearch || statusFilter || stageFilter || sourceFilter) && (
               <button
                 onClick={() => router.push("/leads/new")}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition"
+                className="bg-[#f9556d] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#e8445c] transition"
               >
                 Create your first lead
               </button>
@@ -370,7 +373,7 @@ export default function DashboardPage() {
                           onClick={() => fetchLeads(item as number)}
                           className={`px-3 py-1.5 text-sm rounded-lg transition ${
                             pagination.page === item
-                              ? "bg-blue-600 text-white"
+                              ? "bg-[#01358d] text-white"
                               : "border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                           }`}
                         >

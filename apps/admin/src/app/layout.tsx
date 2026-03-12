@@ -15,8 +15,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Leads Portal - Admin",
-  description: "Admin portal for managing leads",
+  title: "KITLabs - Leads Portal",
+  description: "KITLabs Inc - Admin portal for managing leads",
 };
 
 export default function RootLayout({
