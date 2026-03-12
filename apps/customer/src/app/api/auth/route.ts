@@ -68,9 +68,10 @@ export async function DELETE() {
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   if (searchParams.get("logout")) {
+    const baseUrl = process.env.CUSTOMER_PORTAL_URL || "http://localhost:3001";
     const cookieStore = await cookies();
     cookieStore.delete("customer-session");
-    return NextResponse.redirect(new URL("/", req.url));
+    return NextResponse.redirect(new URL("/", baseUrl));
   }
   return NextResponse.json({ error: "Not found" }, { status: 404 });
 }

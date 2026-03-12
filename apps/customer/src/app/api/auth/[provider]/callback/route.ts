@@ -13,6 +13,7 @@ export async function GET(
   { params }: { params: Promise<{ provider: string }> }
 ) {
   const { provider } = await params;
+  const baseUrl = process.env.CUSTOMER_PORTAL_URL || "http://localhost:3001";
 
   if (!isValidProvider(provider)) {
     return NextResponse.json({ error: "Invalid provider" }, { status: 400 });
@@ -25,13 +26,13 @@ export async function GET(
 
   if (error) {
     return NextResponse.redirect(
-      new URL("/login?error=oauth_denied", req.url)
+      new URL("/login?error=oauth_denied", baseUrl)
     );
   }
 
   if (!code || !state) {
     return NextResponse.redirect(
-      new URL("/login?error=oauth_missing_params", req.url)
+      new URL("/login?error=oauth_missing_params", baseUrl)
     );
   }
 
@@ -47,13 +48,13 @@ export async function GET(
     );
   } catch {
     return NextResponse.redirect(
-      new URL("/login?error=oauth_invalid_state", req.url)
+      new URL("/login?error=oauth_invalid_state", baseUrl)
     );
   }
 
   if (!storedCsrf || stateData.csrf !== storedCsrf) {
     return NextResponse.redirect(
-      new URL("/login?error=oauth_csrf_mismatch", req.url)
+      new URL("/login?error=oauth_csrf_mismatch", baseUrl)
     );
   }
 
@@ -76,7 +77,7 @@ export async function GET(
 
   if (!tokenRes.ok) {
     return NextResponse.redirect(
-      new URL("/login?error=oauth_token_failed", req.url)
+      new URL("/login?error=oauth_token_failed", baseUrl)
     );
   }
 
@@ -90,7 +91,7 @@ export async function GET(
 
   if (!profileRes.ok) {
     return NextResponse.redirect(
-      new URL("/login?error=oauth_profile_failed", req.url)
+      new URL("/login?error=oauth_profile_failed", baseUrl)
     );
   }
 
@@ -108,7 +109,7 @@ export async function GET(
 
   if (!providerId || !profileEmail) {
     return NextResponse.redirect(
-      new URL("/login?error=oauth_no_email", req.url)
+      new URL("/login?error=oauth_no_email", baseUrl)
     );
   }
 
@@ -195,5 +196,5 @@ export async function GET(
     ? stateData.returnTo
     : "/";
 
-  return NextResponse.redirect(new URL(returnTo, req.url));
+  return NextResponse.redirect(new URL(returnTo, baseUrl));
 }
