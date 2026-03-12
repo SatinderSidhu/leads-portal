@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@leads-portal/database": "*",
+    "@xyflow/react": "^12.10.1",
     "bcryptjs": "^3.0.3",
     "jspdf": "^4.2.0",
     "next": "16.1.6",

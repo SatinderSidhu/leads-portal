@@ -1,11 +1,13 @@
 import { prisma } from "@leads-portal/database";
 import NdaSection from "../../components/NdaSection";
 import SowSection from "../../components/SowSection";
+import AppFlowSection from "../../components/AppFlowSection";
 import { getCustomerSession } from "../../lib/session";
 
 const STATUS_LABELS: Record<string, string> = {
   NEW: "New",
   SOW_READY: "SOW Ready",
+  APP_FLOW_READY: "App Flow Ready",
   DESIGN_READY: "Design Ready",
   DESIGN_APPROVED: "Design Approved",
   BUILD_IN_PROGRESS: "Build In Progress",
@@ -17,6 +19,7 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
   NEW: "bg-blue-500",
   SOW_READY: "bg-cyan-500",
+  APP_FLOW_READY: "bg-teal-500",
   DESIGN_READY: "bg-yellow-500",
   DESIGN_APPROVED: "bg-green-500",
   BUILD_IN_PROGRESS: "bg-orange-500",
@@ -28,6 +31,7 @@ const STATUS_COLORS: Record<string, string> = {
 const TABS = [
   { key: "overview", label: "Project Overview" },
   { key: "sow", label: "Scope of Work" },
+  { key: "app-flow", label: "App Flow" },
   { key: "nda", label: "NDA" },
 ];
 
@@ -63,6 +67,13 @@ export default async function ProjectPage({
         where: { sharedAt: { not: null } },
         orderBy: { version: "desc" },
       },
+      appFlows: {
+        where: { sharedAt: { not: null } },
+        include: {
+          comments: { orderBy: { createdAt: "asc" } },
+        },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 
@@ -81,6 +92,7 @@ export default async function ProjectPage({
 
   const activeTab = tab && TABS.some((t) => t.key === tab) ? tab : "overview";
   const hasSow = lead.scopeOfWorks.length > 0;
+  const hasAppFlow = lead.appFlows.length > 0;
   const hasNda = !!lead.nda;
   const adminBaseUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
 
@@ -125,7 +137,7 @@ export default async function ProjectPage({
       <div className="max-w-4xl mx-auto px-6">
         <div className="flex gap-1 bg-white/10 rounded-t-xl p-1">
           {TABS.map((t) => {
-            const isDisabled = (t.key === "sow" && !hasSow) || (t.key === "nda" && !hasNda);
+            const isDisabled = (t.key === "sow" && !hasSow) || (t.key === "app-flow" && !hasAppFlow) || (t.key === "nda" && !hasNda);
             if (isDisabled) return null;
             return (
               <a
@@ -188,9 +200,9 @@ export default async function ProjectPage({
                 </div>
               </div>
 
-              {/* Quick Links to SOW/NDA */}
-              {(hasSow || hasNda) && (
-                <div className="border-t border-gray-100 pt-6 mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Quick Links to SOW/App Flow/NDA */}
+              {(hasSow || hasAppFlow || hasNda) && (
+                <div className="border-t border-gray-100 pt-6 mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                   {hasSow && (
                     <a
                       href={`/project?id=${lead.id}&tab=sow`}
@@ -198,6 +210,15 @@ export default async function ProjectPage({
                     >
                       <p className="text-sm font-semibold text-cyan-800">Scope of Work</p>
                       <p className="text-xs text-cyan-600">{lead.scopeOfWorks.length} version(s) available</p>
+                    </a>
+                  )}
+                  {hasAppFlow && (
+                    <a
+                      href={`/project?id=${lead.id}&tab=app-flow`}
+                      className="bg-teal-50 border border-teal-200 rounded-xl p-4 hover:shadow-md transition block"
+                    >
+                      <p className="text-sm font-semibold text-teal-800">App Flow</p>
+                      <p className="text-xs text-teal-600">{lead.appFlows.length} flow(s) shared</p>
                     </a>
                   )}
                   {hasNda && (
@@ -282,6 +303,32 @@ export default async function ProjectPage({
                   createdAt: s.createdAt.toISOString(),
                 }))}
                 initialVersion={v ? parseInt(v) : undefined}
+              />
+            </div>
+          )}
+
+          {activeTab === "app-flow" && hasAppFlow && (
+            <div className="p-8 md:p-10">
+              <AppFlowSection
+                leadId={lead.id}
+                flows={lead.appFlows.map((f) => ({
+                  id: f.id,
+                  name: f.name,
+                  description: f.description,
+                  flowType: f.flowType,
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  nodes: f.nodes as any[],
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  edges: f.edges as any[],
+                  sharedAt: f.sharedAt ? f.sharedAt.toISOString() : null,
+                  comments: f.comments.map((c) => ({
+                    id: c.id,
+                    content: c.content,
+                    authorName: c.authorName,
+                    authorType: c.authorType,
+                    createdAt: c.createdAt.toISOString(),
+                  })),
+                }))}
               />
             </div>
           )}

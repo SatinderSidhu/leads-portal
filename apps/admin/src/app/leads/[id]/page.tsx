@@ -13,6 +13,7 @@ const RichTextEditor = dynamic(
 const STATUS_OPTIONS = [
   "NEW",
   "SOW_READY",
+  "APP_FLOW_READY",
   "DESIGN_READY",
   "DESIGN_APPROVED",
   "BUILD_IN_PROGRESS",
@@ -24,6 +25,7 @@ const STATUS_OPTIONS = [
 const STATUS_LABELS: Record<string, string> = {
   NEW: "New",
   SOW_READY: "SOW Ready",
+  APP_FLOW_READY: "App Flow Ready",
   DESIGN_READY: "Design Ready",
   DESIGN_APPROVED: "Design Approved",
   BUILD_IN_PROGRESS: "Build In Progress",
@@ -35,6 +37,7 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
   NEW: "bg-blue-100 text-blue-800",
   SOW_READY: "bg-cyan-100 text-cyan-800",
+  APP_FLOW_READY: "bg-teal-100 text-teal-800",
   DESIGN_READY: "bg-yellow-100 text-yellow-800",
   DESIGN_APPROVED: "bg-green-100 text-green-800",
   BUILD_IN_PROGRESS: "bg-orange-100 text-orange-800",
@@ -203,6 +206,16 @@ interface SowItem {
   createdAt: string;
 }
 
+interface AppFlowItem {
+  id: string;
+  name: string;
+  flowType: string;
+  sharedAt: string | null;
+  sharedBy: string | null;
+  createdAt: string;
+  _count?: { comments: number };
+}
+
 export default function LeadDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -277,6 +290,10 @@ export default function LeadDetailPage() {
   const [sowComments, setSowComments] = useState("");
   const [sowSharing, setSowSharing] = useState<string | null>(null);
 
+  // App Flow state
+  const [appFlows, setAppFlows] = useState<AppFlowItem[]>([]);
+  const [appFlowSharing, setAppFlowSharing] = useState<string | null>(null);
+
   const fetchLead = useCallback(async () => {
     const res = await fetch(`/api/leads/${params.id}`);
     if (res.ok) {
@@ -332,6 +349,58 @@ export default function LeadDetailPage() {
   useEffect(() => {
     fetchSows();
   }, [fetchSows]);
+
+  // Load App Flows
+  const fetchAppFlows = useCallback(async () => {
+    if (!params.id) return;
+    const res = await fetch(`/api/leads/${params.id}/app-flows`);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) setAppFlows(data);
+    }
+  }, [params.id]);
+
+  useEffect(() => {
+    fetchAppFlows();
+  }, [fetchAppFlows]);
+
+  async function handleShareAppFlow(flowId: string) {
+    if (!lead) return;
+    setAppFlowSharing(flowId);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/app-flows/${flowId}/share`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        fetchAppFlows();
+        fetchLead();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to share app flow");
+      }
+    } catch {
+      alert("Failed to share app flow");
+    } finally {
+      setAppFlowSharing(null);
+    }
+  }
+
+  async function handleDeleteAppFlow(flowId: string) {
+    if (!lead || !confirm("Are you sure you want to delete this app flow?")) return;
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/app-flows/${flowId}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        fetchAppFlows();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to delete app flow");
+      }
+    } catch {
+      alert("Failed to delete app flow");
+    }
+  }
 
   async function handleSowUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -1895,6 +1964,93 @@ export default function LeadDetailPage() {
                             className="px-3 py-1.5 text-xs font-medium bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 transition"
                           >
                             {sowSharing === sow.id ? "Sharing..." : sow.sharedAt ? "Re-share" : "Share with Customer"}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* App Flows Section */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  App Flows
+                </h2>
+                <button
+                  onClick={() => router.push(`/leads/${lead.id}/app-flow-builder`)}
+                  className="px-4 py-2 text-sm font-medium bg-gradient-to-r from-teal-600 to-cyan-600 text-white rounded-lg hover:from-teal-700 hover:to-cyan-700 transition flex items-center gap-1.5"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+                  </svg>
+                  Create App Flow
+                </button>
+              </div>
+
+              {appFlows.length === 0 ? (
+                <p className="text-gray-400 text-sm">No app flows created yet</p>
+              ) : (
+                <div className="space-y-3">
+                  {appFlows.map((flow) => (
+                    <div
+                      key={flow.id}
+                      className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-100 dark:border-gray-600"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                              {flow.name}
+                            </span>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                              flow.flowType === "WIREFRAME"
+                                ? "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200"
+                                : "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
+                            }`}>
+                              {flow.flowType === "WIREFRAME" ? "Wireframe" : "Basic"}
+                            </span>
+                            {flow.sharedAt && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                                Shared
+                              </span>
+                            )}
+                            {flow._count && flow._count.comments > 0 && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-600 dark:text-gray-300">
+                                {flow._count.comments} comment{flow._count.comments !== 1 ? "s" : ""}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1">
+                            Created {new Date(flow.createdAt).toLocaleString()}
+                          </p>
+                          {flow.sharedAt && (
+                            <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                              Shared by {flow.sharedBy} on {new Date(flow.sharedAt).toLocaleString()}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button
+                            onClick={() => router.push(`/leads/${lead.id}/app-flow-builder?flowId=${flow.id}`)}
+                            className="px-3 py-1.5 text-xs font-medium border border-gray-300 dark:border-gray-500 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-600 transition"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleShareAppFlow(flow.id)}
+                            disabled={appFlowSharing === flow.id}
+                            className="px-3 py-1.5 text-xs font-medium bg-teal-600 text-white rounded-lg hover:bg-teal-700 disabled:opacity-50 transition"
+                          >
+                            {appFlowSharing === flow.id ? "Sharing..." : flow.sharedAt ? "Re-share" : "Share"}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteAppFlow(flow.id)}
+                            className="px-3 py-1.5 text-xs font-medium border border-red-300 dark:border-red-700 rounded-lg text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
+                          >
+                            Delete
                           </button>
                         </div>
                       </div>

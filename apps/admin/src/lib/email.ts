@@ -333,3 +333,56 @@ export async function sendSowReadyEmail(
 
   console.log(`[Email] SOW ready email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
 }
+
+export async function sendAppFlowReadyEmail(
+  lead: { customerName: string; customerEmail: string; projectName: string },
+  leadId: string,
+  flowName: string,
+  admin?: AdminInfo
+) {
+  const portalUrl = `${process.env.CUSTOMER_PORTAL_URL}?id=${leadId}&tab=app-flow`;
+
+  console.log(`[Email] Sending app flow ready email to ${lead.customerEmail}...`);
+  const start = Date.now();
+
+  const info = await transporter.sendMail({
+    from: getFromAddress(admin?.name),
+    replyTo: getReplyToAddress(leadId, admin?.name),
+    to: lead.customerEmail,
+    subject: `App Flow Ready — ${lead.projectName}`,
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+        <div style="background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">App Flow</h1>
+          <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">Ready for Your Review</p>
+        </div>
+
+        <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+          <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
+            Hi ${lead.customerName},
+          </p>
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            The app flow diagram <strong>"${flowName}"</strong> for <strong>${lead.projectName}</strong> has been prepared and is ready for your review.
+          </p>
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            This diagram shows the application's user journey and screen flow. Please review it and leave any comments or feedback.
+          </p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${portalUrl}"
+               style="display: inline-block; background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%); color: white; padding: 14px 32px;
+                      border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">
+              View App Flow
+            </a>
+          </div>
+        </div>
+
+        <p style="color: #999; font-size: 13px; text-align: center;">
+          If you have any questions, simply reply to this email.
+        </p>
+      </div>
+    `,
+  });
+
+  console.log(`[Email] App flow ready email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
+}

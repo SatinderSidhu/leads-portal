@@ -32,9 +32,15 @@ enum LeadSource {
   BARK
 }
 
+enum AppFlowType {
+  BASIC
+  WIREFRAME
+}
+
 enum LeadStatus {
   NEW
   SOW_READY
+  APP_FLOW_READY
   DESIGN_READY
   DESIGN_APPROVED
   BUILD_IN_PROGRESS
@@ -89,6 +95,7 @@ model Lead {
   receivedEmails  ReceivedEmail[]
   files           LeadFile[]
   scopeOfWorks    ScopeOfWork[]
+  appFlows        AppFlow[]
 
   @@map("leads")
 }
@@ -282,6 +289,38 @@ model ScopeOfWork {
   createdAt   DateTime  @default(now()) @map("created_at")
 
   @@map("scope_of_works")
+}
+
+model AppFlow {
+  id          String      @id @default(uuid())
+  leadId      String      @map("lead_id")
+  lead        Lead        @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  name        String
+  description String?     @db.Text
+  flowType    AppFlowType @default(BASIC) @map("flow_type")
+  nodes       Json        @default("[]")
+  edges       Json        @default("[]")
+  sharedAt    DateTime?   @map("shared_at")
+  sharedBy    String?     @map("shared_by")
+  createdBy   String?     @map("created_by")
+  updatedBy   String?     @map("updated_by")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  comments    AppFlowComment[]
+
+  @@map("app_flows")
+}
+
+model AppFlowComment {
+  id         String   @id @default(uuid())
+  appFlowId  String   @map("app_flow_id")
+  appFlow    AppFlow  @relation(fields: [appFlowId], references: [id], onDelete: Cascade)
+  content    String   @db.Text
+  authorName String   @map("author_name")
+  authorType String   @default("customer") @map("author_type")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("app_flow_comments")
 }
 
 model CustomerUser {
