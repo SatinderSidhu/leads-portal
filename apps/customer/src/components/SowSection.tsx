@@ -39,12 +39,14 @@ export default function SowSection({
   sows,
   initialVersion,
   isLoggedIn = false,
+  returnTo,
 }: {
   leadId: string;
   projectName: string;
   sows: SowItem[];
   initialVersion?: number;
   isLoggedIn?: boolean;
+  returnTo?: string;
 }) {
   const [selectedVersion, setSelectedVersion] = useState<number>(
     initialVersion || (sows.length > 0 ? sows[0].version : 0)
@@ -369,7 +371,7 @@ export default function SowSection({
             <div className="mt-8 border-t border-gray-100 dark:border-gray-700 pt-6">
               <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 dark:bg-gray-800 dark:border-gray-700 text-center">
                 <p className="text-sm text-gray-600 dark:text-gray-300">
-                  <a href="/login" className="text-[#01358d] dark:text-blue-400 font-medium hover:underline">Sign in</a> to approve and sign the scope of work.
+                  <a href={`/login${returnTo ? `?returnTo=${returnTo}` : ""}`} className="text-[#01358d] dark:text-blue-400 font-medium hover:underline">Sign in</a> to approve and sign the scope of work.
                 </p>
               </div>
             </div>
@@ -487,7 +489,7 @@ export default function SowSection({
           </>
         ) : (
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            <a href="/login" className="text-[#01358d] dark:text-blue-400 font-medium hover:underline">Sign in</a> to leave comments or approve the scope of work.
+            <a href={`/login${returnTo ? `?returnTo=${returnTo}` : ""}`} className="text-[#01358d] dark:text-blue-400 font-medium hover:underline">Sign in</a> to leave comments or approve the scope of work.
           </p>
         )}
       </div>

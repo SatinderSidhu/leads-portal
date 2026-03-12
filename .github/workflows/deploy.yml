@@ -116,6 +116,10 @@ jobs:
           COMPANY_NAME=KITLabs Inc
           API_TOKEN=${{ secrets.API_TOKEN }}
           ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+          LINKEDIN_CLIENT_ID=${{ secrets.LINKEDIN_CLIENT_ID }}
+          LINKEDIN_CLIENT_SECRET=${{ secrets.LINKEDIN_CLIENT_SECRET }}
           DOMAIN_ADMIN=${{ secrets.DOMAIN_ADMIN }}
           DOMAIN_CUSTOMER=${{ secrets.DOMAIN_CUSTOMER }}
           EOF

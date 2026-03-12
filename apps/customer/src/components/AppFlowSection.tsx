@@ -106,9 +106,10 @@ interface AppFlowSectionProps {
   flows: AppFlow[];
   leadId: string;
   isLoggedIn: boolean;
+  returnTo?: string;
 }
 
-export default function AppFlowSection({ flows, leadId, isLoggedIn }: AppFlowSectionProps) {
+export default function AppFlowSection({ flows, leadId, isLoggedIn, returnTo }: AppFlowSectionProps) {
   const [selectedFlowId, setSelectedFlowId] = useState<string>(
     flows.length > 0 ? flows[0].id : ""
   );
@@ -440,7 +441,7 @@ export default function AppFlowSection({ flows, leadId, isLoggedIn }: AppFlowSec
         ) : (
           <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center">
             <p className="text-sm text-gray-600 dark:text-gray-400">
-              <a href="/login" className="text-[#01358d] dark:text-blue-400 font-medium hover:underline">Sign in</a> to leave comments on this app flow.
+              <a href={`/login${returnTo ? `?returnTo=${returnTo}` : ""}`} className="text-[#01358d] dark:text-blue-400 font-medium hover:underline">Sign in</a> to leave comments on this app flow.
             </p>
           </div>
         )}

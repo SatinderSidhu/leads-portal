@@ -341,14 +341,35 @@ model AppFlowComment {
   @@map("app_flow_comments")
 }
 
+enum AuthProvider {
+  GOOGLE
+  LINKEDIN
+}
+
 model CustomerUser {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  name      String
-  password  String
-  leadIds   Json     @default("[]") @map("lead_ids")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id             String          @id @default(uuid())
+  email          String          @unique
+  name           String
+  password       String?
+  leadIds        Json            @default("[]") @map("lead_ids")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  socialAccounts SocialAccount[]
 
   @@map("customer_users")
+}
+
+model SocialAccount {
+  id         String       @id @default(uuid())
+  provider   AuthProvider
+  providerId String       @map("provider_id")
+  userId     String       @map("user_id")
+  user       CustomerUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email      String?
+  name       String?
+  avatarUrl  String?      @map("avatar_url")
+  createdAt  DateTime     @default(now()) @map("created_at")
+
+  @@unique([provider, providerId])
+  @@map("social_accounts")
 }

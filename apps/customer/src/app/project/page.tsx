@@ -101,6 +101,7 @@ export default async function ProjectPage({
   const hasNda = !!lead.nda;
   const adminBaseUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
   const isLoggedIn = !!session;
+  const returnTo = encodeURIComponent(`/project?id=${lead.id}&tab=${activeTab}${v ? `&v=${v}` : ""}`);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#2870a8] via-[#01358d] to-[#101b63] dark:from-[#1a1a2e] dark:via-[#16213e] dark:to-[#0f3460]">
@@ -122,8 +123,8 @@ export default async function ProjectPage({
               </>
             ) : (
               <div className="flex items-center gap-3">
-                <a href="/login" className="text-sm text-white/80 hover:text-white transition">Sign In</a>
-                <a href={`/register?leadId=${lead.id}`} className="text-sm bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg transition">Create Account</a>
+                <a href={`/login?returnTo=${returnTo}`} className="text-sm text-white/80 hover:text-white transition">Sign In</a>
+                <a href={`/register?leadId=${lead.id}&returnTo=${returnTo}`} className="text-sm bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg transition">Create Account</a>
               </div>
             )}
           </div>
@@ -320,6 +321,7 @@ export default async function ProjectPage({
                 }))}
                 initialVersion={v ? parseInt(v) : undefined}
                 isLoggedIn={isLoggedIn}
+                returnTo={returnTo}
               />
             </div>
           )}
@@ -329,6 +331,7 @@ export default async function ProjectPage({
               <AppFlowSection
                 leadId={lead.id}
                 isLoggedIn={isLoggedIn}
+                returnTo={returnTo}
                 flows={lead.appFlows.map((f) => ({
                   id: f.id,
                   name: f.name,

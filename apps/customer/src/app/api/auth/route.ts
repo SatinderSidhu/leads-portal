@@ -18,7 +18,21 @@ export async function POST(req: Request) {
     where: { email: email.trim().toLowerCase() },
   });
 
-  if (!user || !(await bcrypt.compare(password, user.password))) {
+  if (!user) {
+    return NextResponse.json(
+      { error: "Invalid email or password" },
+      { status: 401 }
+    );
+  }
+
+  if (!user.password) {
+    return NextResponse.json(
+      { error: "This account uses social login. Please sign in with Google or LinkedIn." },
+      { status: 401 }
+    );
+  }
+
+  if (!(await bcrypt.compare(password, user.password))) {
     return NextResponse.json(
       { error: "Invalid email or password" },
       { status: 401 }
