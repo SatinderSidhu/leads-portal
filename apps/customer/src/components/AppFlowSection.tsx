@@ -105,9 +105,10 @@ interface AppFlow {
 interface AppFlowSectionProps {
   flows: AppFlow[];
   leadId: string;
+  isLoggedIn: boolean;
 }
 
-export default function AppFlowSection({ flows, leadId }: AppFlowSectionProps) {
+export default function AppFlowSection({ flows, leadId, isLoggedIn }: AppFlowSectionProps) {
   const [selectedFlowId, setSelectedFlowId] = useState<string>(
     flows.length > 0 ? flows[0].id : ""
   );
@@ -411,28 +412,38 @@ export default function AppFlowSection({ flows, leadId }: AppFlowSectionProps) {
         )}
 
         {/* Add comment form */}
-        <div className="flex gap-3">
-          <textarea
-            value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-            placeholder="Leave a comment or feedback..."
-            rows={2}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 outline-none resize-none focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d]"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                handleAddComment();
-              }
-            }}
-          />
-          <button
-            onClick={handleAddComment}
-            disabled={!commentText.trim() || submitting}
-            className="px-4 py-2 text-sm font-medium bg-[#01358d] text-white rounded-lg hover:bg-[#012a70] disabled:opacity-50 transition self-end"
-          >
-            {submitting ? "Sending..." : "Comment"}
-          </button>
-        </div>
-        <p className="text-xs text-gray-400 mt-1">Press Cmd+Enter to submit</p>
+        {isLoggedIn ? (
+          <>
+            <div className="flex gap-3">
+              <textarea
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Leave a comment or feedback..."
+                rows={2}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 outline-none resize-none focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d]"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                    handleAddComment();
+                  }
+                }}
+              />
+              <button
+                onClick={handleAddComment}
+                disabled={!commentText.trim() || submitting}
+                className="px-4 py-2 text-sm font-medium bg-[#01358d] text-white rounded-lg hover:bg-[#012a70] disabled:opacity-50 transition self-end"
+              >
+                {submitting ? "Sending..." : "Comment"}
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Press Cmd+Enter to submit</p>
+          </>
+        ) : (
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+            <p className="text-sm text-gray-600">
+              <a href="/login" className="text-[#01358d] font-medium hover:underline">Sign in</a> to leave comments on this app flow.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

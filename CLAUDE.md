@@ -3,8 +3,16 @@
 ## Overview
 
 A leads management system for KITLabs Inc. Two Next.js apps in a Turborepo monorepo:
-- **Admin Portal** (`apps/admin`, port 3000) — Internal CRM for managing leads, emails, NDAs, content
-- **Customer Portal** (`apps/customer`, port 3001) — Public-facing portal where customers view project status and sign NDAs
+- **Admin Portal** (`apps/admin`, port 3000) — Internal CRM for managing leads, emails, NDAs, SOWs, app flows, content
+- **Customer Portal** (`apps/customer`, port 3001) — Public-facing portal where customers view project status, review/sign SOWs, view app flows, and sign NDAs
+
+## Branding
+
+- **Primary deep blue**: `#01358d`
+- **Accent coral/pink**: `#f9556d`
+- **Background gradient**: `from-[#2870a8] via-[#01358d] to-[#101b63]`
+- **Logo**: `kitlabs-logo.jpg` (800x420, in both `apps/admin/public/` and `apps/customer/public/`)
+- **Company**: KITLabs Inc, domain `kitlabs.us`
 
 ## Tech Stack
 
@@ -18,8 +26,10 @@ A leads management system for KITLabs Inc. Two Next.js apps in a Turborepo monor
 | Email | Nodemailer (Gmail SMTP) |
 | Auth | Session cookies + bcryptjs (admin + customer) |
 | Rich Text | TipTap (@tiptap/react, @tiptap/starter-kit) |
-| Flow Builder | @xyflow/react (drag-and-drop visual email flows) |
-| PDF | jsPDF (NDA PDF generation on customer side) |
+| Flow Builder | @xyflow/react (admin: editable flows, customer: read-only viewer) |
+| App Flow AI | Anthropic Claude API (SSE streaming JSON generation) |
+| PDF | jsPDF (NDA + SOW PDF generation on customer side) |
+| Image Export | html-to-image (PNG export for app flows on admin + customer) |
 | Deployment | Docker + Nginx + Let's Encrypt on single EC2 instance |
 | CI/CD | GitHub Actions → ECR → EC2 via SSH |
 
@@ -31,15 +41,16 @@ leads-portal/
 │   ├── admin/           # Admin portal (port 3000)
 │   │   ├── src/
 │   │   │   ├── app/     # Next.js App Router pages & API routes
-│   │   │   ├── components/  # ThemeProvider, ThemeToggle, FlowBuilder, RichTextEditor
-│   │   │   └── lib/     # session.ts, email.ts, api-auth.ts, nda-template.ts
-│   │   ├── public/      # openapi.json, uploads/
+│   │   │   ├── components/  # ThemeProvider, ThemeToggle, FlowBuilder, RichTextEditor, AppFlowBuilder, app-flow-nodes
+│   │   │   └── lib/     # session.ts, email.ts, api-auth.ts, nda-template.ts, app-flow-prompt.ts
+│   │   ├── public/      # openapi.json, uploads/, kitlabs-logo.jpg
 │   │   └── next.config.ts
 │   └── customer/        # Customer portal (port 3001)
 │       ├── src/
-│       │   ├── app/     # Pages (login, register, project) + API routes (auth, nda, sow)
-│       │   ├── components/  # NdaSection.tsx, SowSection.tsx
+│       │   ├── app/     # Pages (login, register, project) + API routes (auth, nda, sow, app-flows)
+│       │   ├── components/  # NdaSection.tsx, SowSection.tsx, AppFlowSection.tsx
 │       │   └── lib/     # session.ts, email.ts, generate-pdf.ts
+│       ├── public/      # kitlabs-logo.jpg
 │       └── next.config.ts
 ├── packages/
 │   └── database/        # Shared Prisma schema + client
@@ -70,14 +81,20 @@ leads-portal/
 | EmailTemplate | email_templates | Reusable email templates with HTML body |
 | EmailFlow | email_flows | Visual email automation flows (JSON nodes/edges) |
 | SentEmail | sent_emails | Email tracking (sent, opened, failed) |
-| ScopeOfWork | scope_of_works | SOW document uploads with versioning (per lead) |
+| EmailAttachment | email_attachments | File attachments on sent emails |
+| ReceivedEmail | received_emails | Inbound email replies via SES |
+| ScopeOfWork | scope_of_works | SOW documents with versioning, signing (signedAt, signerName, signerIp) |
+| SowComment | sow_comments | Customer/admin comments on SOW documents |
+| AppFlow | app_flows | Visual app flow diagrams (JSON nodes/edges, BASIC or WIREFRAME type) |
+| AppFlowComment | app_flow_comments | Customer/admin comments on app flows |
 | Content | content | Social media content posts |
 | CustomerUser | customer_users | Customer portal users (email, name, password, leadIds) |
 
 ### Key Enums
 - `LeadSource`: MANUAL, AGENT, BARK
-- `LeadStatus`: NEW → SOW_READY → DESIGN_READY → DESIGN_APPROVED → BUILD_IN_PROGRESS → BUILD_READY_FOR_REVIEW → BUILD_SUBMITTED → GO_LIVE
+- `LeadStatus`: NEW → SOW_READY → SOW_SIGNED → APP_FLOW_READY → DESIGN_READY → DESIGN_APPROVED → BUILD_IN_PROGRESS → BUILD_READY_FOR_REVIEW → BUILD_SUBMITTED → GO_LIVE
 - `LeadStage`: COLD, WARM, HOT, ACTIVE, CLOSED
+- `AppFlowType`: BASIC, WIREFRAME
 - `NdaStatus`: GENERATED, SENT, SIGNED
 - `SentEmailStatus`: SENT, OPENED, FAILED
 - `EmailTemplatePurpose`: WELCOME, FOLLOW_UP, REMINDER, NOTIFICATION, PROMOTIONAL, OTHER
@@ -90,8 +107,10 @@ leads-portal/
 | `/` | Activity feed — latest emails, status changes, notes across all leads |
 | `/dashboard` | Leads grid with pagination, search, and filters (status/stage/source) |
 | `/leads/new` | Create lead |
-| `/leads/[id]` | Lead detail — edit, notes, files, email compose, status |
+| `/leads/[id]` | Lead detail — edit, notes, files, email compose, status, SOW section, app flows section |
 | `/leads/[id]/nda` | NDA management |
+| `/leads/[id]/sow-builder` | AI-powered SOW builder with Claude streaming, DOCX/PDF export |
+| `/leads/[id]/app-flow-builder` | AI-powered app flow builder with ReactFlow canvas |
 | `/admin-users` | User management |
 | `/admin-users/new` | Create admin user |
 | `/admin-users/[id]` | Edit admin user |
@@ -130,7 +149,15 @@ leads-portal/
 - `GET /api/activity` — Unified activity feed (emails, status changes, notes)
 - `GET/POST /api/leads/[id]/sow` — SOW list/upload
 - `POST /api/leads/[id]/sow/[sowId]/share` — Share SOW with customer (sends email)
+- `POST /api/leads/[id]/sow/generate` — AI SOW generation (SSE streaming)
+- `POST /api/leads/[id]/sow/export-docx` — Export SOW as DOCX
+- `GET/POST /api/leads/[id]/app-flows` — List/create app flows
+- `GET/PUT/DELETE /api/leads/[id]/app-flows/[flowId]` — Single app flow CRUD
+- `POST /api/leads/[id]/app-flows/[flowId]/share` — Share app flow with customer
+- `GET/POST /api/leads/[id]/app-flows/[flowId]/comments` — App flow comments
+- `POST /api/leads/[id]/app-flows/generate` — AI app flow generation (SSE streaming)
 - `GET /api/track/[id]` — Email open tracking pixel
+- `POST /api/webhooks/ses-inbound` — SES inbound email webhook
 
 ### External API (Bearer token auth via API_TOKEN)
 - `GET /api/v1/leads` — List leads
@@ -147,13 +174,30 @@ Multi-page portal with session-based authentication (bcryptjs + cookie).
 | `/` | Landing — project list (logged in) or login/register prompt; redirects `?id=X` to `/project?id=X` for backward compat |
 | `/login` | Customer login |
 | `/register` | Customer registration (optional `?leadId=` to pre-link a project) |
-| `/project` | Project detail with tab navigation (Overview, SOW, NDA) via `?id=X&tab=Y` |
+| `/project` | Project detail with tab navigation (Overview, SOW, App Flow, NDA) via `?id=X&tab=Y` |
 
 ### Features
 - **Registration** auto-links leads by matching customer email address
-- **Tab navigation**: Overview (status, timeline, notes), Scope of Work (versioned docs, PDF preview), NDA (view/sign)
+- **Tab navigation**: Overview (status, timeline, notes), Scope of Work, App Flow, NDA
 - Old email links (`?id=leadId`) preserved via redirect from `/` to `/project`
 - SOW file paths converted to absolute URLs using `ADMIN_PORTAL_URL` env var
+
+### SOW Features (Customer Portal)
+- Version selector with "Latest" badge
+- AI-generated SOW rendered in auto-resizing iframe (`SowHtmlPreview`)
+- PDF files previewed inline; Word docs show download prompt
+- **Comments**: customers can leave comments per SOW version, with email notification to admin
+- **Approve & Sign**: digital signature modal (name, IP, timestamp), updates status to `SOW_SIGNED`, email to both admin and customer
+- **PDF Download**: AI-generated SOW content exported to PDF via jsPDF
+- **Full Screen**: overlay mode for AI-generated and PDF SOWs
+
+### App Flow Features (Customer Portal)
+- Read-only ReactFlow canvas with custom node types (BasicNode, WireframeNode)
+- Flow selector dropdown when multiple flows shared
+- **Comments**: customers can leave comments per flow, with email notification to admin
+- **Full Screen**: overlay mode with canvas controls
+- **PNG Download**: export flow diagram as PNG via html-to-image
+- **PDF Download**: export flow diagram as PDF via html-to-image + jsPDF
 
 ### Customer API Routes
 - `POST /api/auth` — Login
@@ -164,18 +208,23 @@ Multi-page portal with session-based authentication (bcryptjs + cookie).
 - `GET /api/nda?leadId=X` — Fetch NDA
 - `POST /api/nda/sign` — Sign NDA (captures name, IP)
 - `GET /api/sow?leadId=X` — Fetch shared SOWs
+- `GET/POST /api/sow/[sowId]/comments` — SOW comments (list/add)
+- `POST /api/sow/[sowId]/sign` — Approve & sign SOW
+- `GET /api/app-flows?leadId=X` — Fetch shared app flows with comments
+- `POST /api/app-flows/[flowId]/comments` — Add comment to app flow
 
 ## Key Lib Files
 
 | File | Exports |
 |------|---------|
 | `apps/admin/src/lib/session.ts` | `getAdminSession()` — reads session cookie, returns admin user |
-| `apps/admin/src/lib/email.ts` | `sendWelcomeEmail()`, `sendStatusUpdateEmail()`, `sendNdaReadyEmail()`, `sendAdminWelcomeEmail()`, `sendSowReadyEmail()` |
+| `apps/admin/src/lib/email.ts` | `sendWelcomeEmail()`, `sendStatusUpdateEmail()`, `sendNdaReadyEmail()`, `sendAdminWelcomeEmail()`, `sendSowReadyEmail()`, `sendAppFlowReadyEmail()` |
 | `apps/admin/src/lib/api-auth.ts` | `validateToken()`, `unauthorized()` — Bearer token auth for v1 API |
 | `apps/admin/src/lib/nda-template.ts` | `generateNdaContent()` — NDA text template |
+| `apps/admin/src/lib/app-flow-prompt.ts` | `buildAppFlowPrompt()` — AI prompt for generating app flow JSON nodes/edges |
 | `apps/customer/src/lib/session.ts` | `getCustomerSession()` — reads customer-session cookie, returns CustomerSession |
-| `apps/customer/src/lib/email.ts` | `sendNdaSignedEmail()` — confirmation after NDA signing |
-| `apps/customer/src/lib/generate-pdf.ts` | `downloadNdaPdf()` — jsPDF NDA generation |
+| `apps/customer/src/lib/email.ts` | `sendNdaSignedEmail()`, `sendSowCommentNotification()`, `sendSowSignedNotification()`, `sendAppFlowCommentNotification()` |
+| `apps/customer/src/lib/generate-pdf.ts` | `downloadNdaPdf()`, `downloadSowPdf()` — jsPDF generation |
 | `packages/database/src/index.ts` | Singleton `PrismaClient` export |
 
 ## Key Components
@@ -184,9 +233,12 @@ Multi-page portal with session-based authentication (bcryptjs + cookie).
 |-----------|------|-------|
 | RichTextEditor | `apps/admin/src/components/RichTextEditor.tsx` | TipTap editor with visual/code toggle, syncs external content changes via useEffect |
 | FlowBuilder | `apps/admin/src/components/FlowBuilder.tsx` | @xyflow drag-and-drop email flow builder |
+| AppFlowBuilder | `apps/admin/src/components/AppFlowBuilder.tsx` | @xyflow app flow editor with AI sidebar, save, PNG download |
+| BasicNode / WireframeNode | `apps/admin/src/components/app-flow-nodes.tsx` | Custom ReactFlow node types for app flows |
 | ThemeProvider | `apps/admin/src/components/ThemeProvider.tsx` | Dark mode context provider |
 | NdaSection | `apps/customer/src/components/NdaSection.tsx` | NDA display + signing UI |
-| SowSection | `apps/customer/src/components/SowSection.tsx` | SOW version selector, PDF preview, download |
+| SowSection | `apps/customer/src/components/SowSection.tsx` | SOW viewer with comments, signing, full-screen, PDF download |
+| AppFlowSection | `apps/customer/src/components/AppFlowSection.tsx` | Read-only flow viewer with comments, full-screen, PNG/PDF download |
 
 ## Development
 
@@ -248,7 +300,7 @@ On push to `main`:
 - Both `next.config.ts` files include `turbopack: { root: path.resolve(__dirname, "../..") }` for monorepo Docker builds
 
 ### GitHub Secrets Required
-`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ACCOUNT_ID`, `AWS_REGION`, `EC2_HOST`, `EC2_SSH_KEY`, `DB_PASSWORD`, `SESSION_SECRET`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `API_TOKEN`, `DOMAIN_ADMIN`, `DOMAIN_CUSTOMER`
+`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ACCOUNT_ID`, `AWS_REGION`, `EC2_HOST`, `EC2_SSH_KEY`, `DB_PASSWORD`, `SESSION_SECRET`, `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `API_TOKEN`, `DOMAIN_ADMIN`, `DOMAIN_CUSTOMER`, `ANTHROPIC_API_KEY`
 
 ### Manual EC2 Operations
 ```bash
@@ -260,7 +312,7 @@ docker compose exec db pg_dump -U postgres leads_portal > backup.sql  # DB backu
 ```
 
 ## Email System
-- Templates support `{{customerName}}` and `{{projectName}}` placeholders
+- Templates support `{{customerName}}`, `{{projectName}}`, `{{phone}}`, `{{city}}`, `{{status}}`, `{{stage}}`, `{{source}}`, `{{dateCreated}}` placeholders
 - Email compose on lead detail page has RichTextEditor with code/visual toggle
 - "Include signature" checkbox appends admin's email signature (set in profile page)
 - Signature appended server-side in the email API route
@@ -271,9 +323,33 @@ docker compose exec db pg_dump -U postgres leads_portal > backup.sql  # DB backu
 - Reply-To uses lead-specific `reply+{leadId}@reply.kitlabs.us` for SES inbound routing, wrapped with admin's display name
 - Inbound email replies processed via SES → SNS → `/api/webhooks/ses-inbound` webhook, stored as ReceivedEmail
 
+### Email Notifications
+| Trigger | Function | Location | Recipients |
+|---------|----------|----------|------------|
+| Welcome email | `sendWelcomeEmail()` | admin email.ts | Customer |
+| Status change | `sendStatusUpdateEmail()` | admin email.ts | Customer |
+| NDA ready | `sendNdaReadyEmail()` | admin email.ts | Customer |
+| SOW ready | `sendSowReadyEmail()` | admin email.ts | Customer |
+| App flow ready | `sendAppFlowReadyEmail()` | admin email.ts | Customer |
+| NDA signed | `sendNdaSignedEmail()` | customer email.ts | Customer + Admin |
+| SOW comment | `sendSowCommentNotification()` | customer email.ts | Admin |
+| SOW signed | `sendSowSignedNotification()` | customer email.ts | Customer + Admin |
+| App flow comment | `sendAppFlowCommentNotification()` | customer email.ts | Admin |
+
+## App Flow System
+- Two flow types: **Basic** (flowchart boxes with label/description) and **Wireframe** (phone-screen-like blocks with title/elements)
+- Admin creates flows via `/leads/[id]/app-flow-builder` with AI generation or manual node placement
+- AI generates JSON `{ nodes, edges }` via Claude API (SSE streaming)
+- Custom ReactFlow node components: `BasicNode` (teal border, rounded box) and `WireframeNode` (gray header bar, element list)
+- Flows are saved to `AppFlow` model with JSON nodes/edges
+- Sharing: sets `sharedAt`/`sharedBy`, optionally updates lead status to `APP_FLOW_READY`, sends email
+- Customer views read-only flow with pan/zoom, comments, full-screen, PNG/PDF export
+- Node types registered as `{ basicNode: BasicNode, wireframeNode: WireframeNode }` — must match in both admin and customer
+
 ## Important Patterns
 - All admin API routes use `getAdminSession()` for auth (returns null if not logged in)
 - Customer API routes use `getCustomerSession()` for auth
+- Customer API routes must verify resource ownership via `leadId: { in: session.leadIds as string[] }`
 - Database seed is idempotent (checks by title/username before inserting)
 - File uploads go to `public/uploads/` (admin), volume-mounted in Docker
 - Nginx serves `/uploads/` directly from shared Docker volume (Next.js production doesn't serve dynamically added files)
@@ -283,3 +359,5 @@ docker compose exec db pg_dump -U postgres leads_portal > backup.sql  # DB backu
 - Leads API supports pagination (`page`, `limit`), search, and filters (`status`, `stage`, `source`)
 - SOW uploads saved to `public/uploads/sow/` with auto-incrementing version numbers
 - Customer portal uses `ADMIN_PORTAL_URL` env var for cross-domain file access (SOW documents)
+- AI-generated SOW content stored as HTML in `ScopeOfWork.content` field (no file)
+- Full-screen views use `fixed inset-0 z-50` overlay pattern with exit button in header bar

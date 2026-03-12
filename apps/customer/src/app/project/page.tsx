@@ -100,6 +100,7 @@ export default async function ProjectPage({
   const hasAppFlow = lead.appFlows.length > 0;
   const hasNda = !!lead.nda;
   const adminBaseUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
+  const isLoggedIn = !!session;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#2870a8] via-[#01358d] to-[#101b63]">
@@ -318,6 +319,7 @@ export default async function ProjectPage({
                   })),
                 }))}
                 initialVersion={v ? parseInt(v) : undefined}
+                isLoggedIn={isLoggedIn}
               />
             </div>
           )}
@@ -326,6 +328,7 @@ export default async function ProjectPage({
             <div className="p-8 md:p-10">
               <AppFlowSection
                 leadId={lead.id}
+                isLoggedIn={isLoggedIn}
                 flows={lead.appFlows.map((f) => ({
                   id: f.id,
                   name: f.name,

@@ -38,11 +38,13 @@ export default function SowSection({
   projectName,
   sows,
   initialVersion,
+  isLoggedIn = false,
 }: {
   leadId: string;
   projectName: string;
   sows: SowItem[];
   initialVersion?: number;
+  isLoggedIn?: boolean;
 }) {
   const [selectedVersion, setSelectedVersion] = useState<number>(
     initialVersion || (sows.length > 0 ? sows[0].version : 0)
@@ -346,7 +348,7 @@ export default function SowSection({
           )}
 
           {/* Approve & Sign Section */}
-          {!currentSigned && (
+          {!currentSigned && isLoggedIn && (
             <div className="mt-8 border-t border-gray-100 pt-6">
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
                 <h4 className="text-lg font-semibold text-gray-900 mb-2">Approve Scope of Work</h4>
@@ -449,28 +451,36 @@ export default function SowSection({
         )}
 
         {/* Add comment form */}
-        <div className="flex gap-3">
-          <textarea
-            value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-            placeholder="Leave a comment or feedback on the scope of work..."
-            rows={2}
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 outline-none resize-none focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d]"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                handleAddComment();
-              }
-            }}
-          />
-          <button
-            onClick={handleAddComment}
-            disabled={!commentText.trim() || submitting}
-            className="px-4 py-2 text-sm font-medium bg-[#01358d] text-white rounded-lg hover:bg-[#012a70] disabled:opacity-50 transition self-end"
-          >
-            {submitting ? "Sending..." : "Comment"}
-          </button>
-        </div>
-        <p className="text-xs text-gray-400 mt-1">Press Cmd+Enter to submit</p>
+        {isLoggedIn ? (
+          <>
+            <div className="flex gap-3">
+              <textarea
+                value={commentText}
+                onChange={(e) => setCommentText(e.target.value)}
+                placeholder="Leave a comment or feedback on the scope of work..."
+                rows={2}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 outline-none resize-none focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d]"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                    handleAddComment();
+                  }
+                }}
+              />
+              <button
+                onClick={handleAddComment}
+                disabled={!commentText.trim() || submitting}
+                className="px-4 py-2 text-sm font-medium bg-[#01358d] text-white rounded-lg hover:bg-[#012a70] disabled:opacity-50 transition self-end"
+              >
+                {submitting ? "Sending..." : "Comment"}
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mt-1">Press Cmd+Enter to submit</p>
+          </>
+        ) : (
+          <p className="text-sm text-gray-500">
+            <a href="/login" className="text-[#01358d] font-medium hover:underline">Sign in</a> to leave comments or approve the scope of work.
+          </p>
+        )}
       </div>
 
       {/* Sign Modal */}
