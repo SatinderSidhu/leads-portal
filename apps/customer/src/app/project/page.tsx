@@ -95,6 +95,17 @@ export default async function ProjectPage({
     );
   }
 
+  // Auto-link this lead to the logged-in user's account if not already linked
+  if (session && !session.leadIds.includes(id)) {
+    const updatedLeadIds = [...(session.leadIds as string[]), id];
+    await prisma.customerUser.update({
+      where: { id: session.id },
+      data: { leadIds: updatedLeadIds },
+    });
+    // Update session object so the rest of the page reflects the link
+    session.leadIds = updatedLeadIds;
+  }
+
   const activeTab = tab && TABS.some((t) => t.key === tab) ? tab : "overview";
   const hasSow = lead.scopeOfWorks.length > 0;
   const hasAppFlow = lead.appFlows.length > 0;
