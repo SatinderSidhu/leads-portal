@@ -222,10 +222,10 @@ export default function AppFlowSection({ flows, leadId, isLoggedIn }: AppFlowSec
   // Full-screen mode
   if (fullScreen && selectedFlow) {
     return (
-      <div className="fixed inset-0 z-50 bg-white flex flex-col">
-        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-gray-50">
+      <div className="fixed inset-0 z-50 bg-white dark:bg-gray-950 flex flex-col">
+        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
           <div className="flex items-center gap-3">
-            <h3 className="text-lg font-semibold text-gray-900">{selectedFlow.name}</h3>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{selectedFlow.name}</h3>
             <span
               className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                 selectedFlow.flowType === "WIREFRAME"
@@ -285,21 +285,21 @@ export default function AppFlowSection({ flows, leadId, isLoggedIn }: AppFlowSec
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <p className="text-sm font-medium text-[#01358d] uppercase tracking-wider mb-1">
+          <p className="text-sm font-medium text-[#01358d] dark:text-blue-400 uppercase tracking-wider mb-1">
             App Flow
           </p>
-          <h3 className="text-2xl font-bold text-gray-900">
+          <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
             {selectedFlow?.name || "App Flow"}
           </h3>
           {selectedFlow?.description && (
-            <p className="text-gray-500 text-sm mt-1">{selectedFlow.description}</p>
+            <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">{selectedFlow.description}</p>
           )}
         </div>
         {flows.length > 1 && (
           <select
             value={selectedFlowId}
             onChange={(e) => setSelectedFlowId(e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white text-gray-900 outline-none"
+            className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none"
           >
             {flows.map((f) => (
               <option key={f.id} value={f.id}>
@@ -372,8 +372,8 @@ export default function AppFlowSection({ flows, leadId, isLoggedIn }: AppFlowSec
       )}
 
       {/* Comments Section */}
-      <div className="border-t border-gray-100 pt-6">
-        <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">
+      <div className="border-t border-gray-100 dark:border-gray-700 pt-6">
+        <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
           Comments ({flowComments.length})
         </p>
 
@@ -384,23 +384,23 @@ export default function AppFlowSection({ flows, leadId, isLoggedIn }: AppFlowSec
                 key={comment.id}
                 className={`rounded-lg p-4 border ${
                   comment.authorType === "customer"
-                    ? "bg-[#01358d]/5 border-[#01358d]/10"
-                    : "bg-gray-50 border-gray-100"
+                    ? "bg-[#01358d]/5 border-[#01358d]/10 dark:bg-blue-900/20 dark:border-blue-800/30"
+                    : "bg-gray-50 border-gray-100 dark:bg-gray-800 dark:border-gray-700"
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-medium text-gray-900">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
                     {comment.authorName}
                   </span>
                   <span className={`text-xs px-1.5 py-0.5 rounded ${
                     comment.authorType === "customer"
-                      ? "bg-[#01358d]/10 text-[#01358d]"
-                      : "bg-gray-200 text-gray-600"
+                      ? "bg-[#01358d]/10 text-[#01358d] dark:bg-blue-500/20 dark:text-blue-300"
+                      : "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
                   }`}>
                     {comment.authorType === "customer" ? "You" : "Team"}
                   </span>
                 </div>
-                <p className="text-gray-700 text-sm whitespace-pre-wrap">
+                <p className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap">
                   {comment.content}
                 </p>
                 <p className="text-xs text-gray-400 mt-2">
@@ -420,7 +420,7 @@ export default function AppFlowSection({ flows, leadId, isLoggedIn }: AppFlowSec
                 onChange={(e) => setCommentText(e.target.value)}
                 placeholder="Leave a comment or feedback..."
                 rows={2}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 outline-none resize-none focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d]"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none resize-none focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d]"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                     handleAddComment();
@@ -438,9 +438,9 @@ export default function AppFlowSection({ flows, leadId, isLoggedIn }: AppFlowSec
             <p className="text-xs text-gray-400 mt-1">Press Cmd+Enter to submit</p>
           </>
         ) : (
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
-            <p className="text-sm text-gray-600">
-              <a href="/login" className="text-[#01358d] font-medium hover:underline">Sign in</a> to leave comments on this app flow.
+          <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              <a href="/login" className="text-[#01358d] dark:text-blue-400 font-medium hover:underline">Sign in</a> to leave comments on this app flow.
             </p>
           </div>
         )}

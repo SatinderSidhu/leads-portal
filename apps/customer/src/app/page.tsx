@@ -48,7 +48,7 @@ export default async function HomePage({
 
   if (!session || session.leadIds.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#2870a8] via-[#01358d] to-[#101b63]">
+      <div className="min-h-screen bg-gradient-to-br from-[#2870a8] via-[#01358d] to-[#101b63] dark:from-[#1a1a2e] dark:via-[#16213e] dark:to-[#0f3460]">
         <div className="min-h-screen flex items-center justify-center px-4 py-16">
           <div className="w-full max-w-md text-center">
             <img src="/kitlabs-logo.jpg" alt="KITLabs Inc" className="h-16 object-contain mx-auto mb-4" />
@@ -56,14 +56,14 @@ export default async function HomePage({
             <p className="text-white/80 text-lg mb-8">
               View your project details, scope of work, and more.
             </p>
-            <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 space-y-4">
+            <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 space-y-4">
               {session ? (
-                <p className="text-gray-600 mb-4">
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
                   No projects are linked to your account yet. Check your email for a project link.
                 </p>
               ) : (
                 <>
-                  <p className="text-gray-600 mb-4">
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
                     Sign in to view your projects, or use the link from your email.
                   </p>
                   <a
@@ -74,7 +74,7 @@ export default async function HomePage({
                   </a>
                   <a
                     href="/register"
-                    className="block w-full border border-gray-300 text-gray-700 py-3 rounded-lg font-medium hover:bg-gray-50 transition text-center"
+                    className="block w-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-3 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-800 transition text-center"
                   >
                     Create Account
                   </a>
@@ -101,8 +101,8 @@ export default async function HomePage({
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#2870a8] via-[#01358d] to-[#101b63]">
-      <nav className="bg-white/10 backdrop-blur-sm border-b border-white/20">
+    <div className="min-h-screen bg-gradient-to-br from-[#2870a8] via-[#01358d] to-[#101b63] dark:from-[#1a1a2e] dark:via-[#16213e] dark:to-[#0f3460]">
+      <nav className="bg-white/10 backdrop-blur-sm border-b border-white/20 dark:bg-black/20 dark:border-white/10">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <img src="/kitlabs-logo.jpg" alt="KITLabs" className="h-8 object-contain" />
@@ -122,8 +122,8 @@ export default async function HomePage({
         <p className="text-white/70 mb-8">Your projects</p>
 
         {leads.length === 0 ? (
-          <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-xl p-8 text-center">
-            <p className="text-gray-500">No projects found. Check your email for a project link.</p>
+          <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-2xl shadow-xl p-8 text-center">
+            <p className="text-gray-500 dark:text-gray-400">No projects found. Check your email for a project link.</p>
           </div>
         ) : (
           <div className="grid gap-4">
@@ -131,12 +131,12 @@ export default async function HomePage({
               <a
                 key={lead.id}
                 href={`/project?id=${lead.id}`}
-                className="bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-6 hover:shadow-2xl hover:scale-[1.01] transition block"
+                className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-xl shadow-lg p-6 hover:shadow-2xl hover:scale-[1.01] transition block"
               >
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
-                    <h3 className="text-lg font-semibold text-gray-900">{lead.projectName}</h3>
-                    <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{lead.projectName}</h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
                       {lead.projectDescription}
                     </p>
                   </div>

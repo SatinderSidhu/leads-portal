@@ -144,10 +144,10 @@ export default function SowSection({
   // Full-screen overlay
   if (fullScreen && selectedSow) {
     return (
-      <div className="fixed inset-0 z-50 bg-white flex flex-col">
-        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-gray-50">
+      <div className="fixed inset-0 z-50 bg-white dark:bg-gray-950 flex flex-col">
+        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
           <div className="flex items-center gap-3">
-            <h3 className="text-lg font-semibold text-gray-900">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
               Scope of Work — v{selectedSow.version}
             </h3>
             {isAiGenerated && (
@@ -191,14 +191,14 @@ export default function SowSection({
   return (
     <div>
       <div className="mb-6">
-        <p className="text-sm font-medium text-[#01358d] uppercase tracking-wider mb-1">Scope of Work</p>
-        <h3 className="text-2xl font-bold text-gray-900">{projectName}</h3>
+        <p className="text-sm font-medium text-[#01358d] dark:text-blue-400 uppercase tracking-wider mb-1">Scope of Work</p>
+        <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{projectName}</h3>
       </div>
 
       {/* Version Selector */}
       {sows.length > 1 && (
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-500 mb-2">Version</label>
+          <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Version</label>
           <div className="flex gap-2 flex-wrap">
             {sows.map((sow) => (
               <button
@@ -207,7 +207,7 @@ export default function SowSection({
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                   selectedVersion === sow.version
                     ? "bg-[#01358d] text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600"
                 }`}
               >
                 v{sow.version}
@@ -221,11 +221,11 @@ export default function SowSection({
       {selectedSow && (
         <div>
           {/* Document Info */}
-          <div className="bg-gray-50 rounded-xl p-5 border border-gray-100 mb-6">
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-5 border border-gray-100 dark:border-gray-700 mb-6">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold text-gray-900">
+                  <p className="text-sm font-semibold text-gray-900 dark:text-white">
                     Version {selectedSow.version}
                   </p>
                   {isAiGenerated && (
@@ -349,10 +349,10 @@ export default function SowSection({
 
           {/* Approve & Sign Section */}
           {!currentSigned && isLoggedIn && (
-            <div className="mt-8 border-t border-gray-100 pt-6">
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
-                <h4 className="text-lg font-semibold text-gray-900 mb-2">Approve Scope of Work</h4>
-                <p className="text-sm text-gray-600 mb-4">
+            <div className="mt-8 border-t border-gray-100 dark:border-gray-700 pt-6">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 dark:bg-amber-900/20 dark:border-amber-700">
+                <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Approve Scope of Work</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
                   After reviewing the scope of work, you can approve it by providing your digital signature below.
                   This confirms that you agree with the outlined deliverables, timeline, and milestones.
                 </p>
@@ -362,6 +362,15 @@ export default function SowSection({
                 >
                   Approve &amp; Sign
                 </button>
+              </div>
+            </div>
+          )}
+          {!currentSigned && !isLoggedIn && (
+            <div className="mt-8 border-t border-gray-100 dark:border-gray-700 pt-6">
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-6 dark:bg-gray-800 dark:border-gray-700 text-center">
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  <a href="/login" className="text-[#01358d] dark:text-blue-400 font-medium hover:underline">Sign in</a> to approve and sign the scope of work.
+                </p>
               </div>
             </div>
           )}
@@ -411,8 +420,8 @@ export default function SowSection({
       )}
 
       {/* Comments Section */}
-      <div className="mt-8 border-t border-gray-100 pt-6">
-        <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">
+      <div className="mt-8 border-t border-gray-100 dark:border-gray-700 pt-6">
+        <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">
           Comments ({currentComments.length})
         </p>
 
@@ -423,25 +432,25 @@ export default function SowSection({
                 key={comment.id}
                 className={`rounded-lg p-4 border ${
                   comment.authorType === "customer"
-                    ? "bg-[#01358d]/5 border-[#01358d]/10"
-                    : "bg-gray-50 border-gray-100"
+                    ? "bg-[#01358d]/5 border-[#01358d]/10 dark:bg-blue-900/20 dark:border-blue-800/30"
+                    : "bg-gray-50 border-gray-100 dark:bg-gray-800 dark:border-gray-700"
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-medium text-gray-900">
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">
                     {comment.authorName}
                   </span>
                   <span
                     className={`text-xs px-1.5 py-0.5 rounded ${
                       comment.authorType === "customer"
-                        ? "bg-[#01358d]/10 text-[#01358d]"
-                        : "bg-gray-200 text-gray-600"
+                        ? "bg-[#01358d]/10 text-[#01358d] dark:bg-blue-500/20 dark:text-blue-300"
+                        : "bg-gray-200 text-gray-600 dark:bg-gray-700 dark:text-gray-400"
                     }`}
                   >
                     {comment.authorType === "customer" ? "You" : "Team"}
                   </span>
                 </div>
-                <p className="text-gray-700 text-sm whitespace-pre-wrap">{comment.content}</p>
+                <p className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap">{comment.content}</p>
                 <p className="text-xs text-gray-400 mt-2">
                   {new Date(comment.createdAt).toLocaleString()}
                 </p>
@@ -459,7 +468,7 @@ export default function SowSection({
                 onChange={(e) => setCommentText(e.target.value)}
                 placeholder="Leave a comment or feedback on the scope of work..."
                 rows={2}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 outline-none resize-none focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d]"
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none resize-none focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d]"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                     handleAddComment();
@@ -477,8 +486,8 @@ export default function SowSection({
             <p className="text-xs text-gray-400 mt-1">Press Cmd+Enter to submit</p>
           </>
         ) : (
-          <p className="text-sm text-gray-500">
-            <a href="/login" className="text-[#01358d] font-medium hover:underline">Sign in</a> to leave comments or approve the scope of work.
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            <a href="/login" className="text-[#01358d] dark:text-blue-400 font-medium hover:underline">Sign in</a> to leave comments or approve the scope of work.
           </p>
         )}
       </div>
@@ -486,15 +495,15 @@ export default function SowSection({
       {/* Sign Modal */}
       {showSignModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4">
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Approve &amp; Sign SOW</h3>
-            <p className="text-sm text-gray-600 mb-6">
+          <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Approve &amp; Sign SOW</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
               By signing, you confirm that you have reviewed and agree to the Scope of Work
               (Version {selectedSow?.version}) for {projectName}.
             </p>
 
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Your Full Name (Digital Signature)
               </label>
               <input
@@ -502,14 +511,14 @@ export default function SowSection({
                 value={signerName}
                 onChange={(e) => setSignerName(e.target.value)}
                 placeholder="Enter your full legal name"
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d] outline-none text-gray-900"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d] outline-none text-gray-900 dark:text-white dark:bg-gray-800"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && signerName.trim()) handleSign();
                 }}
               />
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-3 mb-6 text-xs text-gray-500">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-6 text-xs text-gray-500 dark:text-gray-400">
               By clicking &quot;Sign &amp; Approve&quot; you agree to electronically sign this document.
               Your name, IP address, and timestamp will be recorded.
             </div>

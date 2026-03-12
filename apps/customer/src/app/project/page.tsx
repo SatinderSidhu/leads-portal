@@ -47,13 +47,13 @@ export default async function ProjectPage({
 
   if (!id) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">No Project ID Provided</h1>
-          <p className="text-gray-500 mb-4">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">No Project ID Provided</h1>
+          <p className="text-gray-500 dark:text-gray-400 mb-4">
             Please use the link from your welcome email to access your project.
           </p>
-          <a href="/" className="text-indigo-600 hover:underline font-medium">Go to Portal</a>
+          <a href="/" className="text-indigo-600 dark:text-indigo-400 hover:underline font-medium">Go to Portal</a>
         </div>
       </div>
     );
@@ -84,10 +84,10 @@ export default async function ProjectPage({
 
   if (!lead) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Project Not Found</h1>
-          <p className="text-gray-500">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Project Not Found</h1>
+          <p className="text-gray-500 dark:text-gray-400">
             The project you&apos;re looking for doesn&apos;t exist or the link may be incorrect.
           </p>
         </div>
@@ -103,9 +103,9 @@ export default async function ProjectPage({
   const isLoggedIn = !!session;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#2870a8] via-[#01358d] to-[#101b63]">
+    <div className="min-h-screen bg-gradient-to-br from-[#2870a8] via-[#01358d] to-[#101b63] dark:from-[#1a1a2e] dark:via-[#16213e] dark:to-[#0f3460]">
       {/* Nav */}
-      <nav className="bg-white/10 backdrop-blur-sm border-b border-white/20">
+      <nav className="bg-white/10 backdrop-blur-sm border-b border-white/20 dark:bg-black/20 dark:border-white/10">
         <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <img src="/kitlabs-logo.jpg" alt="KITLabs" className="h-8 object-contain" />
@@ -152,7 +152,7 @@ export default async function ProjectPage({
                 href={`/project?id=${lead.id}&tab=${t.key}${v ? `&v=${v}` : ""}`}
                 className={`px-4 py-2.5 rounded-lg text-sm font-medium transition ${
                   activeTab === t.key
-                    ? "bg-white text-gray-900 shadow-sm"
+                    ? "bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white"
                     : "text-white/80 hover:text-white hover:bg-white/10"
                 }`}
               >
@@ -170,71 +170,71 @@ export default async function ProjectPage({
 
       {/* Tab Content */}
       <div className="max-w-4xl mx-auto px-6 pb-16">
-        <div className="bg-white/95 backdrop-blur-sm rounded-b-2xl rounded-tr-2xl shadow-2xl">
+        <div className="bg-white/95 backdrop-blur-sm rounded-b-2xl rounded-tr-2xl shadow-2xl dark:bg-gray-900/95">
           {activeTab === "overview" && (
             <div className="p-8 md:p-10">
               {/* Project Info */}
               <div className="mb-6">
-                <p className="text-sm font-medium text-[#01358d] uppercase tracking-wider mb-1">Your Project</p>
-                <h3 className="text-2xl font-bold text-gray-900">{lead.projectName}</h3>
+                <p className="text-sm font-medium text-[#01358d] dark:text-blue-400 uppercase tracking-wider mb-1">Your Project</p>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{lead.projectName}</h3>
               </div>
 
               {/* Current Status Badge */}
               <div className="mb-6">
-                <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-2">Current Status</p>
-                <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-[#01358d]/10 text-[#01358d]">
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Current Status</p>
+                <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-[#01358d]/10 text-[#01358d] dark:bg-blue-500/20 dark:text-blue-300">
                   {STATUS_LABELS[lead.status] || lead.status}
                 </span>
               </div>
 
               {/* Description */}
-              <div className="border-t border-gray-100 pt-6">
-                <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Project Description</p>
-                <p className="text-gray-700 text-lg leading-relaxed whitespace-pre-wrap">{lead.projectDescription}</p>
+              <div className="border-t border-gray-100 dark:border-gray-700 pt-6">
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Project Description</p>
+                <p className="text-gray-700 dark:text-gray-300 text-lg leading-relaxed whitespace-pre-wrap">{lead.projectDescription}</p>
               </div>
 
               {/* Contact Info */}
-              <div className="border-t border-gray-100 pt-6 mt-6">
+              <div className="border-t border-gray-100 dark:border-gray-700 pt-6 mt-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Contact Name</p>
-                    <p className="text-gray-900 font-medium">{lead.customerName}</p>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Contact Name</p>
+                    <p className="text-gray-900 dark:text-white font-medium">{lead.customerName}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-1">Email</p>
-                    <p className="text-gray-900 font-medium">{lead.customerEmail}</p>
+                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Email</p>
+                    <p className="text-gray-900 dark:text-white font-medium">{lead.customerEmail}</p>
                   </div>
                 </div>
               </div>
 
               {/* Quick Links to SOW/App Flow/NDA */}
               {(hasSow || hasAppFlow || hasNda) && (
-                <div className="border-t border-gray-100 pt-6 mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="border-t border-gray-100 dark:border-gray-700 pt-6 mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
                   {hasSow && (
                     <a
                       href={`/project?id=${lead.id}&tab=sow`}
-                      className="bg-cyan-50 border border-cyan-200 rounded-xl p-4 hover:shadow-md transition block"
+                      className="bg-cyan-50 border border-cyan-200 rounded-xl p-4 hover:shadow-md transition block dark:bg-cyan-900/20 dark:border-cyan-800"
                     >
-                      <p className="text-sm font-semibold text-cyan-800">Scope of Work</p>
-                      <p className="text-xs text-cyan-600">{lead.scopeOfWorks.length} version(s) available</p>
+                      <p className="text-sm font-semibold text-cyan-800 dark:text-cyan-300">Scope of Work</p>
+                      <p className="text-xs text-cyan-600 dark:text-cyan-400">{lead.scopeOfWorks.length} version(s) available</p>
                     </a>
                   )}
                   {hasAppFlow && (
                     <a
                       href={`/project?id=${lead.id}&tab=app-flow`}
-                      className="bg-teal-50 border border-teal-200 rounded-xl p-4 hover:shadow-md transition block"
+                      className="bg-teal-50 border border-teal-200 rounded-xl p-4 hover:shadow-md transition block dark:bg-teal-900/20 dark:border-teal-800"
                     >
-                      <p className="text-sm font-semibold text-teal-800">App Flow</p>
-                      <p className="text-xs text-teal-600">{lead.appFlows.length} flow(s) shared</p>
+                      <p className="text-sm font-semibold text-teal-800 dark:text-teal-300">App Flow</p>
+                      <p className="text-xs text-teal-600 dark:text-teal-400">{lead.appFlows.length} flow(s) shared</p>
                     </a>
                   )}
                   {hasNda && (
                     <a
                       href={`/project?id=${lead.id}&tab=nda`}
-                      className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 hover:shadow-md transition block"
+                      className="bg-indigo-50 border border-indigo-200 rounded-xl p-4 hover:shadow-md transition block dark:bg-indigo-900/20 dark:border-indigo-800"
                     >
-                      <p className="text-sm font-semibold text-indigo-800">Non-Disclosure Agreement</p>
-                      <p className="text-xs text-indigo-600">
+                      <p className="text-sm font-semibold text-indigo-800 dark:text-indigo-300">Non-Disclosure Agreement</p>
+                      <p className="text-xs text-indigo-600 dark:text-indigo-400">
                         {lead.nda!.status === "SIGNED" ? `Signed by ${lead.nda!.signerName}` : "Ready for review"}
                       </p>
                     </a>
@@ -244,8 +244,8 @@ export default async function ProjectPage({
 
               {/* Status History Timeline */}
               {lead.statusHistory.length > 0 && (
-                <div className="border-t border-gray-100 pt-6 mt-6">
-                  <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">Status History</p>
+                <div className="border-t border-gray-100 dark:border-gray-700 pt-6 mt-6">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Status History</p>
                   <div className="space-y-0">
                     {lead.statusHistory.map((entry, index) => (
                       <div key={entry.id} className="flex gap-3">
@@ -260,7 +260,7 @@ export default async function ProjectPage({
                           )}
                         </div>
                         <div className="pb-4">
-                          <p className="text-sm font-medium text-gray-900">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">
                             {STATUS_LABELS[entry.toStatus] || entry.toStatus}
                           </p>
                           <p className="text-xs text-gray-400">
@@ -275,12 +275,12 @@ export default async function ProjectPage({
 
               {/* Admin Comments */}
               {lead.notes.length > 0 && (
-                <div className="border-t border-gray-100 pt-6 mt-6">
-                  <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">Comments from Our Team</p>
+                <div className="border-t border-gray-100 dark:border-gray-700 pt-6 mt-6">
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Comments from Our Team</p>
                   <div className="space-y-3">
                     {lead.notes.map((note) => (
-                      <div key={note.id} className="bg-gray-50 rounded-lg p-4 border border-gray-100">
-                        <p className="text-gray-700 whitespace-pre-wrap">{note.content}</p>
+                      <div key={note.id} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-100 dark:border-gray-700">
+                        <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{note.content}</p>
                         <p className="text-xs text-gray-400 mt-2">
                           {new Date(note.createdAt).toLocaleString()}
                         </p>
