@@ -1,6 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { downloadSowPdf } from "../lib/generate-pdf";
+
+interface SowComment {
+  id: string;
+  content: string;
+  authorName: string;
+  authorType: string;
+  createdAt: string;
+}
 
 interface SowItem {
   id: string;
@@ -13,6 +22,9 @@ interface SowItem {
   comments: string | null;
   sharedAt: string | null;
   createdAt: string;
+  signedAt: string | null;
+  signerName: string | null;
+  sowComments: SowComment[];
 }
 
 function formatFileSize(bytes: number): string {
@@ -22,6 +34,7 @@ function formatFileSize(bytes: number): string {
 }
 
 export default function SowSection({
+  leadId,
   projectName,
   sows,
   initialVersion,
@@ -34,18 +47,149 @@ export default function SowSection({
   const [selectedVersion, setSelectedVersion] = useState<number>(
     initialVersion || (sows.length > 0 ? sows[0].version : 0)
   );
+  const [fullScreen, setFullScreen] = useState(false);
+  const [commentText, setCommentText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [sowComments, setSowComments] = useState<Record<string, SowComment[]>>(
+    () => {
+      const map: Record<string, SowComment[]> = {};
+      for (const s of sows) {
+        map[s.id] = s.sowComments || [];
+      }
+      return map;
+    }
+  );
+
+  // Signing state
+  const [showSignModal, setShowSignModal] = useState(false);
+  const [signerName, setSignerName] = useState("");
+  const [signing, setSigning] = useState(false);
+  const [signedData, setSignedData] = useState<Record<string, { signedAt: string; signerName: string }>>(
+    () => {
+      const map: Record<string, { signedAt: string; signerName: string }> = {};
+      for (const s of sows) {
+        if (s.signedAt && s.signerName) {
+          map[s.id] = { signedAt: s.signedAt, signerName: s.signerName };
+        }
+      }
+      return map;
+    }
+  );
 
   const selectedSow = sows.find((s) => s.version === selectedVersion) || sows[0];
   const isAiGenerated = selectedSow?.content && !selectedSow?.filePath;
+  const currentComments = selectedSow ? (sowComments[selectedSow.id] || []) : [];
+  const currentSigned = selectedSow ? signedData[selectedSow.id] : null;
+
+  const handleAddComment = useCallback(async () => {
+    if (!commentText.trim() || !selectedSow) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/sow/${selectedSow.id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: commentText.trim() }),
+      });
+      if (res.ok) {
+        const comment = await res.json();
+        setSowComments((prev) => ({
+          ...prev,
+          [selectedSow.id]: [...(prev[selectedSow.id] || []), comment],
+        }));
+        setCommentText("");
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setSubmitting(false);
+    }
+  }, [commentText, selectedSow]);
+
+  const handleSign = useCallback(async () => {
+    if (!signerName.trim() || !selectedSow) return;
+    setSigning(true);
+    try {
+      const res = await fetch(`/api/sow/${selectedSow.id}/sign`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ signerName: signerName.trim() }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSignedData((prev) => ({
+          ...prev,
+          [selectedSow.id]: data,
+        }));
+        setShowSignModal(false);
+        setSignerName("");
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setSigning(false);
+    }
+  }, [signerName, selectedSow]);
+
+  const handleDownloadPdf = useCallback(() => {
+    if (!selectedSow?.content) return;
+    downloadSowPdf(selectedSow.content, projectName, selectedSow.version);
+  }, [selectedSow, projectName]);
 
   if (sows.length === 0) {
     return <p className="text-gray-500">No scope of work documents available yet.</p>;
   }
 
+  // Full-screen overlay
+  if (fullScreen && selectedSow) {
+    return (
+      <div className="fixed inset-0 z-50 bg-white flex flex-col">
+        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center gap-3">
+            <h3 className="text-lg font-semibold text-gray-900">
+              Scope of Work — v{selectedSow.version}
+            </h3>
+            {isAiGenerated && (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                AI Generated
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            {isAiGenerated && (
+              <button
+                onClick={handleDownloadPdf}
+                className="px-4 py-2 text-sm font-medium bg-[#01358d] text-white rounded-lg hover:bg-[#012a70] transition"
+              >
+                Download PDF
+              </button>
+            )}
+            <button
+              onClick={() => setFullScreen(false)}
+              className="px-4 py-2 text-sm font-medium bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+            >
+              Exit Full Screen
+            </button>
+          </div>
+        </div>
+        <div className="flex-1 overflow-auto">
+          {isAiGenerated ? (
+            <SowHtmlPreview content={selectedSow.content!} version={selectedSow.version} fullScreen />
+          ) : selectedSow.fileType === "application/pdf" && selectedSow.filePath ? (
+            <iframe
+              src={selectedSow.filePath}
+              className="w-full h-full"
+              title={`SOW v${selectedSow.version}`}
+            />
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="mb-6">
-        <p className="text-sm font-medium text-cyan-600 uppercase tracking-wider mb-1">Scope of Work</p>
+        <p className="text-sm font-medium text-[#01358d] uppercase tracking-wider mb-1">Scope of Work</p>
         <h3 className="text-2xl font-bold text-gray-900">{projectName}</h3>
       </div>
 
@@ -60,7 +204,7 @@ export default function SowSection({
                 onClick={() => setSelectedVersion(sow.version)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                   selectedVersion === sow.version
-                    ? "bg-cyan-600 text-white"
+                    ? "bg-[#01358d] text-white"
                     : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
@@ -87,6 +231,11 @@ export default function SowSection({
                       AI Generated
                     </span>
                   )}
+                  {currentSigned && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                      Approved
+                    </span>
+                  )}
                 </div>
                 {selectedSow.fileName && (
                   <p className="text-sm text-gray-600 mt-0.5">{selectedSow.fileName}</p>
@@ -99,23 +248,56 @@ export default function SowSection({
                     : new Date(selectedSow.createdAt).toLocaleDateString()}
                 </p>
                 {selectedSow.comments && (
-                  <p className="text-sm text-gray-600 mt-3 italic border-l-2 border-cyan-300 pl-3">
+                  <p className="text-sm text-gray-600 mt-3 italic border-l-2 border-[#01358d]/30 pl-3">
                     {selectedSow.comments}
                   </p>
                 )}
               </div>
-              {selectedSow.filePath && (
-                <a
-                  href={selectedSow.filePath}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center px-4 py-2 bg-cyan-600 text-white rounded-lg text-sm font-medium hover:bg-cyan-700 transition flex-shrink-0"
-                >
-                  Download
-                </a>
-              )}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {isAiGenerated && (
+                  <button
+                    onClick={handleDownloadPdf}
+                    className="inline-flex items-center px-4 py-2 bg-[#01358d] text-white rounded-lg text-sm font-medium hover:bg-[#012a70] transition"
+                  >
+                    Download PDF
+                  </button>
+                )}
+                {selectedSow.filePath && (
+                  <a
+                    href={selectedSow.filePath}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center px-4 py-2 bg-[#01358d] text-white rounded-lg text-sm font-medium hover:bg-[#012a70] transition"
+                  >
+                    Download
+                  </a>
+                )}
+                {(isAiGenerated || (selectedSow.fileType === "application/pdf" && selectedSow.filePath)) && (
+                  <button
+                    onClick={() => setFullScreen(true)}
+                    className="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-300 transition"
+                  >
+                    Full Screen
+                  </button>
+                )}
+              </div>
             </div>
           </div>
+
+          {/* Signed badge */}
+          {currentSigned && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <p className="text-sm font-medium text-green-800">
+                  Approved and signed by {currentSigned.signerName} on{" "}
+                  {new Date(currentSigned.signedAt).toLocaleString()}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* AI-generated HTML content */}
           {isAiGenerated && (
@@ -145,21 +327,40 @@ export default function SowSection({
 
           {/* Word document - can't preview inline */}
           {!isAiGenerated && selectedSow.fileType !== "application/pdf" && selectedSow.filePath && (
-            <div className="bg-cyan-50 border border-cyan-200 rounded-xl p-6 text-center">
-              <p className="text-cyan-800 font-medium mb-2">
+            <div className="bg-[#01358d]/5 border border-[#01358d]/20 rounded-xl p-6 text-center">
+              <p className="text-[#01358d] font-medium mb-2">
                 This document is a Word file (.{selectedSow.fileName?.split(".").pop()})
               </p>
-              <p className="text-cyan-600 text-sm mb-4">
+              <p className="text-[#01358d]/70 text-sm mb-4">
                 Please download it to view the full scope of work.
               </p>
               <a
                 href={selectedSow.filePath}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center px-6 py-3 bg-cyan-600 text-white rounded-lg font-medium hover:bg-cyan-700 transition"
+                className="inline-flex items-center px-6 py-3 bg-[#01358d] text-white rounded-lg font-medium hover:bg-[#012a70] transition"
               >
                 Download Document
               </a>
+            </div>
+          )}
+
+          {/* Approve & Sign Section */}
+          {!currentSigned && (
+            <div className="mt-8 border-t border-gray-100 pt-6">
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+                <h4 className="text-lg font-semibold text-gray-900 mb-2">Approve Scope of Work</h4>
+                <p className="text-sm text-gray-600 mb-4">
+                  After reviewing the scope of work, you can approve it by providing your digital signature below.
+                  This confirms that you agree with the outlined deliverables, timeline, and milestones.
+                </p>
+                <button
+                  onClick={() => setShowSignModal(true)}
+                  className="px-6 py-3 bg-[#f9556d] text-white rounded-lg font-medium hover:bg-[#e8445c] transition"
+                >
+                  Approve &amp; Sign
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -175,7 +376,7 @@ export default function SowSection({
                 key={sow.id}
                 className={`p-4 rounded-lg border cursor-pointer transition ${
                   selectedVersion === sow.version
-                    ? "border-cyan-300 bg-cyan-50"
+                    ? "border-[#01358d]/30 bg-[#01358d]/5"
                     : "border-gray-100 bg-gray-50 hover:border-gray-200"
                 }`}
                 onClick={() => setSelectedVersion(sow.version)}
@@ -186,6 +387,11 @@ export default function SowSection({
                     {sow.content && !sow.filePath && (
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">
                         AI
+                      </span>
+                    )}
+                    {signedData[sow.id] && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">
+                        Approved
                       </span>
                     )}
                   </div>
@@ -201,12 +407,135 @@ export default function SowSection({
           </div>
         </div>
       )}
+
+      {/* Comments Section */}
+      <div className="mt-8 border-t border-gray-100 pt-6">
+        <p className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-4">
+          Comments ({currentComments.length})
+        </p>
+
+        {currentComments.length > 0 && (
+          <div className="space-y-3 mb-6">
+            {currentComments.map((comment) => (
+              <div
+                key={comment.id}
+                className={`rounded-lg p-4 border ${
+                  comment.authorType === "customer"
+                    ? "bg-[#01358d]/5 border-[#01358d]/10"
+                    : "bg-gray-50 border-gray-100"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span className="text-sm font-medium text-gray-900">
+                    {comment.authorName}
+                  </span>
+                  <span
+                    className={`text-xs px-1.5 py-0.5 rounded ${
+                      comment.authorType === "customer"
+                        ? "bg-[#01358d]/10 text-[#01358d]"
+                        : "bg-gray-200 text-gray-600"
+                    }`}
+                  >
+                    {comment.authorType === "customer" ? "You" : "Team"}
+                  </span>
+                </div>
+                <p className="text-gray-700 text-sm whitespace-pre-wrap">{comment.content}</p>
+                <p className="text-xs text-gray-400 mt-2">
+                  {new Date(comment.createdAt).toLocaleString()}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Add comment form */}
+        <div className="flex gap-3">
+          <textarea
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            placeholder="Leave a comment or feedback on the scope of work..."
+            rows={2}
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 outline-none resize-none focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d]"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+                handleAddComment();
+              }
+            }}
+          />
+          <button
+            onClick={handleAddComment}
+            disabled={!commentText.trim() || submitting}
+            className="px-4 py-2 text-sm font-medium bg-[#01358d] text-white rounded-lg hover:bg-[#012a70] disabled:opacity-50 transition self-end"
+          >
+            {submitting ? "Sending..." : "Comment"}
+          </button>
+        </div>
+        <p className="text-xs text-gray-400 mt-1">Press Cmd+Enter to submit</p>
+      </div>
+
+      {/* Sign Modal */}
+      {showSignModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md mx-4">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Approve &amp; Sign SOW</h3>
+            <p className="text-sm text-gray-600 mb-6">
+              By signing, you confirm that you have reviewed and agree to the Scope of Work
+              (Version {selectedSow?.version}) for {projectName}.
+            </p>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Your Full Name (Digital Signature)
+              </label>
+              <input
+                type="text"
+                value={signerName}
+                onChange={(e) => setSignerName(e.target.value)}
+                placeholder="Enter your full legal name"
+                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d] outline-none text-gray-900"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && signerName.trim()) handleSign();
+                }}
+              />
+            </div>
+
+            <div className="bg-gray-50 rounded-lg p-3 mb-6 text-xs text-gray-500">
+              By clicking &quot;Sign &amp; Approve&quot; you agree to electronically sign this document.
+              Your name, IP address, and timestamp will be recorded.
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => { setShowSignModal(false); setSignerName(""); }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSign}
+                disabled={!signerName.trim() || signing}
+                className="px-6 py-2 text-sm font-medium bg-[#f9556d] text-white rounded-lg hover:bg-[#e8445c] disabled:opacity-50 transition"
+              >
+                {signing ? "Signing..." : "Sign & Approve"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 /** Renders AI-generated HTML content in an auto-resizing iframe */
-function SowHtmlPreview({ content, version }: { content: string; version: number }) {
+function SowHtmlPreview({
+  content,
+  version,
+  fullScreen,
+}: {
+  content: string;
+  version: number;
+  fullScreen?: boolean;
+}) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(600);
 
@@ -255,6 +584,18 @@ function SowHtmlPreview({ content, version }: { content: string; version: number
     iframe.addEventListener("load", handleLoad);
     return () => iframe.removeEventListener("load", handleLoad);
   }, [content]);
+
+  if (fullScreen) {
+    return (
+      <iframe
+        ref={iframeRef}
+        className="w-full h-full"
+        style={{ border: "none" }}
+        title={`SOW v${version}`}
+        sandbox="allow-same-origin"
+      />
+    );
+  }
 
   return (
     <div className="border border-gray-200 rounded-xl overflow-hidden bg-white">

@@ -5,6 +5,7 @@ import { getCustomerSession } from "../lib/session";
 const STATUS_LABELS: Record<string, string> = {
   NEW: "New",
   SOW_READY: "SOW Ready",
+  SOW_SIGNED: "SOW Signed",
   APP_FLOW_READY: "App Flow Ready",
   DESIGN_READY: "Design Ready",
   DESIGN_APPROVED: "Design Approved",
@@ -17,6 +18,7 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
   NEW: "bg-blue-100 text-blue-800",
   SOW_READY: "bg-cyan-100 text-cyan-800",
+  SOW_SIGNED: "bg-cyan-100 text-cyan-800",
   APP_FLOW_READY: "bg-teal-100 text-teal-800",
   DESIGN_READY: "bg-yellow-100 text-yellow-800",
   DESIGN_APPROVED: "bg-green-100 text-green-800",

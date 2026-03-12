@@ -7,6 +7,8 @@ import { ThemeToggle } from "../../components/ThemeToggle";
 const STATUS_LABELS: Record<string, string> = {
   NEW: "New",
   SOW_READY: "SOW Ready",
+  SOW_SIGNED: "SOW Signed",
+  APP_FLOW_READY: "App Flow Ready",
   DESIGN_READY: "Design Ready",
   DESIGN_APPROVED: "Design Approved",
   BUILD_IN_PROGRESS: "Build In Progress",
@@ -34,6 +36,8 @@ const STAGE_COLORS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
   NEW: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
   SOW_READY: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
+  SOW_SIGNED: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200",
+  APP_FLOW_READY: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
   DESIGN_READY: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
   DESIGN_APPROVED: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   BUILD_IN_PROGRESS: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",

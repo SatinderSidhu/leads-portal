@@ -116,3 +116,160 @@ export async function sendNdaSignedEmail(params: NdaSignedParams) {
 
   console.log(`[Email] NDA signed emails sent in ${Date.now() - start}ms`);
 }
+
+interface LeadInfo {
+  id: string;
+  customerName: string;
+  customerEmail: string;
+  projectName: string;
+}
+
+export async function sendSowCommentNotification(
+  lead: LeadInfo,
+  version: number,
+  commenterName: string,
+  commentContent: string
+) {
+  const fromEmail = process.env.SMTP_FROM || "noreply@leadsportal.com";
+  const adminUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
+
+  console.log(`[Email] Sending SOW comment notification for "${lead.projectName}"...`);
+
+  // Notify admin
+  await transporter.sendMail({
+    from: fromEmail,
+    to: fromEmail,
+    subject: `New SOW Comment from ${commenterName} — ${lead.projectName}`,
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+        <div style="background: linear-gradient(135deg, #01358d 0%, #2870a8 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">New SOW Comment</h1>
+          <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">${lead.projectName} — v${version}</p>
+        </div>
+        <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+          <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
+            <strong>${commenterName}</strong> left a comment on the Scope of Work (v${version}):
+          </p>
+          <div style="background: white; border-left: 4px solid #01358d; padding: 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
+            <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${commentContent}</p>
+          </div>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${adminUrl}/leads/${lead.id}" style="display: inline-block; background: #01358d; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">View in Admin</a>
+          </div>
+        </div>
+      </div>
+    `,
+  });
+}
+
+export async function sendSowSignedNotification(
+  lead: LeadInfo,
+  version: number,
+  signerName: string,
+  signedAt: Date,
+  signerIp: string
+) {
+  const fromEmail = process.env.SMTP_FROM || "noreply@leadsportal.com";
+  const adminUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
+  const portalUrl = `${process.env.CUSTOMER_PORTAL_URL || "http://localhost:3001"}?id=${lead.id}&tab=sow`;
+
+  const formattedDate = signedAt.toLocaleString("en-US", {
+    year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+
+  console.log(`[Email] Sending SOW signed notifications for "${lead.projectName}"...`);
+  const start = Date.now();
+
+  // Email to customer
+  await transporter.sendMail({
+    from: fromEmail,
+    to: lead.customerEmail,
+    subject: `Scope of Work Approved — ${lead.projectName}`,
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+        <div style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">SOW Approved</h1>
+          <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">${lead.projectName}</p>
+        </div>
+        <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+          <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">Hi ${lead.customerName},</p>
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">This confirms that the Scope of Work (v${version}) for <strong>${lead.projectName}</strong> has been approved and signed.</p>
+          <div style="background: white; border-radius: 8px; padding: 16px; margin: 20px 0; border: 1px solid #e5e7eb;">
+            <p style="color: #666; font-size: 14px; margin: 4px 0;"><strong>Signed By:</strong> ${signerName}</p>
+            <p style="color: #666; font-size: 14px; margin: 4px 0;"><strong>Date:</strong> ${formattedDate}</p>
+          </div>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${portalUrl}" style="display: inline-block; background: #333; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">View Your Project</a>
+          </div>
+        </div>
+      </div>
+    `,
+  });
+
+  // Email to admin
+  await transporter.sendMail({
+    from: fromEmail,
+    to: fromEmail,
+    subject: `SOW Signed by ${lead.customerName} — ${lead.projectName}`,
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+        <div style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">SOW Signed</h1>
+          <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">${lead.projectName}</p>
+        </div>
+        <div style="background: #f8f9fa; border-radius: 12px; padding: 30px;">
+          <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">The Scope of Work (v${version}) for <strong>${lead.projectName}</strong> has been signed by the customer.</p>
+          <div style="background: white; border-radius: 8px; padding: 16px; margin: 20px 0; border: 1px solid #e5e7eb;">
+            <p style="color: #666; font-size: 14px; margin: 4px 0;"><strong>Customer:</strong> ${lead.customerName}</p>
+            <p style="color: #666; font-size: 14px; margin: 4px 0;"><strong>Email:</strong> ${lead.customerEmail}</p>
+            <p style="color: #666; font-size: 14px; margin: 4px 0;"><strong>Signed By:</strong> ${signerName}</p>
+            <p style="color: #666; font-size: 14px; margin: 4px 0;"><strong>Date:</strong> ${formattedDate}</p>
+            <p style="color: #666; font-size: 14px; margin: 4px 0;"><strong>IP:</strong> ${signerIp}</p>
+          </div>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${adminUrl}/leads/${lead.id}" style="display: inline-block; background: #01358d; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">View in Admin</a>
+          </div>
+        </div>
+      </div>
+    `,
+  });
+
+  console.log(`[Email] SOW signed emails sent in ${Date.now() - start}ms`);
+}
+
+export async function sendAppFlowCommentNotification(
+  lead: LeadInfo,
+  flowName: string,
+  commenterName: string,
+  commentContent: string
+) {
+  const fromEmail = process.env.SMTP_FROM || "noreply@leadsportal.com";
+  const adminUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
+
+  console.log(`[Email] Sending app flow comment notification for "${lead.projectName}"...`);
+
+  await transporter.sendMail({
+    from: fromEmail,
+    to: fromEmail,
+    subject: `New App Flow Comment from ${commenterName} — ${lead.projectName}`,
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+        <div style="background: linear-gradient(135deg, #01358d 0%, #2870a8 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">New App Flow Comment</h1>
+          <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">${lead.projectName} — ${flowName}</p>
+        </div>
+        <div style="background: #f8f9fa; border-radius: 12px; padding: 30px;">
+          <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
+            <strong>${commenterName}</strong> left a comment on the app flow "${flowName}":
+          </p>
+          <div style="background: white; border-left: 4px solid #01358d; padding: 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
+            <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${commentContent}</p>
+          </div>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${adminUrl}/leads/${lead.id}" style="display: inline-block; background: #01358d; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">View in Admin</a>
+          </div>
+        </div>
+      </div>
+    `,
+  });
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import {
   ReactFlow,
   Controls,
@@ -12,6 +12,8 @@ import "@xyflow/react/dist/style.css";
 import type { Node, Edge } from "@xyflow/react";
 import { Handle, Position } from "@xyflow/react";
 import type { NodeProps } from "@xyflow/react";
+import { toPng } from "html-to-image";
+import jsPDF from "jspdf";
 
 // --- Read-only node components (duplicated from admin to avoid cross-app imports) ---
 
@@ -120,6 +122,10 @@ export default function AppFlowSection({ flows, leadId }: AppFlowSectionProps) {
       return map;
     }
   );
+  const [fullScreen, setFullScreen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const flowRef = useRef<HTMLDivElement>(null);
+  const fullScreenFlowRef = useRef<HTMLDivElement>(null);
 
   const selectedFlow = flows.find((f) => f.id === selectedFlowId);
 
@@ -147,6 +153,58 @@ export default function AppFlowSection({ flows, leadId }: AppFlowSectionProps) {
     }
   }, [commentText, selectedFlowId]);
 
+  const getFlowElement = useCallback(() => {
+    const ref = fullScreen ? fullScreenFlowRef : flowRef;
+    return ref.current?.querySelector(".react-flow") as HTMLElement | null;
+  }, [fullScreen]);
+
+  const handleDownloadPng = useCallback(async () => {
+    const el = getFlowElement();
+    if (!el) return;
+    setDownloading(true);
+    try {
+      const dataUrl = await toPng(el, {
+        backgroundColor: "#f9fafb",
+        pixelRatio: 2,
+      });
+      const link = document.createElement("a");
+      link.download = `${selectedFlow?.name || "app-flow"}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch {
+      // silently fail
+    } finally {
+      setDownloading(false);
+    }
+  }, [getFlowElement, selectedFlow]);
+
+  const handleDownloadPdf = useCallback(async () => {
+    const el = getFlowElement();
+    if (!el) return;
+    setDownloading(true);
+    try {
+      const dataUrl = await toPng(el, {
+        backgroundColor: "#f9fafb",
+        pixelRatio: 2,
+      });
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise((resolve) => { img.onload = resolve; });
+
+      const pdf = new jsPDF({
+        orientation: img.width > img.height ? "landscape" : "portrait",
+        unit: "px",
+        format: [img.width / 2, img.height / 2],
+      });
+      pdf.addImage(dataUrl, "PNG", 0, 0, img.width / 2, img.height / 2);
+      pdf.save(`${selectedFlow?.name || "app-flow"}.pdf`);
+    } catch {
+      // silently fail
+    } finally {
+      setDownloading(false);
+    }
+  }, [getFlowElement, selectedFlow]);
+
   if (flows.length === 0) {
     return (
       <div className="text-center py-12">
@@ -159,6 +217,68 @@ export default function AppFlowSection({ flows, leadId }: AppFlowSectionProps) {
   }
 
   const flowComments = comments[selectedFlowId] || [];
+
+  // Full-screen mode
+  if (fullScreen && selectedFlow) {
+    return (
+      <div className="fixed inset-0 z-50 bg-white flex flex-col">
+        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center gap-3">
+            <h3 className="text-lg font-semibold text-gray-900">{selectedFlow.name}</h3>
+            <span
+              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                selectedFlow.flowType === "WIREFRAME"
+                  ? "bg-indigo-100 text-indigo-800"
+                  : "bg-blue-100 text-blue-800"
+              }`}
+            >
+              {selectedFlow.flowType === "WIREFRAME" ? "Wireframe" : "Basic"}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadPng}
+              disabled={downloading}
+              className="px-4 py-2 text-sm font-medium bg-[#01358d] text-white rounded-lg hover:bg-[#012a70] disabled:opacity-50 transition"
+            >
+              {downloading ? "Exporting..." : "Download PNG"}
+            </button>
+            <button
+              onClick={handleDownloadPdf}
+              disabled={downloading}
+              className="px-4 py-2 text-sm font-medium bg-[#01358d] text-white rounded-lg hover:bg-[#012a70] disabled:opacity-50 transition"
+            >
+              Download PDF
+            </button>
+            <button
+              onClick={() => setFullScreen(false)}
+              className="px-4 py-2 text-sm font-medium bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+            >
+              Exit Full Screen
+            </button>
+          </div>
+        </div>
+        <div className="flex-1" ref={fullScreenFlowRef}>
+          <ReactFlow
+            nodes={selectedFlow.nodes}
+            edges={selectedFlow.edges}
+            nodeTypes={nodeTypes}
+            nodesDraggable={false}
+            nodesConnectable={false}
+            elementsSelectable={false}
+            panOnDrag={true}
+            zoomOnScroll={true}
+            fitView
+            className="bg-gray-50"
+          >
+            <Controls showInteractive={false} />
+            <MiniMap nodeStrokeWidth={3} className="!bg-white" />
+            <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
+          </ReactFlow>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -189,8 +309,8 @@ export default function AppFlowSection({ flows, leadId }: AppFlowSectionProps) {
         )}
       </div>
 
-      {/* Flow type badge */}
-      <div className="mb-4">
+      {/* Flow type badge + action buttons */}
+      <div className="mb-4 flex items-center justify-between">
         <span
           className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
             selectedFlow?.flowType === "WIREFRAME"
@@ -200,11 +320,37 @@ export default function AppFlowSection({ flows, leadId }: AppFlowSectionProps) {
         >
           {selectedFlow?.flowType === "WIREFRAME" ? "Wireframe Flow" : "Basic Flow"}
         </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleDownloadPng}
+            disabled={downloading}
+            className="px-3 py-1.5 text-sm font-medium bg-[#01358d] text-white rounded-lg hover:bg-[#012a70] disabled:opacity-50 transition"
+          >
+            {downloading ? "Exporting..." : "PNG"}
+          </button>
+          <button
+            onClick={handleDownloadPdf}
+            disabled={downloading}
+            className="px-3 py-1.5 text-sm font-medium bg-[#01358d] text-white rounded-lg hover:bg-[#012a70] disabled:opacity-50 transition"
+          >
+            PDF
+          </button>
+          <button
+            onClick={() => setFullScreen(true)}
+            className="px-3 py-1.5 text-sm font-medium bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+          >
+            Full Screen
+          </button>
+        </div>
       </div>
 
       {/* Read-only ReactFlow canvas */}
       {selectedFlow && (
-        <div className="border border-gray-200 rounded-xl overflow-hidden mb-8" style={{ height: 500 }}>
+        <div
+          ref={flowRef}
+          className="border border-gray-200 rounded-xl overflow-hidden mb-8"
+          style={{ height: 500 }}
+        >
           <ReactFlow
             nodes={selectedFlow.nodes}
             edges={selectedFlow.edges}

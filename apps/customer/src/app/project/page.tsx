@@ -7,6 +7,7 @@ import { getCustomerSession } from "../../lib/session";
 const STATUS_LABELS: Record<string, string> = {
   NEW: "New",
   SOW_READY: "SOW Ready",
+  SOW_SIGNED: "SOW Signed",
   APP_FLOW_READY: "App Flow Ready",
   DESIGN_READY: "Design Ready",
   DESIGN_APPROVED: "Design Approved",
@@ -19,6 +20,7 @@ const STATUS_LABELS: Record<string, string> = {
 const STATUS_COLORS: Record<string, string> = {
   NEW: "bg-blue-500",
   SOW_READY: "bg-cyan-500",
+  SOW_SIGNED: "bg-cyan-600",
   APP_FLOW_READY: "bg-teal-500",
   DESIGN_READY: "bg-yellow-500",
   DESIGN_APPROVED: "bg-green-500",
@@ -66,6 +68,9 @@ export default async function ProjectPage({
       scopeOfWorks: {
         where: { sharedAt: { not: null } },
         orderBy: { version: "desc" },
+        include: {
+          sowComments: { orderBy: { createdAt: "asc" } },
+        },
       },
       appFlows: {
         where: { sharedAt: { not: null } },
@@ -302,6 +307,15 @@ export default async function ProjectPage({
                   comments: s.comments,
                   sharedAt: s.sharedAt ? s.sharedAt.toISOString() : null,
                   createdAt: s.createdAt.toISOString(),
+                  signedAt: s.signedAt ? s.signedAt.toISOString() : null,
+                  signerName: s.signerName,
+                  sowComments: s.sowComments.map((c) => ({
+                    id: c.id,
+                    content: c.content,
+                    authorName: c.authorName,
+                    authorType: c.authorType,
+                    createdAt: c.createdAt.toISOString(),
+                  })),
                 }))}
                 initialVersion={v ? parseInt(v) : undefined}
               />

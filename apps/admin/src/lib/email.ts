@@ -99,6 +99,7 @@ export async function sendWelcomeEmail(lead: Lead, admin?: AdminInfo) {
 const STATUS_LABELS: Record<string, string> = {
   NEW: "New",
   SOW_READY: "Scope of Work Ready",
+  SOW_SIGNED: "Scope of Work Signed",
   DESIGN_READY: "Design Ready",
   DESIGN_APPROVED: "Design Approved",
   BUILD_IN_PROGRESS: "Build In Progress",

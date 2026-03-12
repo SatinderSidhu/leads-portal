@@ -40,6 +40,7 @@ enum AppFlowType {
 enum LeadStatus {
   NEW
   SOW_READY
+  SOW_SIGNED
   APP_FLOW_READY
   DESIGN_READY
   DESIGN_APPROVED
@@ -286,9 +287,26 @@ model ScopeOfWork {
   uploadedBy  String?   @map("uploaded_by")
   sharedAt    DateTime? @map("shared_at")
   sharedBy    String?   @map("shared_by")
+  signedAt    DateTime? @map("signed_at")
+  signerName  String?   @map("signer_name")
+  signerIp    String?   @map("signer_ip")
   createdAt   DateTime  @default(now()) @map("created_at")
 
+  sowComments SowComment[]
+
   @@map("scope_of_works")
+}
+
+model SowComment {
+  id           String      @id @default(uuid())
+  sowId        String      @map("sow_id")
+  scopeOfWork  ScopeOfWork @relation(fields: [sowId], references: [id], onDelete: Cascade)
+  content      String      @db.Text
+  authorName   String      @map("author_name")
+  authorType   String      @default("customer") @map("author_type")
+  createdAt    DateTime    @default(now()) @map("created_at")
+
+  @@map("sow_comments")
 }
 
 model AppFlow {
