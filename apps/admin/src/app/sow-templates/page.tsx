@@ -13,6 +13,7 @@ interface SowTemplate {
   durationRange: string | null;
   costRange: string | null;
   isDefault: boolean;
+  fileName: string | null;
   createdAt: string;
 }
 
@@ -121,11 +122,19 @@ export default function SowTemplatesListPage() {
                   >
                     {template.name}
                   </h3>
-                  {template.isDefault && (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300 shrink-0 ml-2">
-                      Default
-                    </span>
-                  )}
+                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                    {template.fileName && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        File
+                      </span>
+                    )}
+                    {template.isDefault && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
+                        Default
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {template.description && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "../../../components/ThemeToggle";
 import dynamic from "next/dynamic";
@@ -26,8 +26,15 @@ const PROJECT_TYPES = [
   "API / Backend System",
 ];
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export default function NewSowTemplatePage() {
   const router = useRouter();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [content, setContent] = useState("");
@@ -38,28 +45,68 @@ export default function NewSowTemplatePage() {
   const [isDefault, setIsDefault] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
 
-  const isValid = name.trim() && content.trim() && content !== "<p></p>";
+  const hasContent = content.trim() && content !== "<p></p>";
+  const hasFile = !!file;
+  const isValid = name.trim() && (hasContent || hasFile);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+    const ext = selected.name.toLowerCase().split(".").pop();
+    if (!["pdf", "doc", "docx"].includes(ext || "")) {
+      alert("Only PDF, DOC, and DOCX files are allowed");
+      e.target.value = "";
+      return;
+    }
+    setFile(selected);
+  }
+
+  function removeFile() {
+    setFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
 
   async function handleSubmit() {
     if (!isValid) return;
     setSaving(true);
 
     try {
-      const res = await fetch("/api/sow-templates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          description: description.trim() || undefined,
-          content,
-          industry: industry.trim() || undefined,
-          projectType: projectType || undefined,
-          durationRange: durationRange.trim() || undefined,
-          costRange: costRange.trim() || undefined,
-          isDefault,
-        }),
-      });
+      let res: Response;
+
+      if (file) {
+        const formData = new FormData();
+        formData.append("name", name.trim());
+        if (description.trim()) formData.append("description", description.trim());
+        if (hasContent) formData.append("content", content);
+        if (industry.trim()) formData.append("industry", industry.trim());
+        if (projectType) formData.append("projectType", projectType);
+        if (durationRange.trim()) formData.append("durationRange", durationRange.trim());
+        if (costRange.trim()) formData.append("costRange", costRange.trim());
+        if (isDefault) formData.append("isDefault", "true");
+        formData.append("file", file);
+
+        res = await fetch("/api/sow-templates", {
+          method: "POST",
+          body: formData,
+        });
+      } else {
+        res = await fetch("/api/sow-templates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: name.trim(),
+            description: description.trim() || undefined,
+            content,
+            industry: industry.trim() || undefined,
+            projectType: projectType || undefined,
+            durationRange: durationRange.trim() || undefined,
+            costRange: costRange.trim() || undefined,
+            isDefault,
+          }),
+        });
+      }
 
       if (res.ok) {
         router.push("/sow-templates");
@@ -200,10 +247,65 @@ export default function NewSowTemplatePage() {
               </label>
             </div>
 
+            {/* File Upload */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                Upload Reference File
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                Optionally upload a Word or PDF file from a previous SOW to use
+                as a reference template. The AI will use this alongside any
+                editor content below.
+              </p>
+
+              {file ? (
+                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border dark:border-gray-600">
+                  <div className="flex-shrink-0 w-10 h-10 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600 dark:text-indigo-400">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      {file.name}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {formatFileSize(file.size)}
+                    </p>
+                  </div>
+                  <button
+                    onClick={removeFile}
+                    className="text-red-500 hover:text-red-700 text-sm font-medium"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ) : (
+                <label className="flex flex-col items-center justify-center gap-2 py-8 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer hover:border-indigo-400 dark:hover:border-indigo-500 transition">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    Click to upload PDF, DOC, or DOCX
+                  </span>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+
             <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Template Content *
+                  Template Content {!hasFile && "*"}
                 </h2>
                 <button
                   onClick={() => setShowPreview(!showPreview)}
@@ -214,8 +316,8 @@ export default function NewSowTemplatePage() {
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                 Write the HTML structure/format for the SOW. The AI will follow
-                this formatting when generating SOWs. Include section headings,
-                layout patterns, and any boilerplate text.
+                this formatting when generating SOWs.
+                {hasFile && " This is optional when a reference file is uploaded."}
               </p>
               <RichTextEditor
                 content={content}
@@ -239,7 +341,7 @@ export default function NewSowTemplatePage() {
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Preview
               </h2>
-              {content && content !== "<p></p>" ? (
+              {hasContent ? (
                 <div
                   className="prose dark:prose-invert max-w-none text-sm"
                   dangerouslySetInnerHTML={{ __html: content }}

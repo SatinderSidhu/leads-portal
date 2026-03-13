@@ -296,6 +296,10 @@ model SowTemplate {
   name        String
   description String?  @db.Text
   content     String   @db.Text
+  fileName    String?  @map("file_name")
+  filePath    String?  @map("file_path")
+  fileSize    Int?     @map("file_size")
+  fileType    String?  @map("file_type")
   industry    String?
   projectType String?  @map("project_type")
   durationRange String? @map("duration_range")
