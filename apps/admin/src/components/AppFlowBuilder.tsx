@@ -69,12 +69,20 @@ export default function AppFlowBuilder({
     if (!newNodeLabel.trim()) return;
 
     const nodeType = flowType === "WIREFRAME" ? "wireframeNode" : "basicNode";
-    const maxY = nodes.reduce((max, n) => Math.max(max, n.position.y), 0);
+
+    let position: { x: number; y: number };
+    if (flowType === "WIREFRAME") {
+      const maxX = nodes.reduce((max, n) => Math.max(max, n.position.x), 0);
+      position = { x: maxX + 280, y: 0 };
+    } else {
+      const maxY = nodes.reduce((max, n) => Math.max(max, n.position.y), 0);
+      position = { x: 400, y: maxY + 200 };
+    }
 
     const newNode: Node = {
       id: `node-manual-${Date.now()}`,
       type: nodeType,
-      position: { x: 400, y: maxY + 200 },
+      position,
       data:
         flowType === "WIREFRAME"
           ? {
