@@ -42,7 +42,16 @@ export async function POST(req: Request) {
   let fileType: string | null = null;
 
   if (contentType.includes("multipart/form-data")) {
-    const formData = await req.formData();
+    let formData: FormData;
+    try {
+      formData = await req.formData();
+    } catch (err) {
+      console.error("[SOW Template] formData parse error:", err);
+      return NextResponse.json(
+        { error: "Failed to parse upload. File may be too large." },
+        { status: 400 }
+      );
+    }
     name = (formData.get("name") as string) || undefined;
     description = (formData.get("description") as string) || undefined;
     content = (formData.get("content") as string) || undefined;
