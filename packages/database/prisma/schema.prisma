@@ -272,6 +272,24 @@ model Content {
   @@map("content")
 }
 
+model SowTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  description String?  @db.Text
+  content     String   @db.Text
+  industry    String?
+  projectType String?  @map("project_type")
+  durationRange String? @map("duration_range")
+  costRange   String?  @map("cost_range")
+  isDefault   Boolean  @default(false) @map("is_default")
+  createdBy   String?  @map("created_by")
+  updatedBy   String?  @map("updated_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("sow_templates")
+}
+
 model ScopeOfWork {
   id          String    @id @default(uuid())
   leadId      String    @map("lead_id")

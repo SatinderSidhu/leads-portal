@@ -66,6 +66,23 @@ export default function SowBuilderPage() {
   const [deliverables, setDeliverables] = useState("");
   const [additionalNotes, setAdditionalNotes] = useState("");
 
+  // SOW templates
+  const [sowTemplates, setSowTemplates] = useState<
+    {
+      id: string;
+      name: string;
+      description: string | null;
+      content: string;
+      industry: string | null;
+      projectType: string | null;
+      durationRange: string | null;
+      costRange: string | null;
+      isDefault: boolean;
+    }[]
+  >([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [showTemplatePreview, setShowTemplatePreview] = useState(false);
+
   // Editor content
   const [content, setContent] = useState("");
   const contentRef = useRef("");
@@ -83,6 +100,24 @@ export default function SowBuilderPage() {
   // Version management
   const [versions, setVersions] = useState<SowVersion[]>([]);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
+
+  // Fetch SOW templates
+  useEffect(() => {
+    fetch("/api/sow-templates")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setSowTemplates(data);
+          const defaultTemplate = data.find(
+            (t: { isDefault: boolean }) => t.isDefault
+          );
+          if (defaultTemplate) {
+            setSelectedTemplateId(defaultTemplate.id);
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Fetch lead data
   useEffect(() => {
@@ -169,6 +204,7 @@ export default function SowBuilderPage() {
           techStack,
           deliverables,
           additionalNotes,
+          templateId: selectedTemplateId || undefined,
         }),
         signal: controller.signal,
       });
@@ -515,6 +551,60 @@ export default function SowBuilderPage() {
                   )}
                 </p>
               </div>
+
+              {/* SOW Template selector */}
+              {sowTemplates.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                    SOW Template
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <select
+                      value={selectedTemplateId}
+                      onChange={(e) => setSelectedTemplateId(e.target.value)}
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                      <option value="">No template</option>
+                      {sowTemplates.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                          {t.isDefault ? " (Default)" : ""}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedTemplateId && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowTemplatePreview(!showTemplatePreview)
+                        }
+                        className="shrink-0 px-3 py-2 text-xs font-medium border border-indigo-300 dark:border-indigo-700 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition"
+                      >
+                        {showTemplatePreview ? "Hide" : "Preview"}
+                      </button>
+                    )}
+                  </div>
+                  {selectedTemplateId && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      {sowTemplates.find((t) => t.id === selectedTemplateId)
+                        ?.description || "AI will follow this template's format"}
+                    </p>
+                  )}
+                  {showTemplatePreview && selectedTemplateId && (
+                    <div className="mt-3 max-h-64 overflow-y-auto border dark:border-gray-600 rounded-lg p-3 bg-gray-50 dark:bg-gray-900">
+                      <div
+                        className="prose dark:prose-invert max-w-none text-xs"
+                        dangerouslySetInnerHTML={{
+                          __html:
+                            sowTemplates.find(
+                              (t) => t.id === selectedTemplateId
+                            )?.content || "",
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Editable fields */}
               <div>

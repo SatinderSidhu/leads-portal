@@ -44,11 +44,24 @@ export async function POST(
     deliverables?: string;
     additionalNotes?: string;
     projectDescription?: string;
+    templateId?: string;
   };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  // Fetch template content if templateId provided
+  let templateContent: string | undefined;
+  if (body.templateId) {
+    const template = await prisma.sowTemplate.findUnique({
+      where: { id: body.templateId },
+      select: { content: true },
+    });
+    if (template) {
+      templateContent = template.content;
+    }
   }
 
   const { system, user } = buildSowPrompt({
@@ -62,6 +75,7 @@ export async function POST(
     techStack: body.techStack || "",
     deliverables: body.deliverables || "",
     additionalNotes: body.additionalNotes || "",
+    templateContent,
   });
 
   const client = new Anthropic({ apiKey });

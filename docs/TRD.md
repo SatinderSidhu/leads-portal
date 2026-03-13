@@ -4,8 +4,8 @@
 
 | Field | Detail |
 |-------|--------|
-| Document Version | 1.5 |
-| Last Updated | March 7, 2026 |
+| Document Version | 1.6 |
+| Last Updated | March 12, 2026 |
 | Status | Active |
 
 ---
@@ -335,6 +335,24 @@ model Nda {
   @@map("ndas")
 }
 
+model SowTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  description String?  @db.Text
+  content     String   @db.Text
+  industry    String?
+  projectType String?  @map("project_type")
+  durationRange String? @map("duration_range")
+  costRange   String?  @map("cost_range")
+  isDefault   Boolean  @default(false) @map("is_default")
+  createdBy   String?  @map("created_by")
+  updatedBy   String?  @map("updated_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("sow_templates")
+}
+
 model Content {
   id        String        @id @default(uuid())
   title     String
@@ -374,6 +392,9 @@ model Content {
 | `Platform` enum array | PostgreSQL native array for multi-platform targeting |
 | `Json` for tags | Simple array storage without separate Tag model |
 | `swagger-ui-react` | Interactive API docs at `/api-docs`, loads static OpenAPI spec |
+| `SowTemplate` model | Reusable SOW format templates — HTML content injected into AI system prompt for consistent formatting |
+| `isDefault` boolean | Only one template can be default; API enforces uniqueness by unsetting previous default on change |
+| Template content as HTML | Stored as HTML (same as RichTextEditor output) so it can be previewed and directly injected into AI prompt |
 | `AdminUser` model | Database-backed admin accounts replacing hardcoded credentials |
 | `bcryptjs` | Pure JS bcrypt implementation — no native dependencies, works everywhere |
 | Audit fields as strings | Store admin name (not FK) — simpler, no cascade issues if admin deleted |
@@ -788,7 +809,74 @@ All content v1 endpoints use Bearer token auth (same as leads API).
 
 Full documentation: `docs/API-INTEGRATION.md` and interactive Swagger at `/api-docs`
 
-### 5.7 Response Types
+### 5.8 SOW Templates API
+
+#### `GET /api/sow-templates` — List All SOW Templates
+
+```
+Auth:     Required (session cookie)
+Response: SowTemplate[] (sorted by isDefault DESC, createdAt DESC)
+```
+
+#### `POST /api/sow-templates` — Create SOW Template
+
+```
+Auth:     Required (session cookie)
+Request:  {
+  "name": string,
+  "description"?: string,
+  "content": string (HTML),
+  "industry"?: string,
+  "projectType"?: string,
+  "durationRange"?: string,
+  "costRange"?: string,
+  "isDefault"?: boolean
+}
+Response: SowTemplate (201)
+400:      { "error": "Validation failed", "details": string[] }
+Side Effect: If isDefault=true, unsets previous default template
+```
+
+#### `GET /api/sow-templates/[id]` — Get SOW Template
+
+```
+Auth:     Required (session cookie)
+Response: SowTemplate (200)
+404:      { "error": "SOW template not found" }
+```
+
+#### `PUT /api/sow-templates/[id]` — Update SOW Template
+
+```
+Auth:     Required (session cookie)
+Request:  { "name"?, "description"?, "content"?, "industry"?, "projectType"?, "durationRange"?, "costRange"?, "isDefault"? }
+Response: SowTemplate (200)
+404:      { "error": "SOW template not found" }
+Side Effect: If isDefault=true, unsets other default templates
+```
+
+#### `DELETE /api/sow-templates/[id]` — Delete SOW Template
+
+```
+Auth:     Required (session cookie)
+Response: { "success": true }
+404:      { "error": "SOW template not found" }
+```
+
+#### SOW Generation with Template — `POST /api/leads/[id]/sow/generate`
+
+```
+Auth:     Required (session cookie)
+Request:  {
+  ... existing fields ...,
+  "templateId"?: string  // Optional SOW template ID
+}
+Behavior: If templateId is provided, fetches template content and injects it
+          into the AI system prompt as a formatting blueprint.
+          If omitted, uses the built-in default section structure.
+```
+
+### 5.9 Response Types
 
 ```typescript
 type LeadSource = "MANUAL" | "AGENT";
@@ -872,6 +960,22 @@ interface Content {
   tags: string[];
   platforms: Platform[];
   status: ContentStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface SowTemplate {
+  id: string;
+  name: string;
+  description: string | null;
+  content: string;             // HTML template content
+  industry: string | null;
+  projectType: string | null;
+  durationRange: string | null;
+  costRange: string | null;
+  isDefault: boolean;
+  createdBy: string | null;
+  updatedBy: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -1230,3 +1334,4 @@ Both Next.js apps include `transpilePackages: ["@leads-portal/database"]` in the
 | 1.3 | March 6, 2026 | Added external API integration: LeadSource enum, Bearer token auth, POST /api/v1/leads endpoint, NDA edit/send split, API documentation | — |
 | 1.4 | March 7, 2026 | Added content management: Content model, CRUD API + external v1 API, file upload, Swagger/OpenAPI docs at /api-docs | — |
 | 1.5 | March 7, 2026 | Added AdminUser model with bcrypt auth, session helper for audit trail, lead edit/delete APIs, audit fields (createdBy/updatedBy/changedBy), admin user CRUD API, admin welcome email, dark mode (ThemeProvider + ThemeToggle) | — |
+| 1.6 | March 12, 2026 | Added SowTemplate model (name, description, HTML content, industry, projectType, durationRange, costRange, isDefault), CRUD API routes, SOW builder template selector integration, AI prompt template injection | — |

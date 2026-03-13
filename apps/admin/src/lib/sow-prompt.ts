@@ -11,17 +11,30 @@ export interface SowInput {
   techStack: string;
   deliverables: string;
   additionalNotes: string;
+  // Template content (optional)
+  templateContent?: string;
 }
 
 export function buildSowPrompt(input: SowInput): { system: string; user: string } {
-  const system = `You are a professional proposal writer for KITLabs Inc., a technology solutions company. Generate a detailed, professional Scope of Work (SOW) document in clean HTML.
+  let system = `You are a professional proposal writer for KITLabs Inc., a technology solutions company. Generate a detailed, professional Scope of Work (SOW) document in clean HTML.
 
 IMPORTANT HTML RULES:
 - Use ONLY these HTML tags: h1, h2, h3, p, ul, ol, li, strong, em, hr, table, thead, tbody, tr, th, td
 - Do NOT include <html>, <head>, <body>, or <style> tags
 - Do NOT use CSS classes or inline styles
 - Do NOT use markdown — output pure HTML only
-- Start with an <h1> for the document title
+- Start with an <h1> for the document title`;
+
+  if (input.templateContent) {
+    system += `
+
+TEMPLATE FORMAT — You MUST follow this template's structure, section order, formatting style, and tone exactly. Use it as the blueprint for the SOW. Fill in the project-specific details based on the user's input, but keep the template's layout, headings, and boilerplate text intact. Here is the template:
+
+---BEGIN TEMPLATE---
+${input.templateContent}
+---END TEMPLATE---`;
+  } else {
+    system += `
 
 DOCUMENT STRUCTURE — include all of these sections:
 1. <h1> Document title (e.g. "Scope of Work — [Project Name]")
@@ -32,7 +45,10 @@ DOCUMENT STRUCTURE — include all of these sections:
 6. <h2> Timeline & Milestones — phased timeline with deliverables per phase, use a <table>
 7. <h2> Out of Scope — explicitly list what is NOT included
 8. <h2> Assumptions — key assumptions the SOW is based on
-9. <h2> Terms & Conditions — payment terms, revision policy, IP ownership, confidentiality
+9. <h2> Terms & Conditions — payment terms, revision policy, IP ownership, confidentiality`;
+  }
+
+  system += `
 
 Write in a professional but approachable tone. Be specific and detailed — avoid generic filler. Tailor the content to the actual project described.`;
 

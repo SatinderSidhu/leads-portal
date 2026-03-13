@@ -4,8 +4,8 @@
 
 | Field | Detail |
 |-------|--------|
-| Document Version | 1.5 |
-| Last Updated | March 7, 2026 |
+| Document Version | 1.6 |
+| Last Updated | March 12, 2026 |
 | Status | Active |
 
 ---
@@ -717,6 +717,56 @@ User enters username and password
 [Invalid] → Error message displayed
 ```
 
+### 6.9 SOW Template Management Flow
+
+```
+Admin navigates to SOW Templates page
+    ↓
+Clicks "+ New Template"
+    ↓
+Fills in template details:
+  - Template Name (required)
+  - Description (when to use this template)
+  - Industry (e.g. Healthcare, Fintech)
+  - Project Type (e.g. Web Application, Mobile App)
+  - Duration Range (e.g. 4-8 weeks)
+  - Cost Range (e.g. $10k - $25k)
+  - Set as Default (checkbox)
+    ↓
+Writes HTML template content in RichTextEditor
+  (section headings, layout patterns, boilerplate text)
+    ↓
+Previews template content via toggle
+    ↓
+Clicks "Create Template"
+    ↓
+Template is saved to database
+    ↓
+[If set as default] → Previous default is unset
+```
+
+### 6.10 SOW Generation with Template Flow
+
+```
+Admin opens SOW Builder for a lead
+    ↓
+Template dropdown appears with default pre-selected
+    ↓
+Admin can preview selected template inline
+    ↓
+Admin can switch to a different template or "No template"
+    ↓
+Admin fills in project details and clicks "Generate with AI"
+    ↓
+[Template selected] → Template HTML injected into AI system prompt
+    ↓
+AI generates SOW following template's structure, formatting, and tone
+    ↓
+[No template] → AI uses built-in default section structure
+    ↓
+Generated SOW appears in editor for review and editing
+```
+
 ---
 
 ## 7. Data Requirements
@@ -785,7 +835,25 @@ User enters username and password
 | Created At | Timestamp | When the admin was created |
 | Updated At | Timestamp | When the admin was last modified |
 
-### 7.6 Content Record
+### 7.6 SOW Template Record
+
+| Field | Type | Description |
+|-------|------|-------------|
+| ID | UUID | Unique identifier |
+| Name | String | Template name (e.g. "Standard Web App SOW") |
+| Description | Text (nullable) | When to use this template |
+| Content | Text | HTML template content — structure/format for AI to follow |
+| Industry | String (nullable) | Target industry (e.g. Healthcare, Fintech) |
+| Project Type | String (nullable) | Target project type (e.g. Web Application, Mobile App) |
+| Duration Range | String (nullable) | Typical duration (e.g. 4-8 weeks) |
+| Cost Range | String (nullable) | Typical cost (e.g. $10k - $25k) |
+| Is Default | Boolean | Whether this is the default template (only one can be default) |
+| Created By | String (nullable) | Name of the admin who created the template |
+| Updated By | String (nullable) | Name of the admin who last edited the template |
+| Created At | Timestamp | When the template was created |
+| Updated At | Timestamp | When the template was last modified |
+
+### 7.7 Content Record
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -827,11 +895,11 @@ _This section will be updated as new features are planned and developed._
 | ~~API Integration~~ | ~~External BD agent API with auth token~~ — **Implemented v1.3** | ~~High~~ |
 | ~~Content Management~~ | ~~CRUD for social media content with external API~~ — **Implemented v1.4** | ~~High~~ |
 | ~~Multi-Admin & Audit~~ | ~~Admin user management, lead edit/delete, audit trail, dark mode~~ — **Implemented v1.5** | ~~High~~ |
-| Customer Portal Interactions | Allow customers to add comments/feedback on their project | Medium |
-| File Attachments | Allow admin to attach files (proposals, wireframes) to leads | Medium |
-| Search & Filter | Search and filter leads on the dashboard | Medium |
+| ~~Customer Portal Interactions~~ | ~~Allow customers to add comments/feedback on their project~~ — **Implemented v2.5** | ~~Medium~~ |
+| ~~File Attachments~~ | ~~Allow admin to attach files (proposals, wireframes) to leads~~ — **Implemented v1.9** | ~~Medium~~ |
+| ~~Search & Filter~~ | ~~Search and filter leads on the dashboard~~ — **Implemented v2.1** | ~~Medium~~ |
+| ~~Email Templates~~ | ~~Customizable email templates for different scenarios~~ — **Implemented v1.6** | ~~Low~~ |
 | Lead Analytics | Dashboard widgets showing lead statistics and trends | Low |
-| Email Templates | Customizable email templates for different scenarios | Low |
 | Notification System | In-app notifications for admin on customer activity | Low |
 
 ---
@@ -846,3 +914,4 @@ _This section will be updated as new features are planned and developed._
 | 1.3 | March 6, 2026 | Added external API integration with Bearer token auth, LeadSource tracking (MANUAL/AGENT), API documentation | — |
 | 1.4 | March 7, 2026 | Added content management system with CRUD, file upload, external API, Swagger/OpenAPI docs | — |
 | 1.5 | March 7, 2026 | Added multi-admin auth (database-backed users with bcrypt), lead edit/delete, audit trail (who created/edited/updated), admin user management (CRUD + welcome email), dark mode toggle | — |
+| 1.6 | March 12, 2026 | Added SOW template system: reusable templates with HTML content, metadata (industry, project type, duration/cost range), default flag, CRUD admin pages, template selector in SOW builder, AI prompt integration | — |

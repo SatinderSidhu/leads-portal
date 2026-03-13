@@ -83,6 +83,7 @@ leads-portal/
 | SentEmail | sent_emails | Email tracking (sent, opened, failed) |
 | EmailAttachment | email_attachments | File attachments on sent emails |
 | ReceivedEmail | received_emails | Inbound email replies via SES |
+| SowTemplate | sow_templates | Reusable SOW format templates (HTML content, industry, project type, duration/cost range, isDefault flag) |
 | ScopeOfWork | scope_of_works | SOW documents with versioning, signing (signedAt, signerName, signerIp) |
 | SowComment | sow_comments | Customer/admin comments on SOW documents |
 | AppFlow | app_flows | Visual app flow diagrams (JSON nodes/edges, BASIC or WIREFRAME type) |
@@ -115,6 +116,9 @@ leads-portal/
 | `/admin-users/new` | Create admin user |
 | `/admin-users/[id]` | Edit admin user |
 | `/profile` | My profile — picture, signature |
+| `/sow-templates` | SOW template list (card grid with default badge, set default/edit/delete) |
+| `/sow-templates/new` | Create SOW template (RichTextEditor for HTML content, metadata fields, preview) |
+| `/sow-templates/[id]` | Edit SOW template |
 | `/email-templates` | Template list |
 | `/email-templates/new` | Create template |
 | `/email-templates/[id]` | Edit template |
@@ -139,6 +143,8 @@ leads-portal/
 - `GET/POST /api/leads/[id]/nda` — NDA operations
 - `POST /api/leads/[id]/nda/send` — Send NDA email
 - `GET/POST /api/leads/[id]/emails` — Send/list emails for lead
+- `GET/POST /api/sow-templates` — SOW template list/create (POST with isDefault unsets previous default)
+- `GET/PUT/DELETE /api/sow-templates/[id]` — SOW template CRUD (PUT with isDefault unsets other defaults)
 - `GET/POST/PUT/DELETE /api/email-templates[/id]` — Template CRUD
 - `GET/POST/PUT/DELETE /api/email-flows[/id]` — Flow CRUD
 - `GET/POST/PUT/DELETE /api/content[/id]` — Content CRUD
@@ -221,6 +227,7 @@ Multi-page portal with session-based authentication (bcryptjs + cookie).
 | `apps/admin/src/lib/email.ts` | `sendWelcomeEmail()`, `sendStatusUpdateEmail()`, `sendNdaReadyEmail()`, `sendAdminWelcomeEmail()`, `sendSowReadyEmail()`, `sendAppFlowReadyEmail()` |
 | `apps/admin/src/lib/api-auth.ts` | `validateToken()`, `unauthorized()` — Bearer token auth for v1 API |
 | `apps/admin/src/lib/nda-template.ts` | `generateNdaContent()` — NDA text template |
+| `apps/admin/src/lib/sow-prompt.ts` | `buildSowPrompt()` — AI prompt for SOW generation; accepts optional `templateContent` to override default structure |
 | `apps/admin/src/lib/app-flow-prompt.ts` | `buildAppFlowPrompt()` — AI prompt for generating app flow JSON nodes/edges |
 | `apps/customer/src/lib/session.ts` | `getCustomerSession()` — reads customer-session cookie, returns CustomerSession |
 | `apps/customer/src/lib/email.ts` | `sendNdaSignedEmail()`, `sendSowCommentNotification()`, `sendSowSignedNotification()`, `sendAppFlowCommentNotification()` |
@@ -335,6 +342,15 @@ docker compose exec db pg_dump -U postgres leads_portal > backup.sql  # DB backu
 | SOW comment | `sendSowCommentNotification()` | customer email.ts | Admin |
 | SOW signed | `sendSowSignedNotification()` | customer email.ts | Customer + Admin |
 | App flow comment | `sendAppFlowCommentNotification()` | customer email.ts | Admin |
+
+## SOW Template System
+- Admin creates reusable SOW templates via `/sow-templates` with HTML content (RichTextEditor), metadata (industry, project type, duration range, cost range), and a description
+- One template can be marked as **default** (`isDefault: true`) — setting a new default automatically unsets the previous one
+- In the SOW builder (`/leads/[id]/sow-builder`), a template dropdown appears in the left panel with the default pre-selected
+- Admin can preview the selected template inline before generating
+- When generating with AI, the selected template's HTML content is injected into the system prompt, instructing Claude to follow the template's structure, section order, and formatting exactly
+- If no template is selected, the AI falls back to the built-in default structure (Executive Summary, Scope of Work, Timeline, etc.)
+- Templates support categorization by industry, project type, duration, and cost range for easy selection
 
 ## App Flow System
 - Two flow types: **Basic** (flowchart boxes with label/description) and **Wireframe** (phone-screen-like blocks with title/elements)
