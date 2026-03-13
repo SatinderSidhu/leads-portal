@@ -88,6 +88,7 @@ leads-portal/
 | SowComment | sow_comments | Customer/admin comments on SOW documents |
 | AppFlow | app_flows | Visual app flow diagrams (JSON nodes/edges, BASIC or WIREFRAME type) |
 | AppFlowComment | app_flow_comments | Customer/admin comments on app flows |
+| LeadWatcher | lead_watchers | Join table for admin watch subscriptions on leads |
 | Content | content | Social media content posts |
 | CustomerUser | customer_users | Customer portal users (email, name, password, leadIds) |
 
@@ -106,9 +107,9 @@ leads-portal/
 |-------|---------|
 | `/login` | Authentication |
 | `/` | Activity feed — latest emails, status changes, notes across all leads |
-| `/dashboard` | Leads grid with pagination, search, and filters (status/stage/source) |
+| `/dashboard` | Leads grid with pagination, search, filters (status/stage/source/assignedTo), defaults to "My Leads" |
 | `/leads/new` | Create lead |
-| `/leads/[id]` | Lead detail — edit, notes, files, email compose, status, SOW section, app flows section |
+| `/leads/[id]` | Lead detail — edit, notes, files, email compose, status, assignment, watch, SOW section, app flows section |
 | `/leads/[id]/nda` | NDA management |
 | `/leads/[id]/sow-builder` | AI-powered SOW builder with Claude streaming, DOCX/PDF export |
 | `/leads/[id]/app-flow-builder` | AI-powered app flow builder with ReactFlow canvas |
@@ -139,7 +140,9 @@ leads-portal/
 - `GET/POST /api/leads/[id]/notes` — Notes
 - `GET/POST /api/leads/[id]/files` — File uploads
 - `DELETE /api/leads/[id]/files/[fileId]` — Delete file
-- `GET/POST /api/leads/[id]/status` — Status changes (creates audit trail)
+- `GET/POST /api/leads/[id]/status` — Status changes (creates audit trail, notifies watchers)
+- `PUT /api/leads/[id]/assign` — Reassign lead to another admin (auto-adds watcher, sends email)
+- `GET/POST/DELETE /api/leads/[id]/watch` — Watch list (subscribe/unsubscribe for lead updates)
 - `GET/POST /api/leads/[id]/nda` — NDA operations
 - `POST /api/leads/[id]/nda/send` — Send NDA email
 - `GET/POST /api/leads/[id]/emails` — Send/list emails for lead
@@ -224,13 +227,14 @@ Multi-page portal with session-based authentication (bcryptjs + cookie).
 | File | Exports |
 |------|---------|
 | `apps/admin/src/lib/session.ts` | `getAdminSession()` — reads session cookie, returns admin user |
-| `apps/admin/src/lib/email.ts` | `sendWelcomeEmail()`, `sendStatusUpdateEmail()`, `sendNdaReadyEmail()`, `sendAdminWelcomeEmail()`, `sendSowReadyEmail()`, `sendAppFlowReadyEmail()` |
+| `apps/admin/src/lib/email.ts` | `sendWelcomeEmail()`, `sendStatusUpdateEmail()`, `sendNdaReadyEmail()`, `sendAdminWelcomeEmail()`, `sendSowReadyEmail()`, `sendAppFlowReadyEmail()`, `sendLeadAssignedEmail()` |
+| `apps/admin/src/lib/watcher-notifications.ts` | `notifyWatchers()` — central utility to email watchers + assigned admin on lead updates |
 | `apps/admin/src/lib/api-auth.ts` | `validateToken()`, `unauthorized()` — Bearer token auth for v1 API |
 | `apps/admin/src/lib/nda-template.ts` | `generateNdaContent()` — NDA text template |
 | `apps/admin/src/lib/sow-prompt.ts` | `buildSowPrompt()` — AI prompt for SOW generation; accepts optional `templateContent` to override default structure |
 | `apps/admin/src/lib/app-flow-prompt.ts` | `buildAppFlowPrompt()` — AI prompt for generating app flow JSON nodes/edges |
 | `apps/customer/src/lib/session.ts` | `getCustomerSession()` — reads customer-session cookie, returns CustomerSession |
-| `apps/customer/src/lib/email.ts` | `sendNdaSignedEmail()`, `sendSowCommentNotification()`, `sendSowSignedNotification()`, `sendAppFlowCommentNotification()` |
+| `apps/customer/src/lib/email.ts` | `sendNdaSignedEmail()`, `sendSowCommentNotification()`, `sendSowSignedNotification()`, `sendAppFlowCommentNotification()`, `notifyLeadWatchers()` |
 | `apps/customer/src/lib/generate-pdf.ts` | `downloadNdaPdf()`, `downloadSowPdf()` — jsPDF generation |
 | `packages/database/src/index.ts` | Singleton `PrismaClient` export |
 
@@ -342,6 +346,19 @@ docker compose exec db pg_dump -U postgres leads_portal > backup.sql  # DB backu
 | SOW comment | `sendSowCommentNotification()` | customer email.ts | Admin |
 | SOW signed | `sendSowSignedNotification()` | customer email.ts | Customer + Admin |
 | App flow comment | `sendAppFlowCommentNotification()` | customer email.ts | Admin |
+| Lead assigned | `sendLeadAssignedEmail()` | admin email.ts | Assigned admin |
+| Watcher update (status/note) | `notifyWatchers()` | admin watcher-notifications.ts | Watchers + assigned admin |
+| Watcher update (customer comment) | `notifyLeadWatchers()` | customer email.ts | Watchers + assigned admin |
+
+## Lead Assignment & Watch List
+- Leads are auto-assigned to the creating admin and that admin is auto-added as a watcher
+- Assignment can be changed from lead detail page via dropdown (all active admins)
+- Reassignment sends email to new assignee and auto-adds them as watcher
+- Dashboard defaults to "My Leads" (`assignedTo=me`) with dropdown to switch to "All Leads" or a specific admin
+- Watch button on lead detail page lets admins subscribe/unsubscribe for updates
+- Watchers (+ assigned admin) get notified on: status changes, new notes, customer comments (SOW + app flow)
+- Central `notifyWatchers()` utility in admin, lightweight `notifyLeadWatchers()` in customer portal
+- `LeadWatcher` join table with `@@unique([leadId, adminId])` constraint
 
 ## SOW Template System
 - Admin creates reusable SOW templates via `/sow-templates` with HTML content (RichTextEditor), metadata (industry, project type, duration range, cost range), and a description

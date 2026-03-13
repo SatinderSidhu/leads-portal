@@ -2,6 +2,7 @@ import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { sendStatusUpdateEmail } from "../../../../../lib/email";
 import { getAdminSession } from "../../../../../lib/session";
+import { notifyWatchers } from "../../../../../lib/watcher-notifications";
 
 export async function PATCH(
   req: Request,
@@ -48,6 +49,18 @@ export async function PATCH(
       });
     }
   }
+
+  // Notify watchers (non-blocking)
+  notifyWatchers({
+    leadId: id,
+    type: "status_change",
+    excludeAdminId: session?.id,
+    context: {
+      fromStatus: previousStatus,
+      toStatus: status,
+      changedBy: adminName,
+    },
+  }).catch(() => {});
 
   return NextResponse.json(updatedLead);
 }

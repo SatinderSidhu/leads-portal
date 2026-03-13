@@ -4,8 +4,8 @@
 
 | Field | Detail |
 |-------|--------|
-| Document Version | 1.6 |
-| Last Updated | March 12, 2026 |
+| Document Version | 1.7 |
+| Last Updated | March 13, 2026 |
 | Status | Active |
 
 ---
@@ -1324,7 +1324,222 @@ Both Next.js apps include `transpilePackages: ["@leads-portal/database"]` in the
 
 ---
 
-## 13. Revision History
+## 13. Lead Assignment & Watch List
+
+### 13.1 Schema Changes
+
+#### Lead Model — New Field
+
+```prisma
+model Lead {
+  // ... existing fields ...
+  assignedToId  String?    @map("assigned_to_id")
+  assignedTo    AdminUser? @relation("AssignedLeads", fields: [assignedToId], references: [id], onDelete: SetNull)
+  watchers      LeadWatcher[]
+}
+```
+
+- `assignedToId` is a nullable foreign key to `AdminUser`
+- `onDelete: SetNull` ensures that if the assigned admin is deleted, the lead remains but becomes unassigned
+
+#### LeadWatcher Join Table
+
+```prisma
+model LeadWatcher {
+  id        String   @id @default(uuid())
+  leadId    String   @map("lead_id")
+  adminId   String   @map("admin_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  lead  Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  admin AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@unique([leadId, adminId])
+  @@map("lead_watchers")
+}
+```
+
+- Composite unique constraint on `(leadId, adminId)` prevents duplicate watches
+- Cascade delete on both relations: deleting a lead or admin removes the watcher record
+
+#### AdminUser Model — New Relations
+
+```prisma
+model AdminUser {
+  // ... existing fields ...
+  assignedLeads  Lead[]        @relation("AssignedLeads")
+  watchedLeads   LeadWatcher[]
+}
+```
+
+### 13.2 API Routes
+
+#### Assignment
+
+| Method | Route | Purpose | Auth |
+|--------|-------|---------|------|
+| PUT | `/api/leads/[id]/assign` | Assign or reassign a lead to an admin | Session (admin) |
+
+**PUT `/api/leads/[id]/assign`**
+
+Request body:
+```json
+{ "adminId": "uuid-of-admin" }
+```
+
+Behavior:
+1. Validates the target admin exists and is active
+2. Updates `lead.assignedToId` to the new admin ID
+3. If the assignee changed, sends a notification email to the newly assigned admin via `sendLeadAssignedEmail()`
+4. Returns the updated lead with `assignedTo` relation included
+
+Response: `200 { lead }` or `400/404` on error.
+
+#### Watch List
+
+| Method | Route | Purpose | Auth |
+|--------|-------|---------|------|
+| GET | `/api/leads/[id]/watch` | Get watchers for a lead | Session (admin) |
+| POST | `/api/leads/[id]/watch` | Add current admin as watcher | Session (admin) |
+| DELETE | `/api/leads/[id]/watch` | Remove current admin as watcher | Session (admin) |
+
+**GET `/api/leads/[id]/watch`**
+
+Response:
+```json
+{
+  "watchers": [
+    { "id": "watcher-uuid", "adminId": "admin-uuid", "admin": { "id": "...", "name": "..." } }
+  ],
+  "isWatching": true
+}
+```
+
+**POST `/api/leads/[id]/watch`**
+
+Creates a `LeadWatcher` record for the current admin. Returns `201` with the watcher list, or `409` if already watching.
+
+**DELETE `/api/leads/[id]/watch`**
+
+Removes the `LeadWatcher` record for the current admin. Returns `200` with the updated watcher list.
+
+### 13.3 Modifications to Existing Routes
+
+#### POST `/api/leads` — Auto-Assign and Auto-Watch
+
+When a lead is created via the admin portal:
+1. Set `assignedToId` to the creating admin's ID
+2. Create a `LeadWatcher` record for the creating admin
+
+API-created leads (source = AGENT) skip both steps.
+
+#### GET `/api/leads` — Assignment Filter
+
+New query parameter: `assignedTo`
+
+| Value | Behavior |
+|-------|----------|
+| `me` | Filter to leads where `assignedToId` matches the session admin's ID (default) |
+| `{adminId}` | Filter to leads assigned to a specific admin |
+| `all` | No assignment filter — return all leads |
+
+The parameter is passed through to the Prisma `where` clause. The response includes `assignedTo` relation data for display in the dashboard grid.
+
+#### GET `/api/leads/[id]` — Include Relations
+
+The single lead endpoint now includes:
+```typescript
+include: {
+  // ... existing includes ...
+  assignedTo: { select: { id: true, name: true, email: true } },
+  watchers: { include: { admin: { select: { id: true, name: true } } } }
+}
+```
+
+### 13.4 Watcher Notification System
+
+#### Admin Side — `apps/admin/src/lib/watcher-notifications.ts`
+
+```typescript
+export async function notifyWatchers(
+  leadId: string,
+  excludeAdminId: string,  // admin who performed the action
+  subject: string,
+  htmlBody: string
+): Promise<void>
+```
+
+Behavior:
+1. Queries all `LeadWatcher` records for the given lead, including admin email
+2. Filters out the `excludeAdminId` (the acting admin, to avoid self-notification)
+3. Sends an email to each remaining watcher using Nodemailer
+
+Called from:
+- **Status change** (`POST /api/leads/[id]/status`) — after status is updated, notifies watchers with the new status
+- **Note added** (`POST /api/leads/[id]/notes`) — after note is saved, notifies watchers with the note content
+
+#### Customer Side — `apps/customer/src/lib/email.ts`
+
+New function:
+```typescript
+export async function notifyLeadWatchers(
+  leadId: string,
+  subject: string,
+  htmlBody: string
+): Promise<void>
+```
+
+Behavior:
+1. Queries `LeadWatcher` records for the lead via Prisma (customer app has read access to the shared database)
+2. Sends an email to each watcher
+
+Called from:
+- **SOW comment** (`POST /api/sow/[sowId]/comments`) — notifies watchers when a customer comments on a SOW
+- **App flow comment** (`POST /api/app-flows/[flowId]/comments`) — notifies watchers when a customer comments on an app flow
+
+### 13.5 UI Changes
+
+#### Dashboard (`/dashboard`)
+
+- New "Assigned To" filter dropdown in the filter bar, alongside existing status/stage/source filters
+  - Options: "My Leads" (default), each active admin by name, "All Leads"
+  - Changing the filter updates the `assignedTo` query parameter and refetches leads
+- New "Assigned To" column in the leads grid table, displaying the admin's name or "Unassigned"
+
+#### Lead Detail Page (`/leads/[id]`)
+
+- **Assignment dropdown**: positioned in the project details section
+  - Shows all active admin users
+  - Current assignee is pre-selected
+  - Changing the selection triggers `PUT /api/leads/[id]/assign`
+- **Watch/Unwatch button**: positioned near the assignment dropdown
+  - Displays an eye icon with the current watcher count (e.g., "Watch (3)" or "Unwatch (3)")
+  - Click toggles the watch state via `POST` or `DELETE /api/leads/[id]/watch`
+
+### 13.6 Email Templates
+
+#### Lead Assigned Email
+
+| Aspect | Detail |
+|--------|--------|
+| Trigger | Lead is reassigned to a different admin |
+| Recipient | Newly assigned admin's email |
+| Subject | "Lead Assigned to You — {Project Name}" |
+| Content | Greeting, project name, customer name, link to lead detail page |
+| Function | `sendLeadAssignedEmail()` in `apps/admin/src/lib/email.ts` |
+
+#### Watcher Notification Email
+
+| Aspect | Detail |
+|--------|--------|
+| Trigger | Status change, note added, or customer comment on a watched lead |
+| Recipient | Each watcher (except the acting admin) |
+| Subject | Varies by event (e.g., "Status Update on {Project Name}", "New Note on {Project Name}", "New Comment on {Project Name}") |
+| Content | Event summary, link to lead detail page |
+
+---
+
+## 14. Revision History
 
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
@@ -1335,3 +1550,4 @@ Both Next.js apps include `transpilePackages: ["@leads-portal/database"]` in the
 | 1.4 | March 7, 2026 | Added content management: Content model, CRUD API + external v1 API, file upload, Swagger/OpenAPI docs at /api-docs | — |
 | 1.5 | March 7, 2026 | Added AdminUser model with bcrypt auth, session helper for audit trail, lead edit/delete APIs, audit fields (createdBy/updatedBy/changedBy), admin user CRUD API, admin welcome email, dark mode (ThemeProvider + ThemeToggle) | — |
 | 1.6 | March 12, 2026 | Added SowTemplate model (name, description, HTML content, industry, projectType, durationRange, costRange, isDefault), CRUD API routes, SOW builder template selector integration, AI prompt template injection | — |
+| 1.7 | March 13, 2026 | Lead assignment & watch list: assignedToId FK on Lead (to AdminUser, onDelete SetNull), LeadWatcher join table, PUT /api/leads/[id]/assign, GET/POST/DELETE /api/leads/[id]/watch, auto-assign on creation, dashboard "My Leads" default filter + "Assigned To" column, lead detail assignment dropdown + watch button, watcher notifications on status/notes/customer comments via notifyWatchers() and notifyLeadWatchers() utilities | — |

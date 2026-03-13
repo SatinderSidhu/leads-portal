@@ -335,6 +335,55 @@ export async function sendSowReadyEmail(
   console.log(`[Email] SOW ready email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
 }
 
+export async function sendLeadAssignedEmail(
+  lead: { projectName: string; customerName: string; id: string },
+  assignedTo: { name: string; email: string },
+  assignedBy?: AdminInfo
+) {
+  const adminUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
+  const leadUrl = `${adminUrl}/leads/${lead.id}`;
+
+  console.log(`[Email] Sending lead assigned email to ${assignedTo.email} for "${lead.projectName}"...`);
+  const start = Date.now();
+
+  const info = await transporter.sendMail({
+    from: getFromAddress(assignedBy?.name),
+    to: assignedTo.email,
+    subject: `Lead Assigned to You — ${lead.projectName}`,
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+        <div style="background: linear-gradient(135deg, #01358d 0%, #2870a8 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
+          <h1 style="color: white; margin: 0; font-size: 24px;">Lead Assigned to You</h1>
+          <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">${lead.projectName}</p>
+        </div>
+
+        <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+          <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
+            Hi ${assignedTo.name},
+          </p>
+          <p style="color: #333; font-size: 16px; line-height: 1.6;">
+            ${assignedBy ? `<strong>${assignedBy.name}</strong> has assigned` : "You have been assigned"} the lead <strong>${lead.projectName}</strong> (${lead.customerName}) to you.
+          </p>
+
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${leadUrl}"
+               style="display: inline-block; background: #01358d; color: white; padding: 14px 32px;
+                      border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">
+              View Lead
+            </a>
+          </div>
+        </div>
+
+        <p style="color: #999; font-size: 13px; text-align: center;">
+          You are now watching this lead and will receive updates.
+        </p>
+      </div>
+    `,
+  });
+
+  console.log(`[Email] Lead assigned email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
+}
+
 export async function sendAppFlowReadyEmail(
   lead: { customerName: string; customerEmail: string; projectName: string },
   leadId: string,

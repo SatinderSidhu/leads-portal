@@ -52,6 +52,11 @@ const SOURCE_LABELS: Record<string, string> = {
   BARK: "Bark",
 };
 
+interface AdminUser {
+  id: string;
+  name: string;
+}
+
 interface Lead {
   id: string;
   projectName: string;
@@ -63,6 +68,7 @@ interface Lead {
   stage: string;
   emailSent: boolean;
   createdAt: string;
+  assignedTo?: { id: string; name: string } | null;
 }
 
 interface Pagination {
@@ -83,7 +89,19 @@ export default function DashboardPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [stageFilter, setStageFilter] = useState("");
   const [sourceFilter, setSourceFilter] = useState("");
+  const [assignedToFilter, setAssignedToFilter] = useState("me");
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Fetch admin users for assignedTo filter
+  useEffect(() => {
+    fetch("/api/admin-users")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setAdminUsers(data);
+      })
+      .catch(() => {});
+  }, []);
 
   // Debounce search
   useEffect(() => {
@@ -98,6 +116,7 @@ export default function DashboardPage() {
     if (statusFilter) params.set("status", statusFilter);
     if (stageFilter) params.set("stage", stageFilter);
     if (sourceFilter) params.set("source", sourceFilter);
+    if (assignedToFilter) params.set("assignedTo", assignedToFilter);
 
     const res = await fetch(`/api/leads?${params}`);
     if (!res.ok) {
@@ -109,7 +128,7 @@ export default function DashboardPage() {
     setLeads(data.leads);
     setPagination(data.pagination);
     setLoading(false);
-  }, [debouncedSearch, statusFilter, stageFilter, sourceFilter, router]);
+  }, [debouncedSearch, statusFilter, stageFilter, sourceFilter, assignedToFilter, router]);
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -242,9 +261,23 @@ export default function DashboardPage() {
                 ))}
               </select>
             </div>
-            {(search || statusFilter || stageFilter || sourceFilter) && (
+            <div className="min-w-[150px]">
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Assigned To</label>
+              <select
+                value={assignedToFilter}
+                onChange={(e) => setAssignedToFilter(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white outline-none"
+              >
+                <option value="me">My Leads</option>
+                <option value="all">All Leads</option>
+                {adminUsers.map((admin) => (
+                  <option key={admin.id} value={admin.id}>{admin.name}</option>
+                ))}
+              </select>
+            </div>
+            {(search || statusFilter || stageFilter || sourceFilter || assignedToFilter !== "me") && (
               <button
-                onClick={() => { setSearch(""); setStatusFilter(""); setStageFilter(""); setSourceFilter(""); }}
+                onClick={() => { setSearch(""); setStatusFilter(""); setStageFilter(""); setSourceFilter(""); setAssignedToFilter("me"); }}
                 className="px-3 py-2 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition"
               >
                 Clear filters
@@ -265,9 +298,9 @@ export default function DashboardPage() {
         ) : leads.length === 0 ? (
           <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700">
             <p className="text-gray-500 dark:text-gray-400 mb-4">
-              {debouncedSearch || statusFilter || stageFilter || sourceFilter ? "No leads match your filters" : "No leads yet"}
+              {debouncedSearch || statusFilter || stageFilter || sourceFilter || assignedToFilter !== "me" ? "No leads match your filters" : "No leads assigned to you yet"}
             </p>
-            {!(debouncedSearch || statusFilter || stageFilter || sourceFilter) && (
+            {!(debouncedSearch || statusFilter || stageFilter || sourceFilter) && assignedToFilter === "me" && (
               <button
                 onClick={() => router.push("/leads/new")}
                 className="bg-[#f9556d] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#e8445c] transition"
@@ -300,6 +333,9 @@ export default function DashboardPage() {
                       </th>
                       <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Stage
+                      </th>
+                      <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                        Assigned To
                       </th>
                       <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                         Created
@@ -342,6 +378,9 @@ export default function DashboardPage() {
                           >
                             {STAGE_LABELS[lead.stage] || lead.stage}
                           </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                          {lead.assignedTo?.name || <span className="text-gray-400 italic">Unassigned</span>}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
                           {new Date(lead.createdAt).toLocaleDateString()}

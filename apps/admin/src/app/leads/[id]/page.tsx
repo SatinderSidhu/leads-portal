@@ -181,6 +181,8 @@ interface Lead {
   sentEmails: SentEmail[];
   receivedEmails: ReceivedEmail[];
   files: LeadFileItem[];
+  assignedTo?: { id: string; name: string; email: string } | null;
+  watchers?: { admin: { id: string; name: string; email: string } }[];
 }
 
 interface LeadFileItem {
@@ -297,6 +299,14 @@ export default function LeadDetailPage() {
   const [appFlows, setAppFlows] = useState<AppFlowItem[]>([]);
   const [appFlowSharing, setAppFlowSharing] = useState<string | null>(null);
 
+  // Assignment & watch state
+  const [adminUsers, setAdminUsers] = useState<{ id: string; name: string; email: string; active: boolean }[]>([]);
+  const [assigning, setAssigning] = useState(false);
+  const [isWatching, setIsWatching] = useState(false);
+  const [watcherCount, setWatcherCount] = useState(0);
+  const [watchToggling, setWatchToggling] = useState(false);
+  const [currentAdminId, setCurrentAdminId] = useState<string | null>(null);
+
   const fetchLead = useCallback(async () => {
     const res = await fetch(`/api/leads/${params.id}`);
     if (res.ok) {
@@ -320,14 +330,33 @@ export default function LeadDetailPage() {
       });
   }, []);
 
-  // Load admin signature
+  // Load admin signature + current admin ID
   useEffect(() => {
     fetch("/api/admin-users/me")
       .then((res) => res.json())
       .then((data) => {
         if (data.emailSignature) setAdminSignature(data.emailSignature);
+        if (data.id) setCurrentAdminId(data.id);
       });
   }, []);
+
+  // Load admin users for assignment dropdown
+  useEffect(() => {
+    fetch("/api/admin-users")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) setAdminUsers(data);
+      })
+      .catch(() => {});
+  }, []);
+
+  // Update watcher state when lead data changes
+  useEffect(() => {
+    if (!lead || !currentAdminId) return;
+    const watchers = lead.watchers || [];
+    setWatcherCount(watchers.length);
+    setIsWatching(watchers.some((w) => w.admin.id === currentAdminId));
+  }, [lead, currentAdminId]);
 
   // Load recommendations
   useEffect(() => {
@@ -402,6 +431,45 @@ export default function LeadDetailPage() {
       }
     } catch {
       alert("Failed to delete app flow");
+    }
+  }
+
+  async function handleAssign(adminId: string) {
+    if (!lead) return;
+    setAssigning(true);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/assign`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignedToId: adminId }),
+      });
+      if (res.ok) {
+        await fetchLead();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to assign lead");
+      }
+    } catch {
+      alert("Failed to assign lead");
+    } finally {
+      setAssigning(false);
+    }
+  }
+
+  async function handleToggleWatch() {
+    if (!lead) return;
+    setWatchToggling(true);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/watch`, {
+        method: isWatching ? "DELETE" : "POST",
+      });
+      if (res.ok) {
+        await fetchLead();
+      }
+    } catch {
+      // Silently fail
+    } finally {
+      setWatchToggling(false);
     }
   }
 
@@ -806,6 +874,44 @@ export default function LeadDetailPage() {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            {/* Assignment dropdown */}
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-gray-500 dark:text-gray-400">Assigned:</span>
+              <select
+                value={lead.assignedTo?.id || ""}
+                onChange={(e) => handleAssign(e.target.value)}
+                disabled={assigning}
+                className="px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-white outline-none disabled:opacity-50"
+              >
+                <option value="">Unassigned</option>
+                {adminUsers.filter((a) => a.active).map((a) => (
+                  <option key={a.id} value={a.id}>{a.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Watch button */}
+            <button
+              onClick={handleToggleWatch}
+              disabled={watchToggling}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition disabled:opacity-50 ${
+                isWatching
+                  ? "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/50"
+                  : "border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700"
+              }`}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill={isWatching ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              {isWatching ? "Watching" : "Watch"}
+              {watcherCount > 0 && (
+                <span className="bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-300 px-1.5 py-0.5 rounded-full text-[10px]">
+                  {watcherCount}
+                </span>
+              )}
+            </button>
+
             <ThemeToggle />
             {!editing && (
               <button

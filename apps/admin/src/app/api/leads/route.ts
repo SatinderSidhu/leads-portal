@@ -5,6 +5,7 @@ import { getAdminSession } from "../../../lib/session";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
+  const session = await getAdminSession();
 
   const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10));
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20", 10)));
@@ -12,6 +13,7 @@ export async function GET(req: Request) {
   const status = searchParams.get("status") || "";
   const stage = searchParams.get("stage") || "";
   const source = searchParams.get("source") || "";
+  const assignedTo = searchParams.get("assignedTo") || "";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: any = {};
@@ -29,9 +31,19 @@ export async function GET(req: Request) {
   if (stage) where.stage = stage;
   if (source) where.source = source;
 
+  // Filter by assigned admin: "me" = current user, specific ID, or "" = all
+  if (assignedTo === "me" && session) {
+    where.assignedToId = session.id;
+  } else if (assignedTo && assignedTo !== "all") {
+    where.assignedToId = assignedTo;
+  }
+
   const [leads, total] = await Promise.all([
     prisma.lead.findMany({
       where,
+      include: {
+        assignedTo: { select: { id: true, name: true } },
+      },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * limit,
       take: limit,
@@ -67,8 +79,16 @@ export async function POST(req: Request) {
       dateCreated: body.dateCreated ? new Date(body.dateCreated) : null,
       source: "MANUAL",
       createdBy: adminName,
+      ...(session && { assignedToId: session.id }),
     },
   });
+
+  // Auto-add creating admin as watcher
+  if (session) {
+    await prisma.leadWatcher.create({
+      data: { leadId: lead.id, adminId: session.id },
+    });
+  }
 
   await prisma.statusHistory.create({
     data: {

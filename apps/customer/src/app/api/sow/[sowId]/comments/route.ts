@@ -1,7 +1,7 @@
 import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { getCustomerSession } from "../../../../../lib/session";
-import { sendSowCommentNotification } from "../../../../../lib/email";
+import { sendSowCommentNotification, notifyLeadWatchers } from "../../../../../lib/email";
 
 export async function GET(
   _req: Request,
@@ -81,6 +81,13 @@ export async function POST(
     session.name,
     content.trim()
   ).catch(() => {});
+
+  // Notify watchers (non-blocking)
+  notifyLeadWatchers(sow.lead.id, sow.lead.projectName, {
+    commenterName: session.name,
+    commentContent: content.trim(),
+    section: `SOW v${sow.version}`,
+  }).catch(() => {});
 
   return NextResponse.json(comment, { status: 201 });
 }

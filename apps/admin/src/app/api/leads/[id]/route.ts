@@ -23,6 +23,11 @@ export async function GET(
       },
       receivedEmails: { orderBy: { receivedAt: "desc" } },
       files: { orderBy: { createdAt: "desc" } },
+      assignedTo: { select: { id: true, name: true, email: true } },
+      watchers: {
+        include: { admin: { select: { id: true, name: true, email: true } } },
+        orderBy: { createdAt: "asc" },
+      },
       _count: { select: { sentEmails: true } },
     },
   });

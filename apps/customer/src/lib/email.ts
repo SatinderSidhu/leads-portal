@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { prisma } from "@leads-portal/database";
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
@@ -235,6 +236,69 @@ export async function sendSowSignedNotification(
   });
 
   console.log(`[Email] SOW signed emails sent in ${Date.now() - start}ms`);
+}
+
+export async function notifyLeadWatchers(
+  leadId: string,
+  projectName: string,
+  context: { commenterName: string; commentContent: string; section: string }
+) {
+  try {
+    const lead = await prisma.lead.findUnique({
+      where: { id: leadId },
+      select: {
+        watchers: {
+          include: { admin: { select: { id: true, email: true } } },
+        },
+        assignedTo: { select: { id: true, email: true } },
+      },
+    });
+    if (!lead) return;
+
+    const emails = new Set<string>();
+    for (const w of lead.watchers) {
+      emails.add(w.admin.email);
+    }
+    if (lead.assignedTo) {
+      emails.add(lead.assignedTo.email);
+    }
+    if (emails.size === 0) return;
+
+    const adminUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
+    const leadUrl = `${adminUrl}/leads/${leadId}`;
+    const emailList = Array.from(emails);
+
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || "noreply@leadsportal.com",
+      to: emailList[0],
+      ...(emailList.length > 1 && { bcc: emailList.slice(1).join(",") }),
+      subject: `New Comment from ${context.commenterName} — ${projectName}`,
+      html: `
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+          <div style="background: linear-gradient(135deg, #01358d 0%, #2870a8 100%); border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 30px;">
+            <h1 style="color: white; margin: 0; font-size: 20px;">New Customer Comment</h1>
+            <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 15px;">${projectName} — ${context.section}</p>
+          </div>
+          <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+            <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
+              <strong>${context.commenterName}</strong> left a comment on ${context.section}:
+            </p>
+            <div style="background: white; border-left: 4px solid #f9556d; padding: 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
+              <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${context.commentContent.slice(0, 500)}</p>
+            </div>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${leadUrl}" style="display: inline-block; background: #01358d; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-size: 15px; font-weight: 600;">View in Admin</a>
+            </div>
+          </div>
+          <p style="color: #999; font-size: 12px; text-align: center;">You're receiving this because you're watching this lead.</p>
+        </div>
+      `,
+    });
+
+    console.log(`[Watcher] Notified ${emailList.length} watcher(s) for customer comment on ${leadId}`);
+  } catch (error) {
+    console.error("[Watcher] Failed to notify watchers:", error);
+  }
 }
 
 export async function sendAppFlowCommentNotification(

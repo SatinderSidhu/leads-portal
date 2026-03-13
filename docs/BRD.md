@@ -4,8 +4,8 @@
 
 | Field | Detail |
 |-------|--------|
-| Document Version | 1.6 |
-| Last Updated | March 12, 2026 |
+| Document Version | 1.7 |
+| Last Updated | March 13, 2026 |
 | Status | Active |
 
 ---
@@ -540,6 +540,69 @@ A public-facing, interactive web application for customers to view their project
 | Endpoints | Full CRUD + file upload |
 | Documentation | `docs/API-INTEGRATION.md` + interactive Swagger at `/api-docs` |
 
+### 5.6 Lead Assignment & Watch List
+
+#### 5.6.1 Lead Assignment
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | Ensure every lead has a clear owner responsible for follow-up |
+| Default | Leads are automatically assigned to the admin who creates them |
+
+**Assignment Rules:**
+- When an admin creates a lead via the portal, the lead is automatically assigned to that admin
+- API-created leads (source = AGENT) have no initial assignment
+- Admins can reassign a lead to any active admin user via a dropdown on the lead detail page
+- On reassignment, the newly assigned admin receives an email notification with the lead details and a link to the lead detail page
+
+**Lead Detail Page:**
+- "Assigned To" dropdown showing all active admin users
+- Selecting a different admin triggers reassignment and sends a notification email
+- Current assignee is displayed prominently near the project details
+
+#### 5.6.2 Watch List
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | Allow admins to subscribe to updates on leads they are interested in but may not own |
+| Default | The admin who creates a lead is automatically added as a watcher |
+
+**Watch/Unwatch Behavior:**
+- Any admin can watch or unwatch a lead via a button on the lead detail page
+- The watch button displays the current number of watchers
+- Watching a lead subscribes the admin to email notifications for key events on that lead
+
+**Watcher Notifications:**
+Watchers receive email notifications when any of the following occur on a watched lead:
+
+| Event | Trigger |
+|-------|---------|
+| Status change | Admin updates the lead's status |
+| Note added | Admin adds a note to the lead |
+| SOW comment | Customer posts a comment on a SOW |
+| App flow comment | Customer posts a comment on an app flow |
+
+**Business Rules:**
+- Notifications are sent to all watchers except the admin who performed the action (to avoid self-notification)
+- The assigned admin is not automatically a watcher (though they are added as one on lead creation, they can unwatch)
+- Watcher notifications are separate from the existing customer-facing emails (status update, SOW ready, etc.)
+
+#### 5.6.3 Dashboard — My Leads Filter
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | Help admins focus on the leads they are responsible for |
+| Default View | Dashboard defaults to showing "My Leads" (leads assigned to the logged-in admin) |
+
+**Filter Options:**
+- "My Leads" — leads assigned to the current admin (default)
+- Specific admin — leads assigned to a selected admin (dropdown of active admins)
+- "All Leads" — all leads regardless of assignment
+
+**Dashboard Enhancements:**
+- "Assigned To" column added to the leads grid, displaying the assigned admin's name
+- Filter persists via query parameter (`assignedTo=me`, `assignedTo={adminId}`, `assignedTo=all`)
+
 ---
 
 ## 6. Business Flows
@@ -767,6 +830,50 @@ AI generates SOW following template's structure, formatting, and tone
 Generated SOW appears in editor for review and editing
 ```
 
+### 6.11 Lead Assignment Flow
+
+```
+Admin creates a new lead
+    ↓
+Lead is auto-assigned to the creating admin
+    ↓
+Creating admin is auto-added as a watcher
+    ↓
+Lead appears in admin's "My Leads" dashboard view
+```
+
+### 6.12 Lead Reassignment Flow
+
+```
+Admin opens Lead Detail page
+    ↓
+Selects a different admin from the "Assigned To" dropdown
+    ↓
+PUT /api/leads/[id]/assign sent with new admin ID
+    ↓
+Lead assignment updated in database
+    ↓
+Notification email sent to newly assigned admin
+    ↓
+Lead detail page refreshes with updated assignment
+```
+
+### 6.13 Watch/Unwatch Flow
+
+```
+Admin opens Lead Detail page
+    ↓
+Clicks "Watch" button (or "Unwatch" if already watching)
+    ↓
+POST or DELETE /api/leads/[id]/watch
+    ↓
+Watcher record created or removed in database
+    ↓
+Button updates to reflect new watch state
+    ↓
+[If watching] Admin receives notifications for status changes, notes, and customer comments
+```
+
 ---
 
 ## 7. Data Requirements
@@ -868,6 +975,18 @@ Generated SOW appears in editor for review and editing
 | Created At | Timestamp | When the content was created |
 | Updated At | Timestamp | When the content was last modified |
 
+### 7.8 Lead Watcher Record
+
+| Field | Type | Description |
+|-------|------|-------------|
+| ID | UUID | Unique identifier |
+| Lead ID | UUID | Foreign key to Lead |
+| Admin ID | UUID | Foreign key to AdminUser |
+| Created At | Timestamp | When the watch was created |
+
+**Constraints:**
+- Unique on (Lead ID, Admin ID) — an admin can only watch a lead once
+
 ---
 
 ## 8. Non-Functional Requirements
@@ -915,3 +1034,4 @@ _This section will be updated as new features are planned and developed._
 | 1.4 | March 7, 2026 | Added content management system with CRUD, file upload, external API, Swagger/OpenAPI docs | — |
 | 1.5 | March 7, 2026 | Added multi-admin auth (database-backed users with bcrypt), lead edit/delete, audit trail (who created/edited/updated), admin user management (CRUD + welcome email), dark mode toggle | — |
 | 1.6 | March 12, 2026 | Added SOW template system: reusable templates with HTML content, metadata (industry, project type, duration/cost range), default flag, CRUD admin pages, template selector in SOW builder, AI prompt integration | — |
+| 1.7 | March 13, 2026 | Lead assignment & watch list: auto-assign leads to creating admin, reassignment via dropdown with email notification, watch/unwatch leads with watcher notifications on status changes, notes, and customer comments, dashboard defaults to "My Leads" with assignment filter and column | — |
