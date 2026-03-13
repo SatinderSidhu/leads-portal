@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import {
   ReactFlow,
   Controls,
@@ -220,72 +221,73 @@ export default function AppFlowSection({ flows, leadId, isLoggedIn, returnTo }: 
 
   const flowComments = comments[selectedFlowId] || [];
 
-  // Full-screen mode
-  if (fullScreen && selectedFlow) {
-    return (
-      <div className="fixed inset-0 z-50 bg-white dark:bg-gray-950 flex flex-col">
-        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <div className="flex items-center gap-3">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{selectedFlow.name}</h3>
-            <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                selectedFlow.flowType === "WIREFRAME"
-                  ? "bg-indigo-100 text-indigo-800"
-                  : "bg-blue-100 text-blue-800"
-              }`}
-            >
-              {selectedFlow.flowType === "WIREFRAME" ? "Wireframe" : "Basic"}
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleDownloadPng}
-              disabled={downloading}
-              className="px-4 py-2 text-sm font-medium bg-[#01358d] text-white rounded-lg hover:bg-[#012a70] disabled:opacity-50 transition"
-            >
-              {downloading ? "Exporting..." : "Download PNG"}
-            </button>
-            <button
-              onClick={handleDownloadPdf}
-              disabled={downloading}
-              className="px-4 py-2 text-sm font-medium bg-[#01358d] text-white rounded-lg hover:bg-[#012a70] disabled:opacity-50 transition"
-            >
-              Download PDF
-            </button>
-            <button
-              onClick={() => setFullScreen(false)}
-              className="px-4 py-2 text-sm font-medium bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-            >
-              Exit Full Screen
-            </button>
-          </div>
+  // Full-screen mode (portal to body to escape backdrop-filter stacking context)
+  const fullScreenOverlay = fullScreen && selectedFlow ? createPortal(
+    <div className="fixed inset-0 z-[9999] bg-white dark:bg-gray-950 flex flex-col">
+      <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+        <div className="flex items-center gap-3">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{selectedFlow.name}</h3>
+          <span
+            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+              selectedFlow.flowType === "WIREFRAME"
+                ? "bg-indigo-100 text-indigo-800"
+                : "bg-blue-100 text-blue-800"
+            }`}
+          >
+            {selectedFlow.flowType === "WIREFRAME" ? "Wireframe" : "Basic"}
+          </span>
         </div>
-        <div className="flex-1 relative" ref={fullScreenFlowRef} style={{ minHeight: 0 }}>
-          <div className="absolute inset-0">
-            <ReactFlow
-              key="fullscreen"
-              nodes={selectedFlow.nodes}
-              edges={selectedFlow.edges}
-              nodeTypes={nodeTypes}
-              nodesDraggable={false}
-              nodesConnectable={false}
-              elementsSelectable={false}
-              panOnDrag={true}
-              zoomOnScroll={true}
-              fitView
-              className="bg-gray-50"
-            >
-              <Controls showInteractive={false} />
-              <MiniMap nodeStrokeWidth={3} className="!bg-white" />
-              <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
-            </ReactFlow>
-          </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleDownloadPng}
+            disabled={downloading}
+            className="px-4 py-2 text-sm font-medium bg-[#01358d] text-white rounded-lg hover:bg-[#012a70] disabled:opacity-50 transition"
+          >
+            {downloading ? "Exporting..." : "Download PNG"}
+          </button>
+          <button
+            onClick={handleDownloadPdf}
+            disabled={downloading}
+            className="px-4 py-2 text-sm font-medium bg-[#01358d] text-white rounded-lg hover:bg-[#012a70] disabled:opacity-50 transition"
+          >
+            Download PDF
+          </button>
+          <button
+            onClick={() => setFullScreen(false)}
+            className="px-4 py-2 text-sm font-medium bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+          >
+            Exit Full Screen
+          </button>
         </div>
       </div>
-    );
-  }
+      <div className="flex-1 relative" ref={fullScreenFlowRef} style={{ minHeight: 0 }}>
+        <div className="absolute inset-0">
+          <ReactFlow
+            key="fullscreen"
+            nodes={selectedFlow.nodes}
+            edges={selectedFlow.edges}
+            nodeTypes={nodeTypes}
+            nodesDraggable={false}
+            nodesConnectable={false}
+            elementsSelectable={false}
+            panOnDrag={true}
+            zoomOnScroll={true}
+            fitView
+            className="bg-gray-50"
+          >
+            <Controls showInteractive={false} />
+            <MiniMap nodeStrokeWidth={3} className="!bg-white" />
+            <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
+          </ReactFlow>
+        </div>
+      </div>
+    </div>,
+    document.body
+  ) : null;
 
   return (
+    <>
+    {fullScreenOverlay}
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -450,5 +452,6 @@ export default function AppFlowSection({ flows, leadId, isLoggedIn, returnTo }: 
         )}
       </div>
     </div>
+    </>
   );
 }

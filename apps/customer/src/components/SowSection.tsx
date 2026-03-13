@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { downloadSowPdf } from "../lib/generate-pdf";
 
 interface SowComment {
@@ -143,54 +144,55 @@ export default function SowSection({
     return <p className="text-gray-500">No scope of work documents available yet.</p>;
   }
 
-  // Full-screen overlay
-  if (fullScreen && selectedSow) {
-    return (
-      <div className="fixed inset-0 z-50 bg-white dark:bg-gray-950 flex flex-col">
-        <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-          <div className="flex items-center gap-3">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Scope of Work — v{selectedSow.version}
-            </h3>
-            {isAiGenerated && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                AI Generated
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            {isAiGenerated && (
-              <button
-                onClick={handleDownloadPdf}
-                className="px-4 py-2 text-sm font-medium bg-[#01358d] text-white rounded-lg hover:bg-[#012a70] transition"
-              >
-                Download PDF
-              </button>
-            )}
-            <button
-              onClick={() => setFullScreen(false)}
-              className="px-4 py-2 text-sm font-medium bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
-            >
-              Exit Full Screen
-            </button>
-          </div>
+  // Full-screen overlay (portal to body to escape backdrop-filter stacking context)
+  const fullScreenOverlay = fullScreen && selectedSow ? createPortal(
+    <div className="fixed inset-0 z-[9999] bg-white dark:bg-gray-950 flex flex-col">
+      <div className="flex items-center justify-between px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+        <div className="flex items-center gap-3">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Scope of Work — v{selectedSow.version}
+          </h3>
+          {isAiGenerated && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+              AI Generated
+            </span>
+          )}
         </div>
-        <div className="flex-1 overflow-auto" style={{ minHeight: 0 }}>
-          {isAiGenerated ? (
-            <SowHtmlPreview content={selectedSow.content!} version={selectedSow.version} fullScreen />
-          ) : selectedSow.fileType === "application/pdf" && selectedSow.filePath ? (
-            <iframe
-              src={selectedSow.filePath}
-              className="w-full h-full"
-              title={`SOW v${selectedSow.version}`}
-            />
-          ) : null}
+        <div className="flex items-center gap-3">
+          {isAiGenerated && (
+            <button
+              onClick={handleDownloadPdf}
+              className="px-4 py-2 text-sm font-medium bg-[#01358d] text-white rounded-lg hover:bg-[#012a70] transition"
+            >
+              Download PDF
+            </button>
+          )}
+          <button
+            onClick={() => setFullScreen(false)}
+            className="px-4 py-2 text-sm font-medium bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+          >
+            Exit Full Screen
+          </button>
         </div>
       </div>
-    );
-  }
+      <div className="flex-1 overflow-auto" style={{ minHeight: 0 }}>
+        {isAiGenerated ? (
+          <SowHtmlPreview content={selectedSow.content!} version={selectedSow.version} fullScreen />
+        ) : selectedSow.fileType === "application/pdf" && selectedSow.filePath ? (
+          <iframe
+            src={selectedSow.filePath}
+            className="w-full h-full"
+            title={`SOW v${selectedSow.version}`}
+          />
+        ) : null}
+      </div>
+    </div>,
+    document.body
+  ) : null;
 
   return (
+    <>
+    {fullScreenOverlay}
     <div>
       <div className="mb-6">
         <p className="text-sm font-medium text-[#01358d] dark:text-blue-400 uppercase tracking-wider mb-1">Scope of Work</p>
@@ -544,6 +546,7 @@ export default function SowSection({
         </div>
       )}
     </div>
+    </>
   );
 }
 
