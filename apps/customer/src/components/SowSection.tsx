@@ -175,7 +175,7 @@ export default function SowSection({
             </button>
           </div>
         </div>
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1 overflow-auto" style={{ minHeight: 0 }}>
           {isAiGenerated ? (
             <SowHtmlPreview content={selectedSow.content!} version={selectedSow.version} fullScreen />
           ) : selectedSow.fileType === "application/pdf" && selectedSow.filePath ? (
@@ -604,7 +604,7 @@ function SowHtmlPreview({
 
     iframe.addEventListener("load", handleLoad);
     return () => iframe.removeEventListener("load", handleLoad);
-  }, [content]);
+  }, [content, fullScreen]);
 
   if (fullScreen) {
     return (

@@ -260,23 +260,26 @@ export default function AppFlowSection({ flows, leadId, isLoggedIn, returnTo }: 
             </button>
           </div>
         </div>
-        <div className="flex-1" ref={fullScreenFlowRef}>
-          <ReactFlow
-            nodes={selectedFlow.nodes}
-            edges={selectedFlow.edges}
-            nodeTypes={nodeTypes}
-            nodesDraggable={false}
-            nodesConnectable={false}
-            elementsSelectable={false}
-            panOnDrag={true}
-            zoomOnScroll={true}
-            fitView
-            className="bg-gray-50"
-          >
-            <Controls showInteractive={false} />
-            <MiniMap nodeStrokeWidth={3} className="!bg-white" />
-            <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
-          </ReactFlow>
+        <div className="flex-1 relative" ref={fullScreenFlowRef} style={{ minHeight: 0 }}>
+          <div className="absolute inset-0">
+            <ReactFlow
+              key="fullscreen"
+              nodes={selectedFlow.nodes}
+              edges={selectedFlow.edges}
+              nodeTypes={nodeTypes}
+              nodesDraggable={false}
+              nodesConnectable={false}
+              elementsSelectable={false}
+              panOnDrag={true}
+              zoomOnScroll={true}
+              fitView
+              className="bg-gray-50"
+            >
+              <Controls showInteractive={false} />
+              <MiniMap nodeStrokeWidth={3} className="!bg-white" />
+              <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
+            </ReactFlow>
+          </div>
         </div>
       </div>
     );
