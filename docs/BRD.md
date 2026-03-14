@@ -423,7 +423,7 @@ A public-facing, interactive web application for customers to view their project
 
 ### 5.4 NDA (Non-Disclosure Agreement) Features
 
-#### 5.3.1 NDA Generation (Admin)
+#### 5.4.1 NDA Generation (Admin)
 
 | Aspect | Detail |
 |--------|--------|
@@ -441,7 +441,7 @@ A public-facing, interactive web application for customers to view their project
 - A styled email is sent to the customer with a link to review and sign
 - Admin sees NDA status on the lead detail page (Generated / Sent / Signed)
 
-#### 5.3.2 NDA Ready Email
+#### 5.4.2 NDA Ready Email
 
 | Aspect | Detail |
 |--------|--------|
@@ -454,7 +454,7 @@ A public-facing, interactive web application for customers to view their project
 - Notification that NDA is ready for review and signature
 - CTA button: "Review & Sign NDA" linking to customer portal NDA page
 
-#### 5.3.3 NDA Review & Signing (Customer Portal)
+#### 5.4.3 NDA Review & Signing (Customer Portal)
 
 | Aspect | Detail |
 |--------|--------|
@@ -482,7 +482,7 @@ A public-facing, interactive web application for customers to view their project
 - Green confirmation banner with signer name and date
 - NDA status updated to "Signed"
 
-#### 5.3.4 NDA Signed Confirmation Emails
+#### 5.4.4 NDA Signed Confirmation Emails
 
 | Aspect | Detail |
 |--------|--------|
@@ -499,7 +499,7 @@ A public-facing, interactive web application for customers to view their project
 
 ### 5.5 API Integration Features
 
-#### 5.6.1 Lead Source Tracking
+#### 5.5.1 Lead Source Tracking
 
 | Aspect | Detail |
 |--------|--------|
@@ -517,7 +517,7 @@ A public-facing, interactive web application for customers to view their project
 - Source is shown on the leads dashboard table as a badge
 - Source is shown on the lead detail page in the project details section
 
-#### 5.6.2 External Leads API
+#### 5.5.2 External Leads API
 
 | Aspect | Detail |
 |--------|--------|

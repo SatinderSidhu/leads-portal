@@ -14,6 +14,8 @@ interface SowTemplate {
   costRange: string | null;
   isDefault: boolean;
   fileName: string | null;
+  createdBy: string | null;
+  updatedBy: string | null;
   createdAt: string;
 }
 
@@ -167,9 +169,19 @@ export default function SowTemplatesListPage() {
                 </div>
 
                 <div className="mt-auto pt-4 border-t dark:border-gray-700 flex items-center justify-between">
-                  <span className="text-xs text-gray-400">
-                    {new Date(template.createdAt).toLocaleDateString()}
-                  </span>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-xs text-gray-400">
+                      {new Date(template.createdAt).toLocaleDateString()}
+                    </span>
+                    {template.createdBy && (
+                      <span className="text-xs text-gray-400">
+                        by {template.createdBy}
+                        {template.updatedBy && template.updatedBy !== template.createdBy && (
+                          <span> (edited by {template.updatedBy})</span>
+                        )}
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     {!template.isDefault && (
                       <button
