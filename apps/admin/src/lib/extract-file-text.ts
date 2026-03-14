@@ -1,5 +1,10 @@
 import { readFile } from "fs/promises";
 import path from "path";
+import { createRequire } from "node:module";
+
+// Use createRequire to load native Node packages at runtime,
+// preventing turbopack from bundling/mangling them
+const _require = createRequire(import.meta.url);
 
 /**
  * Extracts text/HTML content from an uploaded PDF or DOCX file.
@@ -16,21 +21,19 @@ export async function extractFileContent(
     const ext = path.extname(filePath).toLowerCase();
 
     if (ext === ".docx") {
-      const mammoth = await import("mammoth");
+      const mammoth = _require("mammoth");
       const result = await mammoth.convertToHtml({ buffer });
       if (result.value?.trim()) {
         return { text: result.value, format: "html" };
       }
     } else if (ext === ".doc") {
-      // mammoth doesn't support .doc, extract as raw text fallback
-      const mammoth = await import("mammoth");
+      const mammoth = _require("mammoth");
       const result = await mammoth.extractRawText({ buffer });
       if (result.value?.trim()) {
         return { text: result.value, format: "text" };
       }
     } else if (ext === ".pdf") {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const pdfParse = require("pdf-parse");
+      const pdfParse = _require("pdf-parse");
       const data = await pdfParse(buffer);
       if (data.text?.trim()) {
         return { text: data.text, format: "text" };

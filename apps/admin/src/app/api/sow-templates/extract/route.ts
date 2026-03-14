@@ -2,24 +2,26 @@ import { NextResponse } from "next/server";
 import { getAdminSession } from "../../../../lib/session";
 import { readFile } from "fs/promises";
 import path from "path";
+import { createRequire } from "node:module";
+
+// Use createRequire to load native Node packages at runtime,
+// preventing turbopack from bundling/mangling them
+const _require = createRequire(import.meta.url);
 
 async function extractFromBuffer(
   buffer: Buffer,
   ext: string
 ): Promise<{ text: string; format: "html" | "text" } | null> {
   if (ext === ".docx") {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mammoth = require("mammoth");
+    const mammoth = _require("mammoth");
     const result = await mammoth.convertToHtml({ buffer });
     if (result.value?.trim()) return { text: result.value, format: "html" };
   } else if (ext === ".doc") {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mammoth = require("mammoth");
+    const mammoth = _require("mammoth");
     const result = await mammoth.extractRawText({ buffer });
     if (result.value?.trim()) return { text: result.value, format: "text" };
   } else if (ext === ".pdf") {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require("pdf-parse");
+    const pdfParse = _require("pdf-parse");
     const data = await pdfParse(buffer);
     if (data.text?.trim()) return { text: data.text, format: "text" };
   }
