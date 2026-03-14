@@ -8,11 +8,13 @@ async function extractFromBuffer(
   ext: string
 ): Promise<{ text: string; format: "html" | "text" } | null> {
   if (ext === ".docx") {
-    const mammoth = await import("mammoth");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mammoth = require("mammoth");
     const result = await mammoth.convertToHtml({ buffer });
     if (result.value?.trim()) return { text: result.value, format: "html" };
   } else if (ext === ".doc") {
-    const mammoth = await import("mammoth");
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mammoth = require("mammoth");
     const result = await mammoth.extractRawText({ buffer });
     if (result.value?.trim()) return { text: result.value, format: "text" };
   } else if (ext === ".pdf") {

@@ -46,6 +46,7 @@ COPY --from=prisma /app/packages/database ./packages/database
 COPY --from=admin-builder /app/apps/admin/.next ./apps/admin/.next
 COPY --from=admin-builder /app/apps/admin/public ./apps/admin/public
 COPY --from=admin-builder /app/apps/admin/package.json ./apps/admin/package.json
+COPY --from=admin-builder /app/apps/admin/next.config.ts ./apps/admin/next.config.ts
 COPY package.json ./
 COPY scripts/start-admin.sh ./scripts/start-admin.sh
 EXPOSE 3000
@@ -61,6 +62,7 @@ COPY --from=prisma /app/packages/database ./packages/database
 COPY --from=customer-builder /app/apps/customer/.next ./apps/customer/.next
 COPY --from=customer-builder /app/apps/customer/public ./apps/customer/public
 COPY --from=customer-builder /app/apps/customer/package.json ./apps/customer/package.json
+COPY --from=customer-builder /app/apps/customer/next.config.ts ./apps/customer/next.config.ts
 COPY package.json ./
 EXPOSE 3001
 CMD ["npm", "run", "start", "--workspace=apps/customer"]
