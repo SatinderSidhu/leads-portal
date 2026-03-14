@@ -13,6 +13,8 @@ export interface SowInput {
   additionalNotes: string;
   // Template content (optional)
   templateContent?: string;
+  // Extracted text from uploaded reference file (optional)
+  fileContent?: string;
 }
 
 export function buildSowPrompt(input: SowInput): { system: string; user: string } {
@@ -25,7 +27,33 @@ IMPORTANT HTML RULES:
 - Do NOT use markdown — output pure HTML only
 - Start with an <h1> for the document title`;
 
-  if (input.templateContent) {
+  const hasTemplate = input.templateContent?.trim();
+  const hasFile = input.fileContent?.trim();
+
+  if (hasTemplate && hasFile) {
+    // Both editor template and uploaded reference file
+    system += `
+
+TEMPLATE FORMAT — You have TWO reference sources. Use the uploaded reference file as the PRIMARY formatting guide (section order, structure, tone, boilerplate text). The editor template provides additional formatting or overrides. Follow both closely, but when they conflict, prefer the editor template.
+
+---BEGIN EDITOR TEMPLATE---
+${input.templateContent}
+---END EDITOR TEMPLATE---
+
+---BEGIN REFERENCE FILE---
+${input.fileContent}
+---END REFERENCE FILE---`;
+  } else if (hasFile) {
+    // Only uploaded reference file
+    system += `
+
+TEMPLATE FORMAT — You MUST follow this reference document's structure, section order, formatting style, and tone exactly. Use it as the blueprint for the SOW. Fill in the project-specific details based on the user's input, but keep the document's layout, headings, and boilerplate text intact. Here is the reference document:
+
+---BEGIN REFERENCE FILE---
+${input.fileContent}
+---END REFERENCE FILE---`;
+  } else if (hasTemplate) {
+    // Only editor template content
     system += `
 
 TEMPLATE FORMAT — You MUST follow this template's structure, section order, formatting style, and tone exactly. Use it as the blueprint for the SOW. Fill in the project-specific details based on the user's input, but keep the template's layout, headings, and boilerplate text intact. Here is the template:
@@ -34,6 +62,7 @@ TEMPLATE FORMAT — You MUST follow this template's structure, section order, fo
 ${input.templateContent}
 ---END TEMPLATE---`;
   } else {
+    // No template — use default structure
     system += `
 
 DOCUMENT STRUCTURE — include all of these sections:

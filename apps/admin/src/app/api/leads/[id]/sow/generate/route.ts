@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { getAdminSession } from "../../../../../../lib/session";
 import { buildSowPrompt } from "../../../../../../lib/sow-prompt";
+import { extractFileContent } from "../../../../../../lib/extract-file-text";
 
 export async function POST(
   req: Request,
@@ -52,15 +53,26 @@ export async function POST(
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  // Fetch template content if templateId provided
+  // Fetch template content + file if templateId provided
   let templateContent: string | undefined;
+  let fileContent: string | undefined;
   if (body.templateId) {
     const template = await prisma.sowTemplate.findUnique({
       where: { id: body.templateId },
-      select: { content: true },
+      select: { content: true, filePath: true },
     });
     if (template) {
-      templateContent = template.content;
+      // Editor content (HTML)
+      if (template.content?.trim()) {
+        templateContent = template.content;
+      }
+      // Extract text from uploaded reference file (PDF/DOCX)
+      if (template.filePath) {
+        const extracted = await extractFileContent(template.filePath);
+        if (extracted) {
+          fileContent = extracted.text;
+        }
+      }
     }
   }
 
@@ -76,6 +88,7 @@ export async function POST(
     deliverables: body.deliverables || "",
     additionalNotes: body.additionalNotes || "",
     templateContent,
+    fileContent,
   });
 
   const client = new Anthropic({ apiKey });
