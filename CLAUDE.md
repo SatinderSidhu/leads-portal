@@ -28,8 +28,10 @@ A leads management system for KITLabs Inc. Two Next.js apps in a Turborepo monor
 | Rich Text | TipTap (@tiptap/react, @tiptap/starter-kit) |
 | Flow Builder | @xyflow/react (admin: editable flows, customer: read-only viewer) |
 | App Flow AI | Anthropic Claude API (SSE streaming JSON generation) |
+| Doc Extraction | mammoth (DOCX→HTML), pdf-parse (PDF→text) |
 | PDF | jsPDF (NDA + SOW PDF generation on customer side) |
 | Image Export | html-to-image (PNG export for app flows on admin + customer) |
+| Analytics | Google Analytics (G-8J4D4JHZGN on customer portal) |
 | Deployment | Docker + Nginx + Let's Encrypt on single EC2 instance |
 | CI/CD | GitHub Actions → ECR → EC2 via SSH |
 
@@ -42,7 +44,7 @@ leads-portal/
 │   │   ├── src/
 │   │   │   ├── app/     # Next.js App Router pages & API routes
 │   │   │   ├── components/  # ThemeProvider, ThemeToggle, FlowBuilder, RichTextEditor, AppFlowBuilder, app-flow-nodes
-│   │   │   └── lib/     # session.ts, email.ts, api-auth.ts, nda-template.ts, app-flow-prompt.ts
+│   │   │   └── lib/     # session.ts, email.ts, api-auth.ts, nda-template.ts, app-flow-prompt.ts, sow-prompt.ts, extract-file-text.ts
 │   │   ├── public/      # openapi.json, uploads/, kitlabs-logo.jpg
 │   │   └── next.config.ts
 │   └── customer/        # Customer portal (port 3001)
@@ -175,7 +177,7 @@ leads-portal/
 
 ## Customer Portal
 
-Multi-page portal with session-based authentication (bcryptjs + cookie).
+Multi-page portal with session-based authentication (bcryptjs + cookie). Google Analytics (G-8J4D4JHZGN) integrated via Next.js Script component.
 
 ### Pages
 | Route | Purpose |
@@ -233,6 +235,8 @@ Multi-page portal with session-based authentication (bcryptjs + cookie).
 | `apps/admin/src/lib/nda-template.ts` | `generateNdaContent()` — NDA text template |
 | `apps/admin/src/lib/sow-prompt.ts` | `buildSowPrompt()` — AI prompt for SOW generation; accepts optional `templateContent` to override default structure |
 | `apps/admin/src/lib/app-flow-prompt.ts` | `buildAppFlowPrompt()` — AI prompt for generating app flow JSON nodes/edges |
+| `apps/admin/src/lib/sow-prompt.ts` | `buildSowPrompt()` — AI prompt for SOW generation (supports editor template, file reference, both, or default) |
+| `apps/admin/src/lib/extract-file-text.ts` | `extractFileContent()` — Extracts text/HTML from uploaded PDF (pdf-parse) or DOCX (mammoth) files |
 | `apps/customer/src/lib/session.ts` | `getCustomerSession()` — reads customer-session cookie, returns CustomerSession |
 | `apps/customer/src/lib/email.ts` | `sendNdaSignedEmail()`, `sendSowCommentNotification()`, `sendSowSignedNotification()`, `sendAppFlowCommentNotification()`, `notifyLeadWatchers()` |
 | `apps/customer/src/lib/generate-pdf.ts` | `downloadNdaPdf()`, `downloadSowPdf()` — jsPDF generation |
@@ -370,10 +374,14 @@ docker compose exec db pg_dump -U postgres leads_portal > backup.sql  # DB backu
 - Templates support categorization by industry, project type, duration, and cost range for easy selection
 
 ## App Flow System
-- Two flow types: **Basic** (flowchart boxes with label/description) and **Wireframe** (phone-screen-like blocks with title/elements)
+- Two flow types: **Basic** (flowchart boxes with label/description) and **Wireframe** (realistic mobile screen mockups)
 - Admin creates flows via `/leads/[id]/app-flow-builder` with AI generation or manual node placement
 - AI generates JSON `{ nodes, edges }` via Claude API (SSE streaming)
-- Custom ReactFlow node components: `BasicNode` (teal border, rounded box) and `WireframeNode` (gray header bar, element list)
+- Custom ReactFlow node components: `BasicNode` (teal border, rounded box) and `WireframeNode` (phone-shaped frame with notch, status bar, typed UI elements, home indicator)
+- **Wireframe UI elements**: 17 typed element renderers — nav-bar, heading, text, input, button, button-outline, image, avatar, search, card, list, tab-bar, toggle, divider, checkbox, radio, social-login, map
+- **Wireframe layout**: horizontal left-to-right storyboard (x increments by 280), handles on Left/Right sides
+- **Basic layout**: vertical top-to-bottom flowchart (x at 100/400/700 for branching, y increments by 200)
+- Backward compatible with old string-based wireframe elements
 - Flows are saved to `AppFlow` model with JSON nodes/edges
 - Sharing: sets `sharedAt`/`sharedBy`, optionally updates lead status to `APP_FLOW_READY`, sends email
 - Customer views read-only flow with pan/zoom, comments, full-screen, PNG/PDF export
@@ -386,6 +394,7 @@ docker compose exec db pg_dump -U postgres leads_portal > backup.sql  # DB backu
 - Database seed is idempotent (checks by title/username before inserting)
 - File uploads go to `public/uploads/` (admin), volume-mounted in Docker
 - Nginx serves `/uploads/` directly from shared Docker volume (Next.js production doesn't serve dynamically added files)
+- Nginx `client_max_body_size` set to 50M for file uploads
 - Dark mode supported via ThemeProvider + ThemeToggle
 - RichTextEditor uses `lastContentRef` to prevent infinite update loops when syncing external content
 - Swagger/OpenAPI spec at `public/openapi.json`, UI at `/api-docs`
@@ -393,4 +402,7 @@ docker compose exec db pg_dump -U postgres leads_portal > backup.sql  # DB backu
 - SOW uploads saved to `public/uploads/sow/` with auto-incrementing version numbers
 - Customer portal uses `ADMIN_PORTAL_URL` env var for cross-domain file access (SOW documents)
 - AI-generated SOW content stored as HTML in `ScopeOfWork.content` field (no file)
+- SOW templates support optional file upload (PDF/DOCX) as reference documents, stored in `public/uploads/sow-templates/`
+- When generating SOW with a template that has an uploaded file, the file content is extracted (DOCX→HTML via mammoth, PDF→text via pdf-parse) and injected into the AI prompt as a formatting reference
+- SOW prompt handles 4 scenarios: both editor template + file content, file only, editor template only, or default structure
 - Full-screen views use `fixed inset-0 z-50` overlay pattern with exit button in header bar

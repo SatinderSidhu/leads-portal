@@ -4,7 +4,7 @@
 
 | Field | Detail |
 |-------|--------|
-| Document Version | 1.7 |
+| Document Version | 1.8 |
 | Last Updated | March 13, 2026 |
 | Status | Active |
 
@@ -25,6 +25,8 @@
 | Monorepo Tool | Turborepo | 2.x |
 | Package Manager | npm workspaces | 11.x |
 | API Docs | swagger-ui-react | Latest |
+| Doc Extraction | mammoth (DOCX→HTML), pdf-parse (PDF→text) | Latest |
+| Analytics | Google Analytics (gtag.js) | GA4 |
 | Containerization | Docker + Docker Compose | Latest |
 | Runtime | Node.js | 20 (Alpine) |
 
@@ -96,7 +98,10 @@ leads-portal/
 │   │       ├── lib/
 │   │       │   ├── api-auth.ts     # Shared Bearer token validation helpers
 │   │       │   ├── email.ts        # Nodemailer utility (welcome, status, NDA, admin welcome)
-│   │       │   └── session.ts      # Admin session helper (cookie → AdminUser lookup)
+│   │       │   ├── session.ts      # Admin session helper (cookie → AdminUser lookup)
+│   │       │   ├── sow-prompt.ts   # AI prompt builder for SOW generation
+│   │       │   ├── app-flow-prompt.ts # AI prompt builder for app flow generation
+│   │       │   └── extract-file-text.ts # PDF/DOCX content extraction (mammoth + pdf-parse)
 │   │       └── app/
 │   │           ├── layout.tsx       # Root layout
 │   │           ├── globals.css      # Global styles
@@ -822,19 +827,22 @@ Response: SowTemplate[] (sorted by isDefault DESC, createdAt DESC)
 
 ```
 Auth:     Required (session cookie)
+Content-Type: multipart/form-data OR application/json
 Request:  {
   "name": string,
   "description"?: string,
-  "content": string (HTML),
+  "content"?: string (HTML),
   "industry"?: string,
   "projectType"?: string,
   "durationRange"?: string,
   "costRange"?: string,
-  "isDefault"?: boolean
+  "isDefault"?: boolean,
+  "file"?: File (PDF/DOCX reference document, multipart only)
 }
 Response: SowTemplate (201)
 400:      { "error": "Validation failed", "details": string[] }
 Side Effect: If isDefault=true, unsets previous default template
+             File saved to public/uploads/sow-templates/
 ```
 
 #### `GET /api/sow-templates/[id]` — Get SOW Template
@@ -849,10 +857,12 @@ Response: SowTemplate (200)
 
 ```
 Auth:     Required (session cookie)
-Request:  { "name"?, "description"?, "content"?, "industry"?, "projectType"?, "durationRange"?, "costRange"?, "isDefault"? }
+Content-Type: multipart/form-data OR application/json
+Request:  { "name"?, "description"?, "content"?, "industry"?, "projectType"?, "durationRange"?, "costRange"?, "isDefault"?, "file"?: File, "removeFile"?: "true" }
 Response: SowTemplate (200)
 404:      { "error": "SOW template not found" }
 Side Effect: If isDefault=true, unsets other default templates
+             If removeFile=true, deletes existing uploaded file
 ```
 
 #### `DELETE /api/sow-templates/[id]` — Delete SOW Template
@@ -871,9 +881,17 @@ Request:  {
   ... existing fields ...,
   "templateId"?: string  // Optional SOW template ID
 }
-Behavior: If templateId is provided, fetches template content and injects it
-          into the AI system prompt as a formatting blueprint.
-          If omitted, uses the built-in default section structure.
+Behavior: If templateId is provided:
+          1. Fetches template content (HTML) and filePath from database
+          2. If template has uploaded file (filePath), extracts content:
+             - DOCX → HTML via mammoth.convertToHtml()
+             - DOC → raw text via mammoth.extractRawText()
+             - PDF → plain text via pdf-parse
+          3. Injects into AI system prompt based on available sources:
+             - Both editor content + file → both injected, editor takes precedence
+             - File only → file content used as formatting blueprint
+             - Editor only → editor content used as formatting blueprint
+             - Neither → built-in default section structure
 ```
 
 ### 5.9 Response Types
@@ -968,7 +986,9 @@ interface SowTemplate {
   id: string;
   name: string;
   description: string | null;
-  content: string;             // HTML template content
+  content: string | null;       // HTML template content (editor)
+  fileName: string | null;      // Original uploaded file name
+  filePath: string | null;      // Server path to uploaded PDF/DOCX
   industry: string | null;
   projectType: string | null;
   durationRange: string | null;
@@ -1539,7 +1559,119 @@ Called from:
 
 ---
 
-## 14. Revision History
+## 14. Wireframe App Flow System
+
+### 14.1 Architecture
+
+The wireframe app flow system generates realistic mobile screen mockups using AI and renders them as interactive ReactFlow diagrams.
+
+```
+Admin selects "Wireframe" flow type
+    ↓
+buildAppFlowPrompt() generates system + user prompts
+    ↓
+Claude API (SSE streaming) returns JSON { nodes, edges }
+    ↓
+Nodes rendered as WireframeNode components (phone-shaped frames)
+    ↓
+Elements rendered via renderElement() — 17 typed UI components
+```
+
+### 14.2 WireframeNode Component
+
+Phone-shaped ReactFlow node with:
+- **Frame**: 220px wide, min-height 380px, rounded corners, shadow
+- **Notch**: Centered top notch with camera dot (mimics iPhone)
+- **Status bar**: Time, signal, wifi, battery indicators
+- **Content area**: Renders typed UI elements in sequence
+- **Home indicator**: Bottom bar (mimics iPhone gesture bar)
+- **Handles**: Left (target) and Right (source) for horizontal flow connections
+
+### 14.3 UI Element Types
+
+Elements are JSON objects with a `type` field and type-specific properties:
+
+| Type | Properties | Renders As |
+|------|-----------|------------|
+| `nav-bar` | `label` | Top bar with hamburger + title |
+| `heading` | `label` | Bold large text |
+| `text` | `content` | Gray paragraph text |
+| `input` | `label`, `placeholder` | Label + input field |
+| `button` | `label` | Filled teal button |
+| `button-outline` | `label` | Outlined button |
+| `image` | `label` | Gray placeholder with icon |
+| `avatar` | — | Circle + name placeholder |
+| `search` | `placeholder` | Search bar with icon |
+| `card` | `label` | Card with image area + text |
+| `list` | `items[]` | Bulleted list items |
+| `tab-bar` | `items[]` | Bottom tab icons |
+| `toggle` | `label` | Label + toggle switch |
+| `divider` | — | Horizontal line |
+| `checkbox` | `label` | Checkbox + label |
+| `radio` | `label` | Radio button + label |
+| `social-login` | `label` | Social login button |
+| `map` | `label` | Map placeholder |
+
+### 14.4 Layout
+
+- **Horizontal storyboard**: Nodes positioned left-to-right (x increments by 280, y=0 for main path)
+- **Branch paths**: Same x as branching point, y=500 (below main flow)
+- **Edges**: smoothstep type, left-to-right connections with optional labels
+
+### 14.5 Backward Compatibility
+
+Old wireframe nodes with string-based elements (pre-upgrade) are rendered as plain text with a bullet point prefix.
+
+---
+
+## 15. SOW Template File Extraction
+
+### 15.1 File Upload
+
+SOW templates support optional file upload (PDF/DOCX) as reference documents:
+- Files saved to `public/uploads/sow-templates/{timestamp}-{filename}`
+- Template stores `fileName` (display) and `filePath` (server path)
+- Multipart form data parsing with error handling for large files
+- Nginx `client_max_body_size: 50M` supports large document uploads
+
+### 15.2 Content Extraction (`extract-file-text.ts`)
+
+```typescript
+extractFileContent(filePath: string): Promise<{ text: string; format: "html" | "text" } | null>
+```
+
+| File Type | Library | Output Format | Notes |
+|-----------|---------|--------------|-------|
+| `.docx` | mammoth `convertToHtml()` | HTML | Preserves headings, lists, tables |
+| `.doc` | mammoth `extractRawText()` | Plain text | Legacy format, text-only fallback |
+| `.pdf` | pdf-parse (`require()`) | Plain text | CommonJS import for Next.js compatibility |
+
+### 15.3 AI Prompt Integration
+
+The `buildSowPrompt()` function handles 4 scenarios:
+
+| Scenario | Behavior |
+|----------|----------|
+| Both editor template + file content | Both injected; editor template takes precedence on conflicts |
+| File content only | File content used as primary formatting blueprint |
+| Editor template only | Editor HTML used as formatting blueprint |
+| Neither | Built-in default section structure (9 sections) |
+
+---
+
+## 16. Google Analytics Integration
+
+### 16.1 Customer Portal
+
+- **Tag ID**: G-8J4D4JHZGN
+- **Implementation**: Next.js `Script` component in `apps/customer/src/app/layout.tsx`
+- **Loading Strategy**: `afterInteractive` — loads after page hydration for performance
+- **Scope**: All customer portal pages (tracking pageviews, user engagement)
+- **Admin Portal**: No analytics (internal tool)
+
+---
+
+## 17. Revision History
 
 | Version | Date | Changes | Author |
 |---------|------|---------|--------|
@@ -1551,3 +1683,4 @@ Called from:
 | 1.5 | March 7, 2026 | Added AdminUser model with bcrypt auth, session helper for audit trail, lead edit/delete APIs, audit fields (createdBy/updatedBy/changedBy), admin user CRUD API, admin welcome email, dark mode (ThemeProvider + ThemeToggle) | — |
 | 1.6 | March 12, 2026 | Added SowTemplate model (name, description, HTML content, industry, projectType, durationRange, costRange, isDefault), CRUD API routes, SOW builder template selector integration, AI prompt template injection | — |
 | 1.7 | March 13, 2026 | Lead assignment & watch list: assignedToId FK on Lead (to AdminUser, onDelete SetNull), LeadWatcher join table, PUT /api/leads/[id]/assign, GET/POST/DELETE /api/leads/[id]/watch, auto-assign on creation, dashboard "My Leads" default filter + "Assigned To" column, lead detail assignment dropdown + watch button, watcher notifications on status/notes/customer comments via notifyWatchers() and notifyLeadWatchers() utilities | — |
+| 1.8 | March 13, 2026 | SOW template file upload (multipart form data, PDF/DOCX stored in public/uploads/sow-templates/), file content extraction (mammoth for DOCX→HTML, pdf-parse for PDF→text), AI prompt integration (4-scenario template handling), wireframe app flow upgrade (WireframeNode with phone frame, 17 typed UI element renderers, horizontal storyboard layout), Google Analytics on customer portal (G-8J4D4JHZGN via Next.js Script), Nginx upload limit increased to 50M | — |

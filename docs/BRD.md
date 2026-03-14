@@ -4,7 +4,7 @@
 
 | Field | Detail |
 |-------|--------|
-| Document Version | 1.7 |
+| Document Version | 1.8 |
 | Last Updated | March 13, 2026 |
 | Status | Active |
 
@@ -365,7 +365,63 @@ A public-facing, interactive web application for customers to view their project
 | No ID in URL | "No Project ID Provided" message with instructions |
 | Invalid/unknown ID | "Project Not Found" message |
 
-### 5.3 NDA (Non-Disclosure Agreement) Features
+#### 5.2.2 Google Analytics
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | Track customer portal usage and engagement |
+| Tag ID | G-8J4D4JHZGN |
+| Integration | Google Tag Manager via Next.js `Script` component (`afterInteractive` strategy) |
+| Scope | Customer portal only (all pages) |
+
+### 5.3 App Flow Features
+
+#### 5.3.1 Wireframe Mode
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | Generate realistic mobile screen mockups as app flow diagrams |
+| Layout | Horizontal left-to-right storyboard (screens read like a user journey) |
+| Node Style | Phone-shaped frame with notch, status bar, typed UI elements, and home indicator |
+
+**Available UI Element Types (17 total):**
+
+| Element | Description |
+|---------|-------------|
+| nav-bar | Top navigation bar with hamburger menu and title |
+| heading | Large heading text |
+| text | Paragraph/body text |
+| input | Text input field with label and placeholder |
+| button | Primary filled button |
+| button-outline | Secondary outlined button |
+| image | Image placeholder |
+| avatar | User avatar with name placeholder |
+| search | Search bar |
+| card | Content card with image and text |
+| list | List of items |
+| tab-bar | Bottom tab navigation |
+| toggle | Toggle switch with label |
+| divider | Horizontal separator line |
+| checkbox | Checkbox with label |
+| radio | Radio button with label |
+| social-login | Social login button |
+| map | Map placeholder |
+
+**Business Rules:**
+- AI generates 8-14 screens per app flow
+- Each screen contains 4-8 realistic UI elements
+- Screens are connected via labeled edges showing user navigation paths
+- Backward compatible with older string-based element format
+
+#### 5.3.2 Basic Mode
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | Generate simple flowchart-style app flow diagrams |
+| Layout | Vertical top-to-bottom with branching paths |
+| Node Style | Rounded box with teal border, label, and optional description |
+
+### 5.4 NDA (Non-Disclosure Agreement) Features
 
 #### 5.3.1 NDA Generation (Admin)
 
@@ -441,9 +497,9 @@ A public-facing, interactive web application for customers to view their project
 - Subject: "NDA Signed by {Customer Name} — {Project Name}"
 - Includes signer name, date, and IP address
 
-### 5.4 API Integration Features
+### 5.5 API Integration Features
 
-#### 5.4.1 Lead Source Tracking
+#### 5.6.1 Lead Source Tracking
 
 | Aspect | Detail |
 |--------|--------|
@@ -461,7 +517,7 @@ A public-facing, interactive web application for customers to view their project
 - Source is shown on the leads dashboard table as a badge
 - Source is shown on the lead detail page in the project details section
 
-#### 5.4.2 External Leads API
+#### 5.6.2 External Leads API
 
 | Aspect | Detail |
 |--------|--------|
@@ -485,9 +541,9 @@ A public-facing, interactive web application for customers to view their project
 - No welcome email is sent — admin manages communication manually
 - Full API documentation provided in `docs/API-INTEGRATION.md`
 
-### 5.5 Content Management Features
+### 5.6 Content Management Features
 
-#### 5.5.1 Content Creation (Admin)
+#### 5.6.1 Content Creation (Admin)
 
 | Aspect | Detail |
 |--------|--------|
@@ -506,7 +562,7 @@ A public-facing, interactive web application for customers to view their project
 | Target Platforms | Checkboxes | No | LinkedIn, Facebook, TikTok, Instagram |
 | Status | Select | No | Draft (default), Published, Archived |
 
-#### 5.5.2 Content List View
+#### 5.6.2 Content List View
 
 | Aspect | Detail |
 |--------|--------|
@@ -515,7 +571,7 @@ A public-facing, interactive web application for customers to view their project
 | Columns | Title, Status, Platforms, Tags, Created date |
 | Navigation | Accessible from dashboard via "Content" button |
 
-#### 5.5.3 Content Edit/Delete
+#### 5.6.3 Content Edit/Delete
 
 | Aspect | Detail |
 |--------|--------|
@@ -523,7 +579,7 @@ A public-facing, interactive web application for customers to view their project
 | Access | Click on content row in the content list |
 | Features | Pre-populated form, media preview, save/delete buttons |
 
-#### 5.5.4 Content Status Workflow
+#### 5.6.4 Content Status Workflow
 
 | Status | Description |
 |--------|-------------|
@@ -531,7 +587,7 @@ A public-facing, interactive web application for customers to view their project
 | PUBLISHED | Content is approved and ready for posting |
 | ARCHIVED | Content is no longer active |
 
-#### 5.5.5 Content External API
+#### 5.6.5 Content External API
 
 | Aspect | Detail |
 |--------|--------|
@@ -540,9 +596,9 @@ A public-facing, interactive web application for customers to view their project
 | Endpoints | Full CRUD + file upload |
 | Documentation | `docs/API-INTEGRATION.md` + interactive Swagger at `/api-docs` |
 
-### 5.6 Lead Assignment & Watch List
+### 5.7 Lead Assignment & Watch List
 
-#### 5.6.1 Lead Assignment
+#### 5.7.1 Lead Assignment
 
 | Aspect | Detail |
 |--------|--------|
@@ -560,7 +616,7 @@ A public-facing, interactive web application for customers to view their project
 - Selecting a different admin triggers reassignment and sends a notification email
 - Current assignee is displayed prominently near the project details
 
-#### 5.6.2 Watch List
+#### 5.7.2 Watch List
 
 | Aspect | Detail |
 |--------|--------|
@@ -587,7 +643,7 @@ Watchers receive email notifications when any of the following occur on a watche
 - The assigned admin is not automatically a watcher (though they are added as one on lead creation, they can unwatch)
 - Watcher notifications are separate from the existing customer-facing emails (status update, SOW ready, etc.)
 
-#### 5.6.3 Dashboard — My Leads Filter
+#### 5.7.3 Dashboard — My Leads Filter
 
 | Aspect | Detail |
 |--------|--------|
@@ -796,6 +852,9 @@ Fills in template details:
   - Cost Range (e.g. $10k - $25k)
   - Set as Default (checkbox)
     ↓
+Optionally uploads a reference file (PDF/DOCX)
+  (existing SOW document to use as formatting guide)
+    ↓
 Writes HTML template content in RichTextEditor
   (section headings, layout patterns, boilerplate text)
     ↓
@@ -821,9 +880,13 @@ Admin can switch to a different template or "No template"
     ↓
 Admin fills in project details and clicks "Generate with AI"
     ↓
-[Template selected] → Template HTML injected into AI system prompt
+[Template selected] → Template content and/or uploaded file content extracted
     ↓
-AI generates SOW following template's structure, formatting, and tone
+[Has uploaded file] → PDF/DOCX text extracted and injected as formatting reference
+[Has editor content] → HTML content injected as formatting blueprint
+[Has both] → Both injected; editor template takes precedence on conflicts
+    ↓
+AI generates SOW following the reference formatting, structure, and tone
     ↓
 [No template] → AI uses built-in default section structure
     ↓
@@ -858,7 +921,29 @@ Notification email sent to newly assigned admin
 Lead detail page refreshes with updated assignment
 ```
 
-### 6.13 Watch/Unwatch Flow
+### 6.14 SOW Template File Upload & Extraction Flow
+
+```
+Admin creates/edits a SOW Template
+    ↓
+Optionally uploads a PDF or DOCX reference file
+    ↓
+File saved to public/uploads/sow-templates/
+    ↓
+Template card shows file indicator badge on template list
+    ↓
+Admin selects this template when generating a SOW for a lead
+    ↓
+System extracts content from uploaded file:
+  - DOCX → HTML (preserves headings, lists, tables via mammoth)
+  - PDF → plain text (via pdf-parse)
+    ↓
+Extracted content injected into AI prompt as formatting reference
+    ↓
+AI generates SOW following the reference document's structure and tone
+```
+
+### 6.15 Watch/Unwatch Flow
 
 ```
 Admin opens Lead Detail page
@@ -949,7 +1034,9 @@ Button updates to reflect new watch state
 | ID | UUID | Unique identifier |
 | Name | String | Template name (e.g. "Standard Web App SOW") |
 | Description | Text (nullable) | When to use this template |
-| Content | Text | HTML template content — structure/format for AI to follow |
+| Content | Text (nullable) | HTML template content — structure/format for AI to follow |
+| File Name | String (nullable) | Original name of uploaded reference file (PDF/DOCX) |
+| File Path | String (nullable) | Server path to uploaded reference file |
 | Industry | String (nullable) | Target industry (e.g. Healthcare, Fintech) |
 | Project Type | String (nullable) | Target project type (e.g. Web Application, Mobile App) |
 | Duration Range | String (nullable) | Typical duration (e.g. 4-8 weeks) |
@@ -1035,3 +1122,4 @@ _This section will be updated as new features are planned and developed._
 | 1.5 | March 7, 2026 | Added multi-admin auth (database-backed users with bcrypt), lead edit/delete, audit trail (who created/edited/updated), admin user management (CRUD + welcome email), dark mode toggle | — |
 | 1.6 | March 12, 2026 | Added SOW template system: reusable templates with HTML content, metadata (industry, project type, duration/cost range), default flag, CRUD admin pages, template selector in SOW builder, AI prompt integration | — |
 | 1.7 | March 13, 2026 | Lead assignment & watch list: auto-assign leads to creating admin, reassignment via dropdown with email notification, watch/unwatch leads with watcher notifications on status changes, notes, and customer comments, dashboard defaults to "My Leads" with assignment filter and column | — |
+| 1.8 | March 13, 2026 | SOW template file upload (PDF/DOCX reference documents with content extraction for AI formatting), wireframe app flow upgrade (realistic mobile screen mockups with 17 typed UI element types, horizontal storyboard layout), Google Analytics on customer portal (G-8J4D4JHZGN), Nginx upload limit increased to 50M | — |
