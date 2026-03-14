@@ -561,7 +561,19 @@ export default function SowBuilderPage() {
                   <div className="flex items-center gap-2">
                     <select
                       value={selectedTemplateId}
-                      onChange={(e) => setSelectedTemplateId(e.target.value)}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        setSelectedTemplateId(id);
+                        // Auto-fill form fields from template metadata
+                        if (id) {
+                          const tmpl = sowTemplates.find((t) => t.id === id);
+                          if (tmpl) {
+                            if (tmpl.projectType && !projectType) setProjectType(tmpl.projectType);
+                            if (tmpl.durationRange && !timeline) setTimeline(tmpl.durationRange);
+                            if (tmpl.costRange && !budgetRange) setBudgetRange(tmpl.costRange);
+                          }
+                        }
+                      }}
                       className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="">No template</option>

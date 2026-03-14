@@ -46,6 +46,7 @@ export default function NewSowTemplatePage() {
   const [saving, setSaving] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [file, setFile] = useState<File | null>(null);
+  const [extracting, setExtracting] = useState(false);
 
   const hasContent = content.trim() && content !== "<p></p>";
   const hasFile = !!file;
@@ -61,6 +62,31 @@ export default function NewSowTemplatePage() {
       return;
     }
     setFile(selected);
+  }
+
+  async function handleExtractToEditor() {
+    if (!file) return;
+    if (hasContent && !confirm("This will replace the current template content. Continue?")) return;
+    setExtracting(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/sow-templates/extract", {
+        method: "POST",
+        body: formData,
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setContent(data.content);
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to extract content");
+      }
+    } catch {
+      alert("Failed to extract content from file");
+    } finally {
+      setExtracting(false);
+    }
   }
 
   function removeFile() {
@@ -274,6 +300,13 @@ export default function NewSowTemplatePage() {
                       {formatFileSize(file.size)}
                     </p>
                   </div>
+                  <button
+                    onClick={handleExtractToEditor}
+                    disabled={extracting}
+                    className="text-indigo-600 dark:text-indigo-400 hover:underline text-sm font-medium disabled:opacity-50"
+                  >
+                    {extracting ? "Extracting..." : "Extract to Editor"}
+                  </button>
                   <button
                     onClick={removeFile}
                     className="text-red-500 hover:text-red-700 text-sm font-medium"

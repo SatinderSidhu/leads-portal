@@ -76,6 +76,8 @@ export default function EditSowTemplatePage() {
     updatedAt: string;
   } | null>(null);
 
+  const [extracting, setExtracting] = useState(false);
+
   // File state
   const [existingFile, setExistingFile] = useState<{
     fileName: string;
@@ -149,6 +151,46 @@ export default function EditSowTemplatePage() {
   function handleClearNewFile() {
     setNewFile(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function handleExtractToEditor(source: "new" | "existing") {
+    if (hasContent && !confirm("This will replace the current template content. Continue?")) return;
+    setExtracting(true);
+    try {
+      if (source === "new" && newFile) {
+        const formData = new FormData();
+        formData.append("file", newFile);
+        const res = await fetch("/api/sow-templates/extract", {
+          method: "POST",
+          body: formData,
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setContent(data.content);
+        } else {
+          const err = await res.json();
+          alert(err.error || "Failed to extract content");
+        }
+      } else if (source === "existing" && existingFile) {
+        // For existing files, pass the file path to extract from server
+        const res = await fetch("/api/sow-templates/extract", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filePath: existingFile.filePath }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setContent(data.content);
+        } else {
+          const err = await res.json();
+          alert(err.error || "Failed to extract content");
+        }
+      }
+    } catch {
+      alert("Failed to extract content from file");
+    } finally {
+      setExtracting(false);
+    }
   }
 
   async function handleSave() {
@@ -421,6 +463,13 @@ export default function EditSowTemplatePage() {
                       {formatFileSize(existingFile.fileSize)}
                     </p>
                   </div>
+                  <button
+                    onClick={() => handleExtractToEditor("existing")}
+                    disabled={extracting}
+                    className="text-indigo-600 dark:text-indigo-400 hover:underline text-sm font-medium disabled:opacity-50"
+                  >
+                    {extracting ? "Extracting..." : "Extract to Editor"}
+                  </button>
                   <a
                     href={existingFile.filePath}
                     target="_blank"
@@ -453,6 +502,13 @@ export default function EditSowTemplatePage() {
                       {formatFileSize(newFile.size)}
                     </p>
                   </div>
+                  <button
+                    onClick={() => handleExtractToEditor("new")}
+                    disabled={extracting}
+                    className="text-indigo-600 dark:text-indigo-400 hover:underline text-sm font-medium disabled:opacity-50"
+                  >
+                    {extracting ? "Extracting..." : "Extract to Editor"}
+                  </button>
                   <button
                     onClick={handleClearNewFile}
                     className="text-red-500 hover:text-red-700 text-sm font-medium"
