@@ -31,10 +31,11 @@ async function extractFromBuffer(
     console.log("[Extract] mammoth returned empty value for DOC");
   } else if (ext === ".pdf") {
     console.log("[Extract] Loading pdf-parse for PDF...");
-    const pdfParse = _require("pdf-parse");
-    console.log("[Extract] pdf-parse loaded, type:", typeof pdfParse);
-    const data = await pdfParse(buffer);
-    console.log("[Extract] pdf-parse result: textLength=", data.text?.length, "numpages=", data.numpages);
+    const { PDFParse } = _require("pdf-parse");
+    console.log("[Extract] PDFParse loaded, type:", typeof PDFParse);
+    const parser = new PDFParse({ data: buffer });
+    const data = await parser.getText();
+    console.log("[Extract] pdf-parse result: textLength=", data.text?.length);
     if (data.text?.trim()) return { text: data.text, format: "text" };
     console.log("[Extract] pdf-parse returned empty text");
   } else {

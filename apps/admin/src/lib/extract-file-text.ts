@@ -33,8 +33,9 @@ export async function extractFileContent(
         return { text: result.value, format: "text" };
       }
     } else if (ext === ".pdf") {
-      const pdfParse = _require("pdf-parse");
-      const data = await pdfParse(buffer);
+      const { PDFParse } = _require("pdf-parse");
+      const parser = new PDFParse({ data: buffer });
+      const data = await parser.getText();
       if (data.text?.trim()) {
         return { text: data.text, format: "text" };
       }
