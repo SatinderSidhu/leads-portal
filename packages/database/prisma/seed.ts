@@ -722,9 +722,33 @@ async function seedEmailTemplates() {
   }
 }
 
+async function seedBranding() {
+  const existing = await prisma.brandingConfig.findFirst();
+  if (existing) {
+    console.log("Branding config already exists, skipping.");
+    return;
+  }
+
+  const branding = await prisma.brandingConfig.create({
+    data: {
+      companyName: "KITLabs Inc",
+      logoPath: "/kitlabs-logo.jpg",
+      website: "https://kitlabs.us",
+      primaryColor: "#01358d",
+      accentColor: "#f9556d",
+      footerText: "KITLabs Inc — Custom Software Development",
+      copyrightText: "© {year} KITLabs Inc. All rights reserved.",
+      updatedBy: "System",
+    },
+  });
+
+  console.log(`Seeded branding config: ${branding.companyName} (${branding.id})`);
+}
+
 async function main() {
   await seedAdminUser();
   await seedEmailTemplates();
+  await seedBranding();
 }
 
 main()

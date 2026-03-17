@@ -91,6 +91,7 @@ leads-portal/
 | AppFlow | app_flows | Visual app flow diagrams (JSON nodes/edges, BASIC or WIREFRAME type) |
 | AppFlowComment | app_flow_comments | Customer/admin comments on app flows |
 | LeadWatcher | lead_watchers | Join table for admin watch subscriptions on leads |
+| BrandingConfig | branding_config | Company branding (logo, name, colors, footer, copyright) for SOW/App Flow docs |
 | Content | content | Social media content posts |
 | CustomerUser | customer_users | Customer portal users (email, name, password, leadIds) |
 
@@ -131,6 +132,7 @@ leads-portal/
 | `/content` | Content management |
 | `/content/new` | Create content |
 | `/content/[id]` | Edit content |
+| `/branding` | Company branding settings (logo, name, colors, footer, copyright) |
 | `/api-docs` | Swagger UI |
 
 ## Admin API Routes
@@ -154,6 +156,9 @@ leads-portal/
 - `GET/POST/PUT/DELETE /api/email-flows[/id]` — Flow CRUD
 - `GET/POST/PUT/DELETE /api/content[/id]` — Content CRUD
 - `POST /api/content/upload` — Media upload
+- `GET/PUT /api/branding` — Get/update company branding config
+- `POST /api/branding/upload-logo` — Upload company logo
+- `GET /api/branding/public` — Public branding config (no auth, used by customer portal)
 - `GET/PUT/DELETE /api/admin-users[/id]` — Admin user management
 - `POST /api/admin-users/[id]/upload-picture` — Profile picture upload
 - `GET /api/admin-users/me` — Current admin profile
@@ -223,6 +228,7 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 - `POST /api/sow/[sowId]/sign` — Approve & sign SOW
 - `GET /api/app-flows?leadId=X` — Fetch shared app flows with comments
 - `POST /api/app-flows/[flowId]/comments` — Add comment to app flow
+- `GET /api/branding` — Public branding config for document rendering (reads from shared DB)
 
 ## Key Lib Files
 
@@ -386,6 +392,19 @@ docker compose exec db pg_dump -U postgres leads_portal > backup.sql  # DB backu
 - Sharing: sets `sharedAt`/`sharedBy`, optionally updates lead status to `APP_FLOW_READY`, sends email
 - Customer views read-only flow with pan/zoom, comments, full-screen, PNG/PDF export
 - Node types registered as `{ basicNode: BasicNode, wireframeNode: WireframeNode }` — must match in both admin and customer
+
+## Branding System
+- Single-row `BrandingConfig` table stores company name, logo, website, colors, footer text, copyright
+- Seeded with KITLabs Inc defaults (logo, colors, footer, copyright with `{year}` placeholder)
+- Admin manages branding at `/branding` — logo upload, color pickers, footer/copyright fields, live preview
+- Logo uploaded to `public/uploads/branding/` via `/api/branding/upload-logo`
+- Copyright text supports `{year}` placeholder (replaced at render time)
+- **SOW generation**: branding injected into AI prompt — company name, logo URL, colors, footer/copyright appear in generated HTML
+- **App Flow generation**: company name passed to AI prompt for splash screen / branding references
+- **Customer portal PDF exports**: SOW, NDA, and App Flow PDFs include branded header (company name, website) and footer (footer text, copyright) using branding colors
+- Customer portal fetches branding via `/api/branding` (direct DB query, no cross-portal HTTP needed)
+- Logo path converted to absolute URL using `ADMIN_PORTAL_URL` for customer portal rendering
+- Existing documents keep their original branding; only new documents use updated branding
 
 ## Important Patterns
 - All admin API routes use `getAdminSession()` for auth (returns null if not logged in)

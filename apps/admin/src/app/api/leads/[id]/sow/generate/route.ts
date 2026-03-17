@@ -76,6 +76,10 @@ export async function POST(
     }
   }
 
+  // Fetch branding config for document header/footer
+  const brandingConfig = await prisma.brandingConfig.findFirst();
+  const adminUrl = process.env.ADMIN_PORTAL_URL || "";
+
   const { system, user } = buildSowPrompt({
     projectName: lead.projectName,
     customerName: lead.customerName,
@@ -89,6 +93,19 @@ export async function POST(
     additionalNotes: body.additionalNotes || "",
     templateContent,
     fileContent,
+    branding: brandingConfig
+      ? {
+          companyName: brandingConfig.companyName,
+          logoUrl: brandingConfig.logoPath
+            ? `${adminUrl}${brandingConfig.logoPath}`
+            : undefined,
+          website: brandingConfig.website || undefined,
+          primaryColor: brandingConfig.primaryColor || undefined,
+          accentColor: brandingConfig.accentColor || undefined,
+          footerText: brandingConfig.footerText || undefined,
+          copyrightText: brandingConfig.copyrightText || undefined,
+        }
+      : undefined,
   });
 
   const client = new Anthropic({ apiKey });

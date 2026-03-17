@@ -47,6 +47,9 @@ export async function POST(
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  // Fetch branding config for company name reference
+  const brandingConfig = await prisma.brandingConfig.findFirst();
+
   const { system, user } = buildAppFlowPrompt({
     projectName: lead.projectName,
     customerName: lead.customerName,
@@ -54,6 +57,13 @@ export async function POST(
     appType: body.appType || "",
     flowType: body.flowType || "BASIC",
     additionalNotes: body.additionalNotes || "",
+    branding: brandingConfig
+      ? {
+          companyName: brandingConfig.companyName,
+          primaryColor: brandingConfig.primaryColor || undefined,
+          accentColor: brandingConfig.accentColor || undefined,
+        }
+      : undefined,
   });
 
   const client = new Anthropic({ apiKey });

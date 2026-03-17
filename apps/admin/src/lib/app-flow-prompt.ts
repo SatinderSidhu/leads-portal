@@ -1,3 +1,9 @@
+export interface AppFlowBranding {
+  companyName: string;
+  primaryColor?: string;
+  accentColor?: string;
+}
+
 export interface AppFlowInput {
   projectName: string;
   customerName: string;
@@ -5,6 +11,7 @@ export interface AppFlowInput {
   appType: string;
   flowType: "BASIC" | "WIREFRAME";
   additionalNotes: string;
+  branding?: AppFlowBranding;
 }
 
 export function buildAppFlowPrompt(input: AppFlowInput): {
@@ -116,7 +123,11 @@ CONTENT RULES:
 - Include error states or alternate paths where appropriate
 - End with a logical conclusion (confirmation, dashboard, etc.)
 
-Write in a professional but approachable tone. Be specific and detailed — avoid generic filler. Tailor the content to the actual project described.`;
+Write in a professional but approachable tone. Be specific and detailed — avoid generic filler. Tailor the content to the actual project described.${
+    input.branding
+      ? `\n\nBRANDING — This app flow is prepared by ${input.branding.companyName}. Use "${input.branding.companyName}" as the company reference in any splash screen or branding-related node labels/descriptions.`
+      : ""
+  }`;
 
   const parts: string[] = [];
   parts.push(`Create an app flow diagram for the following project:\n`);

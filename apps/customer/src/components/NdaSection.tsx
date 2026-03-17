@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { downloadNdaPdf } from "../lib/generate-pdf";
+import { useState, useEffect } from "react";
+import { downloadNdaPdf, PdfBranding } from "../lib/generate-pdf";
 
 interface NdaSectionProps {
   leadId: string;
@@ -30,6 +30,15 @@ export default function NdaSection({ leadId, projectName, nda }: NdaSectionProps
       : null
   );
 
+  // Branding for PDF export
+  const [branding, setBranding] = useState<PdfBranding | undefined>(undefined);
+  useEffect(() => {
+    fetch("/api/branding")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data) setBranding(data); })
+      .catch(() => {});
+  }, []);
+
   async function handleSign() {
     setSigning(true);
     try {
@@ -57,7 +66,7 @@ export default function NdaSection({ leadId, projectName, nda }: NdaSectionProps
   }
 
   function handleDownloadPdf() {
-    downloadNdaPdf(nda.content, projectName);
+    downloadNdaPdf(nda.content, projectName, branding);
   }
 
   return (

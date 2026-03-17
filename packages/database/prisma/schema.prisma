@@ -387,6 +387,21 @@ enum AuthProvider {
   LINKEDIN
 }
 
+model BrandingConfig {
+  id             String   @id @default(uuid())
+  companyName    String   @map("company_name")
+  logoPath       String?  @map("logo_path")
+  website        String?
+  primaryColor   String?  @map("primary_color")
+  accentColor    String?  @map("accent_color")
+  footerText     String?  @map("footer_text") @db.Text
+  copyrightText  String?  @map("copyright_text")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  updatedBy      String?  @map("updated_by")
+
+  @@map("branding_config")
+}
+
 model CustomerUser {
   id             String          @id @default(uuid())
   email          String          @unique

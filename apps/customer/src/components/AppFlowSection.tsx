@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import {
   ReactFlow,
@@ -359,6 +359,21 @@ export default function AppFlowSection({ flows, leadId, isLoggedIn, returnTo }: 
   const flowRef = useRef<HTMLDivElement>(null);
   const fullScreenFlowRef = useRef<HTMLDivElement>(null);
 
+  // Branding for PDF footer
+  const [branding, setBranding] = useState<{
+    companyName: string;
+    footerText: string | null;
+    copyrightText: string | null;
+    primaryColor: string | null;
+    accentColor: string | null;
+  } | null>(null);
+  useEffect(() => {
+    fetch("/api/branding")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data) setBranding(data); })
+      .catch(() => {});
+  }, []);
+
   const selectedFlow = flows.find((f) => f.id === selectedFlowId);
 
   const handleAddComment = useCallback(async () => {
@@ -423,19 +438,51 @@ export default function AppFlowSection({ flows, leadId, isLoggedIn, returnTo }: 
       img.src = dataUrl;
       await new Promise((resolve) => { img.onload = resolve; });
 
+      const headerHeight = branding ? 30 : 0;
+      const footerHeight = branding ? 25 : 0;
+      const pdfW = img.width / 2;
+      const pdfH = img.height / 2 + headerHeight + footerHeight;
+
       const pdf = new jsPDF({
         orientation: img.width > img.height ? "landscape" : "portrait",
         unit: "px",
-        format: [img.width / 2, img.height / 2],
+        format: [pdfW, pdfH],
       });
-      pdf.addImage(dataUrl, "PNG", 0, 0, img.width / 2, img.height / 2);
+
+      // Branded header
+      if (branding) {
+        pdf.setFontSize(10);
+        if (branding.primaryColor) {
+          const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(branding.primaryColor);
+          if (m) pdf.setTextColor(parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16));
+        }
+        pdf.text(branding.companyName, 10, 18);
+        pdf.setTextColor(0);
+      }
+
+      pdf.addImage(dataUrl, "PNG", 0, headerHeight, img.width / 2, img.height / 2);
+
+      // Branded footer
+      if (branding && (branding.footerText || branding.copyrightText)) {
+        pdf.setFontSize(7);
+        pdf.setTextColor(130);
+        const footerY = pdfH - 8;
+        if (branding.footerText) {
+          pdf.text(branding.footerText, pdfW / 2, footerY - 6, { align: "center" });
+        }
+        if (branding.copyrightText) {
+          pdf.text(branding.copyrightText, pdfW / 2, footerY, { align: "center" });
+        }
+        pdf.setTextColor(0);
+      }
+
       pdf.save(`${selectedFlow?.name || "app-flow"}.pdf`);
     } catch {
       // silently fail
     } finally {
       setDownloading(false);
     }
-  }, [getFlowElement, selectedFlow]);
+  }, [getFlowElement, selectedFlow, branding]);
 
   if (flows.length === 0) {
     return (

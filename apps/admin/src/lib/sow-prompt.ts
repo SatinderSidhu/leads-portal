@@ -1,3 +1,13 @@
+export interface BrandingInfo {
+  companyName: string;
+  logoUrl?: string;
+  website?: string;
+  primaryColor?: string;
+  accentColor?: string;
+  footerText?: string;
+  copyrightText?: string;
+}
+
 export interface SowInput {
   // From lead
   projectName: string;
@@ -15,6 +25,8 @@ export interface SowInput {
   templateContent?: string;
   // Extracted text from uploaded reference file (optional)
   fileContent?: string;
+  // Branding (optional)
+  branding?: BrandingInfo;
 }
 
 export function buildSowPrompt(input: SowInput): { system: string; user: string } {
@@ -75,6 +87,20 @@ DOCUMENT STRUCTURE — include all of these sections:
 7. <h2> Out of Scope — explicitly list what is NOT included
 8. <h2> Assumptions — key assumptions the SOW is based on
 9. <h2> Terms & Conditions — payment terms, revision policy, IP ownership, confidentiality`;
+  }
+
+  // Inject branding instructions
+  if (input.branding) {
+    const b = input.branding;
+    const year = new Date().getFullYear().toString();
+    const copyright = b.copyrightText?.replace(/\{year\}/g, year) || "";
+    system += `
+
+BRANDING — Apply the following company branding to the document:
+- Company: ${b.companyName}${b.website ? ` (${b.website})` : ""}
+- Include a professional document header at the very top: display the company name "${b.companyName}" prominently${b.logoUrl ? ` with a logo image: <img src="${b.logoUrl}" alt="${b.companyName}" style="height:40px" />` : ""}${b.primaryColor ? `. Use ${b.primaryColor} as the primary heading color.` : ""}
+- Include a document footer at the very end with a horizontal rule, then:${b.footerText ? ` "${b.footerText}"` : ""}${copyright ? ` and "${copyright}"` : ""}
+- Reference the company as "${b.companyName}" (not "KITLabs Inc" unless that is the company name)`;
   }
 
   system += `

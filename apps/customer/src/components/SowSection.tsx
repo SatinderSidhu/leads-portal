@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { downloadSowPdf } from "../lib/generate-pdf";
+import { downloadSowPdf, PdfBranding } from "../lib/generate-pdf";
 
 interface SowComment {
   id: string;
@@ -81,6 +81,15 @@ export default function SowSection({
     }
   );
 
+  // Branding for PDF exports
+  const [branding, setBranding] = useState<PdfBranding | undefined>(undefined);
+  useEffect(() => {
+    fetch("/api/branding")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => { if (data) setBranding(data); })
+      .catch(() => {});
+  }, []);
+
   const selectedSow = sows.find((s) => s.version === selectedVersion) || sows[0];
   const isAiGenerated = selectedSow?.content && !selectedSow?.filePath;
   const currentComments = selectedSow ? (sowComments[selectedSow.id] || []) : [];
@@ -137,8 +146,8 @@ export default function SowSection({
 
   const handleDownloadPdf = useCallback(() => {
     if (!selectedSow?.content) return;
-    downloadSowPdf(selectedSow.content, projectName, selectedSow.version);
-  }, [selectedSow, projectName]);
+    downloadSowPdf(selectedSow.content, projectName, selectedSow.version, branding);
+  }, [selectedSow, projectName, branding]);
 
   if (sows.length === 0) {
     return <p className="text-gray-500">No scope of work documents available yet.</p>;
