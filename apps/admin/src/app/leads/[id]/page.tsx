@@ -175,6 +175,7 @@ interface Lead {
   updatedBy: string | null;
   createdAt: string;
   updatedAt: string;
+  zohoLeadId: string | null;
   notes: Note[];
   statusHistory: StatusHistoryEntry[];
   nda: Nda | null;
@@ -299,6 +300,13 @@ export default function LeadDetailPage() {
   const [appFlows, setAppFlows] = useState<AppFlowItem[]>([]);
   const [appFlowSharing, setAppFlowSharing] = useState<string | null>(null);
 
+  // Zoho state
+  const [zohoEnabled, setZohoEnabled] = useState(false);
+  const [zohoLoading, setZohoLoading] = useState(false);
+  const [zohoUrl, setZohoUrl] = useState<string | null>(null);
+  const [zohoFound, setZohoFound] = useState<boolean | null>(null);
+  const [zohoCreating, setZohoCreating] = useState(false);
+
   // Assignment & watch state
   const [adminUsers, setAdminUsers] = useState<{ id: string; name: string; email: string; active: boolean }[]>([]);
   const [assigning, setAssigning] = useState(false);
@@ -357,6 +365,26 @@ export default function LeadDetailPage() {
     setWatcherCount(watchers.length);
     setIsWatching(watchers.some((w) => w.admin.id === currentAdminId));
   }, [lead, currentAdminId]);
+
+  // Check Zoho status when lead loads
+  useEffect(() => {
+    if (!lead) return;
+    setZohoLoading(true);
+    fetch(`/api/zoho/search-lead?leadId=${lead.id}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.zohoEnabled !== undefined) setZohoEnabled(data.zohoEnabled !== false);
+        if (data.found) {
+          setZohoFound(true);
+          setZohoUrl(data.zohoUrl || null);
+        } else {
+          setZohoFound(false);
+          setZohoUrl(null);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setZohoLoading(false));
+  }, [lead?.id, lead?.zohoLeadId]);
 
   // Load recommendations
   useEffect(() => {
@@ -470,6 +498,30 @@ export default function LeadDetailPage() {
       // Silently fail
     } finally {
       setWatchToggling(false);
+    }
+  }
+
+  async function handleCreateInZoho() {
+    if (!lead) return;
+    setZohoCreating(true);
+    try {
+      const res = await fetch("/api/zoho/create-lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId: lead.id }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setZohoFound(true);
+        setZohoUrl(data.zohoUrl || null);
+        await fetchLead();
+      } else {
+        alert(data.error || "Failed to create lead in Zoho");
+      }
+    } catch {
+      alert("Failed to create lead in Zoho");
+    } finally {
+      setZohoCreating(false);
     }
   }
 
@@ -1122,6 +1174,34 @@ export default function LeadDetailPage() {
                       />
                     </div>
                   </div>
+
+                  {/* Zoho CRM in edit mode */}
+                  {zohoEnabled && !zohoFound && (
+                    <div className="flex items-center gap-3 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                      <span className="text-sm text-orange-700 dark:text-orange-300">Not in Zoho CRM</span>
+                      <button
+                        type="button"
+                        onClick={handleCreateInZoho}
+                        disabled={zohoCreating}
+                        className="text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 px-3 py-1 rounded-md disabled:opacity-50 transition"
+                      >
+                        {zohoCreating ? "Creating..." : "Create in Zoho"}
+                      </button>
+                    </div>
+                  )}
+                  {zohoEnabled && zohoFound && zohoUrl && (
+                    <div className="flex items-center gap-3 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                      <span className="text-sm text-orange-700 dark:text-orange-300">Available in Zoho CRM</span>
+                      <a
+                        href={zohoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-orange-800 dark:text-orange-200 bg-orange-100 dark:bg-orange-800 px-2.5 py-1 rounded-md hover:bg-orange-200 dark:hover:bg-orange-700 transition"
+                      >
+                        View in Zoho &rarr;
+                      </a>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <>
@@ -1256,6 +1336,42 @@ export default function LeadDetailPage() {
                         >
                           Twitter
                         </a>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Zoho CRM Status */}
+                  {zohoEnabled && (
+                    <div className="flex items-center gap-3 mb-4 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-600 dark:text-orange-400 flex-shrink-0">
+                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                      </svg>
+                      {zohoLoading ? (
+                        <span className="text-sm text-orange-700 dark:text-orange-300">Checking Zoho CRM...</span>
+                      ) : zohoFound && zohoUrl ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-orange-700 dark:text-orange-300">Available in Zoho CRM</span>
+                          <a
+                            href={zohoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm font-medium text-orange-800 dark:text-orange-200 bg-orange-100 dark:bg-orange-800 px-2.5 py-1 rounded-md hover:bg-orange-200 dark:hover:bg-orange-700 transition"
+                          >
+                            View in Zoho &rarr;
+                          </a>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-orange-700 dark:text-orange-300">Not in Zoho CRM</span>
+                          <button
+                            onClick={handleCreateInZoho}
+                            disabled={zohoCreating}
+                            className="text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 px-3 py-1 rounded-md disabled:opacity-50 transition"
+                          >
+                            {zohoCreating ? "Creating..." : "Create in Zoho"}
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}

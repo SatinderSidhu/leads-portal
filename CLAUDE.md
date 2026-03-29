@@ -92,6 +92,7 @@ leads-portal/
 | AppFlowComment | app_flow_comments | Customer/admin comments on app flows |
 | LeadWatcher | lead_watchers | Join table for admin watch subscriptions on leads |
 | BrandingConfig | branding_config | Company branding (logo, name, colors, footer, copyright) for SOW/App Flow docs |
+| ZohoConfig | zoho_config | Zoho CRM OAuth credentials, tokens, data center, org ID, enabled flag |
 | Content | content | Social media content posts |
 | CustomerUser | customer_users | Customer portal users (email, name, password, leadIds) |
 
@@ -111,8 +112,8 @@ leads-portal/
 | `/login` | Authentication |
 | `/` | Activity feed — latest emails, status changes, notes across all leads |
 | `/dashboard` | Leads grid with pagination, search, filters (status/stage/source/assignedTo), defaults to "My Leads" |
-| `/leads/new` | Create lead |
-| `/leads/[id]` | Lead detail — edit, notes, files, email compose, status, assignment, watch, SOW section, app flows section |
+| `/leads/new` | Create lead (with optional "Also create in Zoho CRM" checkbox) |
+| `/leads/[id]` | Lead detail — edit, notes, files, email compose, status, assignment, watch, SOW section, app flows section, Zoho CRM status/link |
 | `/leads/[id]/nda` | NDA management |
 | `/leads/[id]/sow-builder` | AI-powered SOW builder with Claude streaming, DOCX/PDF export |
 | `/leads/[id]/app-flow-builder` | AI-powered app flow builder with ReactFlow canvas |
@@ -133,6 +134,7 @@ leads-portal/
 | `/content/new` | Create content |
 | `/content/[id]` | Edit content |
 | `/branding` | Company branding settings (logo, name, colors, footer, copyright) |
+| `/zoho-settings` | Zoho CRM integration settings (credentials, authorization, connection test) |
 | `/api-docs` | Swagger UI |
 
 ## Admin API Routes
@@ -172,6 +174,11 @@ leads-portal/
 - `POST /api/leads/[id]/app-flows/[flowId]/share` — Share app flow with customer
 - `GET/POST /api/leads/[id]/app-flows/[flowId]/comments` — App flow comments
 - `POST /api/leads/[id]/app-flows/generate` — AI app flow generation (SSE streaming)
+- `GET/PUT /api/zoho/config` — Get/update Zoho CRM credentials and settings
+- `POST /api/zoho/config` — Authorize (exchange grant token) or test connection
+- `GET /api/zoho/status` — Quick check if Zoho integration is enabled
+- `POST /api/zoho/create-lead` — Create a lead in Zoho CRM (maps fields, stores zohoLeadId)
+- `GET /api/zoho/search-lead?leadId=X` — Check if lead exists in Zoho (by email), auto-links if found
 - `GET /api/track/[id]` — Email open tracking pixel
 - `POST /api/webhooks/ses-inbound` — SES inbound email webhook
 
@@ -190,11 +197,11 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 | `/` | Landing — project list (logged in) or login/register prompt; redirects `?id=X` to `/project?id=X` for backward compat |
 | `/login` | Customer login |
 | `/register` | Customer registration (optional `?leadId=` to pre-link a project) |
-| `/project` | Project detail with tab navigation (Overview, SOW, App Flow, NDA) via `?id=X&tab=Y` |
+| `/project` | Project detail with tab navigation (Overview, SOW, App Flow, NDA, Book Meeting) via `?id=X&tab=Y` |
 
 ### Features
 - **Registration** auto-links leads by matching customer email address
-- **Tab navigation**: Overview (status, timeline, notes), Scope of Work, App Flow, NDA
+- **Tab navigation**: Overview (status, timeline, comments), Scope of Work, App Flow, NDA, Book Meeting
 - Old email links (`?id=leadId`) preserved via redirect from `/` to `/project`
 - SOW file paths converted to absolute URLs using `ADMIN_PORTAL_URL` env var
 
@@ -228,6 +235,7 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 - `POST /api/sow/[sowId]/sign` — Approve & sign SOW
 - `GET /api/app-flows?leadId=X` — Fetch shared app flows with comments
 - `POST /api/app-flows/[flowId]/comments` — Add comment to app flow
+- `GET/POST /api/notes?leadId=X` — Customer comments/feedback on project overview
 - `GET /api/branding` — Public branding config for document rendering (reads from shared DB)
 
 ## Key Lib Files
@@ -243,6 +251,7 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 | `apps/admin/src/lib/app-flow-prompt.ts` | `buildAppFlowPrompt()` — AI prompt for generating app flow JSON nodes/edges |
 | `apps/admin/src/lib/sow-prompt.ts` | `buildSowPrompt()` — AI prompt for SOW generation (supports editor template, file reference, both, or default) |
 | `apps/admin/src/lib/extract-file-text.ts` | `extractFileContent()` — Extracts text/HTML from uploaded PDF (pdf-parse) or DOCX (mammoth) files |
+| `apps/admin/src/lib/zoho.ts` | `getZohoConfig()`, `getAccessToken()`, `createZohoLead()`, `searchZohoLead()`, `getZohoLeadUrl()`, `isZohoEnabled()` — Zoho CRM OAuth + API |
 | `apps/customer/src/lib/session.ts` | `getCustomerSession()` — reads customer-session cookie, returns CustomerSession |
 | `apps/customer/src/lib/email.ts` | `sendNdaSignedEmail()`, `sendSowCommentNotification()`, `sendSowSignedNotification()`, `sendAppFlowCommentNotification()`, `notifyLeadWatchers()` |
 | `apps/customer/src/lib/generate-pdf.ts` | `downloadNdaPdf()`, `downloadSowPdf()` — jsPDF generation |
@@ -260,6 +269,7 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 | NdaSection | `apps/customer/src/components/NdaSection.tsx` | NDA display + signing UI |
 | SowSection | `apps/customer/src/components/SowSection.tsx` | SOW viewer with comments, signing, full-screen, PDF download |
 | AppFlowSection | `apps/customer/src/components/AppFlowSection.tsx` | Read-only flow viewer with comments, full-screen, PNG/PDF download |
+| ProjectFeedback | `apps/customer/src/components/ProjectFeedback.tsx` | Customer comment box on project overview tab, notifies admin watchers |
 
 ## Development
 
@@ -405,6 +415,25 @@ docker compose exec db pg_dump -U postgres leads_portal > backup.sql  # DB backu
 - Customer portal fetches branding via `/api/branding` (direct DB query, no cross-portal HTTP needed)
 - Logo path converted to absolute URL using `ADMIN_PORTAL_URL` for customer portal rendering
 - Existing documents keep their original branding; only new documents use updated branding
+
+## Zoho CRM Integration
+- OAuth 2.0 authentication via Self Client (server-to-server, no user interaction)
+- Credentials stored in `ZohoConfig` table (not env vars — updatable without redeploying)
+- Access tokens auto-refresh using long-lived refresh token (tokens expire in 1 hour)
+- Supports all 6 Zoho data centers (US, EU, IN, AU, JP, CA)
+- **Setup**: Admin configures at `/zoho-settings` — enter Client ID/Secret, paste grant token to authorize, test connection
+- **New leads**: "Also create in Zoho CRM" checkbox on `/leads/new` (defaults to checked when Zoho enabled)
+- **Existing leads**: Lead detail page shows Zoho status — "View in Zoho" link if synced, or "Create in Zoho" button if not
+- **Auto-detection**: On lead detail page load, searches Zoho by customer email and auto-links if found
+- **Field mapping**: customerName → First_Name/Last_Name, customerEmail → Email, projectName → Company, phone → Phone, city → City, zip → Zip_Code, projectDescription → Description, source → Lead_Source
+- `zohoLeadId` on Lead model stores the Zoho record ID for direct linking
+- Zoho lead URL format: `https://crm.zoho.com/crm/org{orgId}/tab/Leads/{recordId}`
+- See `docs/zoho-setup-guide.md` for complete Zoho admin setup instructions
+
+## Customer Portal Features
+- **Book Meeting**: Tab with embedded Zoho Bookings iframe (satinder-kitlabs.zohobookings.com)
+- **Project Feedback**: Comment box on Overview tab replacing AI description enhancer; customers leave manual comments, admin watchers notified via email
+- **Notes API**: `POST /api/notes` creates notes on lead with `createdBy: "Name (Customer)"` to distinguish from admin notes
 
 ## Important Patterns
 - All admin API routes use `getAdminSession()` for auth (returns null if not logged in)

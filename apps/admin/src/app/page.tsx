@@ -139,6 +139,12 @@ export default function ActivityDashboard() {
               Branding
             </button>
             <button
+              onClick={() => router.push("/zoho-settings")}
+              className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-700 transition"
+            >
+              Zoho CRM
+            </button>
+            <button
               onClick={() => router.push("/leads/new")}
               className="bg-[#f9556d] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#e8445c] transition"
             >

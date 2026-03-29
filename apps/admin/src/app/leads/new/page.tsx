@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "../../../components/ThemeToggle";
 
 export default function NewLeadPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
+  const [zohoEnabled, setZohoEnabled] = useState(false);
+  const [createInZoho, setCreateInZoho] = useState(false);
   const [form, setForm] = useState({
     projectName: "",
     customerName: "",
@@ -17,6 +19,19 @@ export default function NewLeadPage() {
     zip: "",
     dateCreated: "",
   });
+
+  // Check if Zoho is enabled
+  useEffect(() => {
+    fetch("/api/zoho/status")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.enabled) {
+          setZohoEnabled(true);
+          setCreateInZoho(true); // Default to checked
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   function updateField(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -33,6 +48,22 @@ export default function NewLeadPage() {
       });
 
       if (res.ok) {
+        const lead = await res.json();
+
+        // Create in Zoho if checked
+        if (createInZoho && zohoEnabled && lead.id) {
+          try {
+            await fetch("/api/zoho/create-lead", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ leadId: lead.id }),
+            });
+          } catch {
+            // Non-blocking — lead is already saved
+            console.warn("Failed to create lead in Zoho");
+          }
+        }
+
         router.push("/dashboard");
       } else {
         alert("Failed to create lead. Please try again.");
@@ -210,6 +241,21 @@ export default function NewLeadPage() {
                 />
               </div>
             </div>
+
+            {zohoEnabled && (
+              <div className="flex items-center gap-3 pt-2">
+                <input
+                  id="createInZoho"
+                  type="checkbox"
+                  checked={createInZoho}
+                  onChange={(e) => setCreateInZoho(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-[#01358d] focus:ring-[#01358d]"
+                />
+                <label htmlFor="createInZoho" className="text-sm text-gray-700 dark:text-gray-300">
+                  Also create in Zoho CRM
+                </label>
+              </div>
+            )}
 
             <div className="flex gap-3 pt-4">
               <button

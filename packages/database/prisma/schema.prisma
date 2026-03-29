@@ -95,6 +95,8 @@ model Lead {
   assignedToId   String?      @map("assigned_to_id")
   assignedTo     AdminUser?   @relation("AssignedLeads", fields: [assignedToId], references: [id], onDelete: SetNull)
 
+  zohoLeadId     String?      @map("zoho_lead_id")
+
   notes         Note[]
   statusHistory StatusHistory[]
   nda           Nda?
@@ -385,6 +387,21 @@ model AppFlowComment {
 enum AuthProvider {
   GOOGLE
   LINKEDIN
+}
+
+model ZohoConfig {
+  id            String   @id @default(uuid())
+  clientId      String   @map("client_id")
+  clientSecret  String   @map("client_secret")
+  refreshToken  String?  @map("refresh_token")
+  accessToken   String?  @map("access_token")  @db.Text
+  tokenExpiry   DateTime? @map("token_expiry")
+  dataCenter    String   @default("us") @map("data_center")
+  orgId         String?  @map("org_id")
+  enabled       Boolean  @default(false)
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@map("zoho_config")
 }
 
 model BrandingConfig {
