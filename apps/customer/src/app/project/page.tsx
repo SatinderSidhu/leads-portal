@@ -2,7 +2,7 @@ import { prisma } from "@leads-portal/database";
 import NdaSection from "../../components/NdaSection";
 import SowSection from "../../components/SowSection";
 import AppFlowSection from "../../components/AppFlowSection";
-import ProjectDescriptionEnhancer from "../../components/ProjectDescriptionEnhancer";
+import ProjectFeedback from "../../components/ProjectFeedback";
 import { getCustomerSession } from "../../lib/session";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -202,12 +202,6 @@ export default async function ProjectPage({
               <div className="border-t border-gray-100 dark:border-gray-700 pt-6">
                 <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Project Description</p>
                 <p className="text-gray-700 dark:text-gray-300 text-lg leading-relaxed whitespace-pre-wrap">{lead.projectDescription}</p>
-                {isLoggedIn && (
-                  <ProjectDescriptionEnhancer
-                    leadId={lead.id}
-                    currentDescription={lead.projectDescription}
-                  />
-                )}
               </div>
 
               {/* Contact Info */}
@@ -290,22 +284,18 @@ export default async function ProjectPage({
                 </div>
               )}
 
-              {/* Admin Comments */}
-              {lead.notes.length > 0 && (
-                <div className="border-t border-gray-100 dark:border-gray-700 pt-6 mt-6">
-                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Comments from Our Team</p>
-                  <div className="space-y-3">
-                    {lead.notes.map((note) => (
-                      <div key={note.id} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 border border-gray-100 dark:border-gray-700">
-                        <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{note.content}</p>
-                        <p className="text-xs text-gray-400 mt-2">
-                          {new Date(note.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {/* Comments / Feedback */}
+              <ProjectFeedback
+                leadId={lead.id}
+                initialNotes={lead.notes.map((n) => ({
+                  id: n.id,
+                  content: n.content,
+                  createdBy: n.createdBy,
+                  createdAt: n.createdAt.toISOString(),
+                }))}
+                isLoggedIn={isLoggedIn}
+                returnTo={returnTo}
+              />
             </div>
           )}
 
