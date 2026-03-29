@@ -36,6 +36,7 @@ const TABS = [
   { key: "sow", label: "Scope of Work" },
   { key: "app-flow", label: "App Flow" },
   { key: "nda", label: "NDA" },
+  { key: "appointments", label: "Book Meeting" },
 ];
 
 export default async function ProjectPage({
@@ -111,6 +112,7 @@ export default async function ProjectPage({
   const hasSow = lead.scopeOfWorks.length > 0;
   const hasAppFlow = lead.appFlows.length > 0;
   const hasNda = !!lead.nda;
+  const hasAppointments = true;
   const adminBaseUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
   const isLoggedIn = !!session;
   const returnTo = encodeURIComponent(`/project?id=${lead.id}&tab=${activeTab}${v ? `&v=${v}` : ""}`);
@@ -157,7 +159,7 @@ export default async function ProjectPage({
       <div className="max-w-4xl mx-auto px-6">
         <div className="flex gap-1 bg-white/10 rounded-t-xl p-1">
           {TABS.map((t) => {
-            const isDisabled = (t.key === "sow" && !hasSow) || (t.key === "app-flow" && !hasAppFlow) || (t.key === "nda" && !hasNda);
+            const isDisabled = (t.key === "sow" && !hasSow) || (t.key === "app-flow" && !hasAppFlow) || (t.key === "nda" && !hasNda) || (t.key === "appointments" && !hasAppointments);
             if (isDisabled) return null;
             return (
               <a
@@ -174,10 +176,6 @@ export default async function ProjectPage({
             );
           })}
 
-          {/* Future sections - placeholders */}
-          <span className="px-4 py-2.5 text-sm text-white/40 cursor-default">
-            Appointments (Coming Soon)
-          </span>
         </div>
       </div>
 
@@ -386,6 +384,26 @@ export default async function ProjectPage({
                   createdAt: lead.nda.createdAt.toISOString(),
                 }}
               />
+            </div>
+          )}
+
+          {activeTab === "appointments" && (
+            <div className="p-8 md:p-10">
+              <div className="mb-6">
+                <p className="text-sm font-medium text-[#01358d] dark:text-blue-400 uppercase tracking-wider mb-1">Schedule a Meeting</p>
+                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Book an Appointment</h3>
+                <p className="text-gray-500 dark:text-gray-400 mt-2">Choose a convenient time to discuss your project with our team.</p>
+              </div>
+              <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+                <iframe
+                  width="100%"
+                  height="750px"
+                  src="https://satinder-kitlabs.zohobookings.com/portal-embed#/kitlabsinc"
+                  frameBorder="0"
+                  allowFullScreen
+                  className="bg-white"
+                />
+              </div>
             </div>
           )}
         </div>
