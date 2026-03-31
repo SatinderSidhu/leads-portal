@@ -339,6 +339,26 @@ export default function ZohoSettingsPage() {
           </div>
         </div>
 
+        {/* Find Unlinked Leads */}
+        {configured && hasRefreshToken && (
+          <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Find Unlinked Leads</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Scan for Portal leads that also exist in Zoho (by email) but aren&apos;t linked yet.
+                </p>
+              </div>
+              <button
+                onClick={() => router.push("/zoho-settings/unlinked")}
+                className="bg-orange-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-orange-700 transition"
+              >
+                Find &amp; Link Leads
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* How it works */}
         <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-800 p-6">
           <h3 className="text-sm font-semibold text-blue-800 dark:text-blue-300 mb-3">How Zoho Integration Works</h3>
@@ -346,7 +366,8 @@ export default function ZohoSettingsPage() {
             <li>When creating a new lead, check "Also create in Zoho CRM" to sync it automatically.</li>
             <li>For existing leads, use the "Create in Zoho" button on the lead detail page.</li>
             <li>Leads already in Zoho will show a direct link to open them in Zoho CRM.</li>
-            <li>The integration maps: customer name, email, phone, city, zip, project description, and source.</li>
+            <li>Use "Sync with Zoho" on a lead to push/pull changes based on which side was updated last.</li>
+            <li>Use "Find &amp; Link Leads" above to discover leads that exist in both systems but aren&apos;t connected.</li>
           </ul>
         </div>
       </main>
