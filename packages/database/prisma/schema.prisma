@@ -72,6 +72,7 @@ model AdminUser {
 
   assignedLeads  Lead[]       @relation("AssignedLeads")
   watchedLeads   LeadWatcher[]
+  notificationPreference NotificationPreference?
 
   @@map("admin_users")
 }
@@ -137,6 +138,7 @@ model Lead {
   scopeOfWorks    ScopeOfWork[]
   appFlows        AppFlow[]
   watchers        LeadWatcher[]
+  customerVisits  CustomerVisit[]
 
   @@map("leads")
 }
@@ -425,6 +427,40 @@ model AppFlowComment {
 enum AuthProvider {
   GOOGLE
   LINKEDIN
+}
+
+model CustomerVisit {
+  id        String   @id @default(uuid())
+  leadId    String   @map("lead_id")
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  visitorEmail String? @map("visitor_email")
+  visitorName  String? @map("visitor_name")
+  page      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("customer_visits")
+}
+
+model NotificationPreference {
+  id                    String   @id @default(uuid())
+  adminId               String   @unique @map("admin_id")
+  admin                 AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  notificationEmail     String?  @map("notification_email")
+
+  // Notification toggles (all default to true)
+  newLeadCreated        Boolean  @default(true) @map("new_lead_created")
+  emailSentToCustomer   Boolean  @default(true) @map("email_sent_to_customer")
+  customerResponse      Boolean  @default(true) @map("customer_response")
+  customerPortalVisit   Boolean  @default(true) @map("customer_portal_visit")
+  customerComment       Boolean  @default(true) @map("customer_comment")
+  leadStatusChange      Boolean  @default(true) @map("lead_status_change")
+  leadAssigned          Boolean  @default(true) @map("lead_assigned")
+  sowSigned             Boolean  @default(true) @map("sow_signed")
+  ndaSigned             Boolean  @default(true) @map("nda_signed")
+
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  @@map("notification_preferences")
 }
 
 model ZohoConfig {

@@ -227,6 +227,12 @@ export default function DashboardPage() {
               Zoho CRM
             </button>
             <button
+              onClick={() => router.push("/notification-settings")}
+              className="bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition"
+            >
+              Notifications
+            </button>
+            <button
               onClick={() => router.push("/leads/new")}
               className="bg-[#f9556d] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#e8445c] transition"
             >

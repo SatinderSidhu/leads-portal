@@ -1,6 +1,7 @@
 import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { simpleParser } from "mailparser";
+import { sendNotification } from "../../../../lib/notify";
 
 // SNS message types
 interface SnsMessage {
@@ -190,6 +191,29 @@ export async function POST(req: Request) {
     });
 
     console.log(`[SES Inbound] Saved reply from ${fromEmail} for lead ${leadId} (${received.id})`);
+
+    // Notify watchers about customer reply
+    const lead = await prisma.lead.findUnique({
+      where: { id: leadId },
+      select: { projectName: true, customerName: true },
+    });
+    if (lead) {
+      sendNotification({
+        event: "customer_response",
+        leadId,
+        subject: `Customer Reply: ${lead.projectName}`,
+        body: `
+          <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
+            <strong>${fromName || fromEmail}</strong> replied to your email on <strong>${lead.projectName}</strong>.
+          </p>
+          <div style="background: white; border-radius: 8px; padding: 16px; margin: 16px 0; border: 1px solid #e5e7eb;">
+            <p style="margin: 4px 0; font-size: 14px;"><strong>Subject:</strong> ${subject || "(no subject)"}</p>
+            <p style="margin: 4px 0; font-size: 14px;"><strong>From:</strong> ${fromEmail}</p>
+          </div>
+        `,
+      }).catch(() => {});
+    }
+
     return NextResponse.json({ status: "saved", id: received.id });
   } catch (err) {
     console.error("[SES Inbound] Failed to save email:", err);

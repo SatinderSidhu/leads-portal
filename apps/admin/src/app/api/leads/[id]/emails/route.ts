@@ -2,6 +2,7 @@ import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { getAdminSession } from "../../../../../lib/session";
 import { transporter, getFromAddress, getReplyToAddress } from "../../../../../lib/email";
+import { sendNotification } from "../../../../../lib/notify";
 
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
@@ -187,6 +188,23 @@ export async function POST(
         path: path.join(process.cwd(), "public", a.filePath),
       })),
     });
+
+    // Notify watchers about email sent (non-blocking)
+    sendNotification({
+      event: "email_sent_to_customer",
+      leadId: id,
+      subject: `Email Sent: ${subject.trim()} — ${lead.projectName}`,
+      body: `
+        <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
+          <strong>${session?.name || "Admin"}</strong> sent an email to <strong>${lead.customerName}</strong>.
+        </p>
+        <div style="background: white; border-radius: 8px; padding: 16px; margin: 16px 0; border: 1px solid #e5e7eb;">
+          <p style="margin: 4px 0; font-size: 14px;"><strong>Subject:</strong> ${subject.trim()}</p>
+          <p style="margin: 4px 0; font-size: 14px;"><strong>To:</strong> ${lead.customerEmail}</p>
+        </div>
+      `,
+      excludeAdminId: session?.id,
+    }).catch(() => {});
 
     return NextResponse.json(sentEmail);
   } catch {

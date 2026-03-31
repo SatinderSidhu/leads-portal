@@ -255,18 +255,36 @@ export async function notifyLeadWatchers(
     });
     if (!lead) return;
 
-    const emails = new Set<string>();
+    // Build admin list and check preferences
+    const adminIds: string[] = [];
+    const adminEmails = new Map<string, string>();
     for (const w of lead.watchers) {
-      emails.add(w.admin.email);
+      adminIds.push(w.adminId);
+      adminEmails.set(w.adminId, w.admin.email);
     }
-    if (lead.assignedTo) {
-      emails.add(lead.assignedTo.email);
+    if (lead.assignedTo && !adminEmails.has(lead.assignedTo.id)) {
+      adminIds.push(lead.assignedTo.id);
+      adminEmails.set(lead.assignedTo.id, lead.assignedTo.email);
     }
-    if (emails.size === 0) return;
+    if (adminIds.length === 0) return;
+
+    // Check notification preferences
+    const prefs = await prisma.notificationPreference.findMany({
+      where: { adminId: { in: adminIds } },
+    });
+    const prefsMap = new Map(prefs.map((p) => [p.adminId, p]));
+
+    const emailList: string[] = [];
+    for (const [adminId, email] of adminEmails) {
+      const pref = prefsMap.get(adminId);
+      if (!pref || pref.customerComment !== false) {
+        emailList.push(pref?.notificationEmail || email);
+      }
+    }
+    if (emailList.length === 0) return;
 
     const adminUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
     const leadUrl = `${adminUrl}/leads/${leadId}`;
-    const emailList = Array.from(emails);
 
     await transporter.sendMail({
       from: process.env.SMTP_FROM || "noreply@leadsportal.com",

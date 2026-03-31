@@ -2,6 +2,7 @@ import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { sendWelcomeEmail } from "../../../lib/email";
 import { getAdminSession } from "../../../lib/session";
+import { sendNotification } from "../../../lib/notify";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -142,6 +143,25 @@ export async function POST(req: Request) {
       );
     }
   }
+
+  // Notify admins about new lead (non-blocking, broadcast to all)
+  sendNotification({
+    event: "new_lead_created",
+    leadId: lead.id,
+    subject: `New Lead: ${lead.projectName}`,
+    body: `
+      <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
+        A new lead has been created by <strong>${adminName}</strong>.
+      </p>
+      <div style="background: white; border-radius: 8px; padding: 16px; margin: 16px 0; border: 1px solid #e5e7eb;">
+        <p style="margin: 4px 0; font-size: 14px;"><strong>Project:</strong> ${lead.projectName}</p>
+        <p style="margin: 4px 0; font-size: 14px;"><strong>Customer:</strong> ${lead.customerName} (${lead.customerEmail})</p>
+        ${lead.companyName ? `<p style="margin: 4px 0; font-size: 14px;"><strong>Company:</strong> ${lead.companyName}</p>` : ""}
+      </div>
+    `,
+    broadcastToAll: true,
+    excludeAdminId: session?.id,
+  }).catch(() => {});
 
   return NextResponse.json(lead, { status: 201 });
 }
