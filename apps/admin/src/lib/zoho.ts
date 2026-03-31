@@ -173,49 +173,44 @@ export async function fetchOrgId(config: ZohoConfig): Promise<string> {
   return orgId;
 }
 
-/**
- * Create a lead in Zoho CRM
- */
-export async function createZohoLead(
-  config: ZohoConfig,
-  leadData: {
-    customerName: string;
-    customerEmail: string;
-    projectName: string;
-    phone?: string | null;
-    city?: string | null;
-    zip?: string | null;
-    projectDescription: string;
-    source?: string;
-    jobTitle?: string | null;
-    companyName?: string | null;
-    location?: string | null;
-    industry?: string | null;
-    companyWebsite?: string | null;
-  }
-): Promise<{ zohoLeadId: string }> {
-  const token = await getAccessToken(config);
-  const apiUrl = getApiUrl(config.dataCenter);
+export interface ZohoLeadData {
+  customerName: string;
+  customerEmail: string;
+  projectName: string;
+  phone?: string | null;
+  city?: string | null;
+  zip?: string | null;
+  projectDescription: string;
+  source?: string;
+  jobTitle?: string | null;
+  companyName?: string | null;
+  location?: string | null;
+  industry?: string | null;
+  companyWebsite?: string | null;
+}
 
-  // Split customer name into first/last
+// Map lead source to Zoho lead source
+const SOURCE_MAP: Record<string, string> = {
+  LINKEDIN_SALES_NAV: "LinkedIn",
+  APOLLO: "Cold Call",
+  LINKEDIN_COMPANY_PAGE: "LinkedIn",
+  REFERRAL: "External Referral",
+  WEBSITE: "Web Form",
+  COLD_OUTREACH: "Cold Call",
+  BARK: "External Referral",
+  EVENT: "Trade Show",
+  MANUAL: "Web Form",
+  AGENT: "Web Form",
+  OTHER: "Other",
+};
+
+/**
+ * Build Zoho field data from Portal lead data (shared by create + update)
+ */
+function buildZohoFieldData(leadData: ZohoLeadData): Record<string, string> {
   const nameParts = leadData.customerName.trim().split(/\s+/);
   const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : nameParts[0];
   const firstName = nameParts.length > 1 ? nameParts[0] : undefined;
-
-  // Map lead source to Zoho lead source
-  const sourceMap: Record<string, string> = {
-    LINKEDIN_SALES_NAV: "LinkedIn",
-    APOLLO: "Cold Call",
-    LINKEDIN_COMPANY_PAGE: "LinkedIn",
-    REFERRAL: "External Referral",
-    WEBSITE: "Web Form",
-    COLD_OUTREACH: "Cold Call",
-    BARK: "External Referral",
-    EVENT: "Trade Show",
-    MANUAL: "Web Form",
-    AGENT: "Web Form",
-    OTHER: "Other",
-  };
 
   const zohoData: Record<string, string | undefined> = {
     Last_Name: lastName,
@@ -226,17 +221,28 @@ export async function createZohoLead(
     City: leadData.city || undefined,
     Zip_Code: leadData.zip || undefined,
     Description: leadData.projectDescription,
-    Lead_Source: sourceMap[leadData.source || "MANUAL"] || "Web Form",
+    Lead_Source: SOURCE_MAP[leadData.source || "MANUAL"] || "Web Form",
     Designation: leadData.jobTitle || undefined,
     Industry: leadData.industry || undefined,
     Website: leadData.companyWebsite || undefined,
     State: leadData.location || undefined,
   };
 
-  // Remove undefined values
-  const cleanData = Object.fromEntries(
+  return Object.fromEntries(
     Object.entries(zohoData).filter(([, v]) => v !== undefined)
-  );
+  ) as Record<string, string>;
+}
+
+/**
+ * Create a lead in Zoho CRM
+ */
+export async function createZohoLead(
+  config: ZohoConfig,
+  leadData: ZohoLeadData
+): Promise<{ zohoLeadId: string }> {
+  const token = await getAccessToken(config);
+  const apiUrl = getApiUrl(config.dataCenter);
+  const cleanData = buildZohoFieldData(leadData);
 
   const res = await fetch(`${apiUrl}/crm/v7/Leads`, {
     method: "POST",
@@ -253,7 +259,6 @@ export async function createZohoLead(
     return { zohoLeadId: result.data[0].details.id };
   }
 
-  // Handle duplicate
   if (result.data?.[0]?.code === "DUPLICATE_DATA") {
     const existingId = result.data[0].details?.id;
     if (existingId) {
@@ -264,6 +269,59 @@ export async function createZohoLead(
   throw new Error(
     `Zoho create lead failed: ${result.data?.[0]?.message || result.message || JSON.stringify(result)}`
   );
+}
+
+/**
+ * Update an existing lead in Zoho CRM
+ */
+export async function updateZohoLead(
+  config: ZohoConfig,
+  zohoLeadId: string,
+  leadData: ZohoLeadData
+): Promise<void> {
+  const token = await getAccessToken(config);
+  const apiUrl = getApiUrl(config.dataCenter);
+  const cleanData = buildZohoFieldData(leadData);
+
+  const res = await fetch(`${apiUrl}/crm/v7/Leads`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Zoho-oauthtoken ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ data: [{ id: zohoLeadId, ...cleanData }] }),
+  });
+
+  const result = await res.json();
+  if (result.data?.[0]?.code !== "SUCCESS") {
+    throw new Error(
+      `Zoho update lead failed: ${result.data?.[0]?.message || result.message || JSON.stringify(result)}`
+    );
+  }
+}
+
+/**
+ * Fetch a single lead from Zoho CRM by ID (includes Modified_Time)
+ */
+export async function getZohoLead(
+  config: ZohoConfig,
+  zohoLeadId: string
+): Promise<Record<string, unknown> | null> {
+  const token = await getAccessToken(config);
+  const apiUrl = getApiUrl(config.dataCenter);
+
+  const res = await fetch(`${apiUrl}/crm/v7/Leads/${zohoLeadId}`, {
+    headers: { Authorization: `Zoho-oauthtoken ${token}` },
+  });
+
+  if (res.status === 204) return null;
+
+  const data = await res.json();
+  if (data.data && data.data.length > 0) {
+    return data.data[0];
+  }
+
+  return null;
 }
 
 /**

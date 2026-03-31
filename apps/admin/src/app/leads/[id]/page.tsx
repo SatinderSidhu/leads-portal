@@ -342,6 +342,12 @@ export default function LeadDetailPage() {
   const [zohoUrl, setZohoUrl] = useState<string | null>(null);
   const [zohoFound, setZohoFound] = useState<boolean | null>(null);
   const [zohoCreating, setZohoCreating] = useState(false);
+  const [zohoSyncing, setZohoSyncing] = useState(false);
+  const [zohoSyncResult, setZohoSyncResult] = useState<{
+    direction: string;
+    message: string;
+    changes?: { field: string; from: string | null; to: string | null }[];
+  } | null>(null);
 
   // Assignment & watch state
   const [adminUsers, setAdminUsers] = useState<{ id: string; name: string; email: string; active: boolean }[]>([]);
@@ -558,6 +564,35 @@ export default function LeadDetailPage() {
       alert("Failed to create lead in Zoho");
     } finally {
       setZohoCreating(false);
+    }
+  }
+
+  async function handleSyncWithZoho() {
+    if (!lead) return;
+    setZohoSyncing(true);
+    setZohoSyncResult(null);
+    try {
+      const res = await fetch("/api/zoho/sync-lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ leadId: lead.id }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setZohoSyncResult(data);
+        if (data.zohoUrl) setZohoUrl(data.zohoUrl);
+        if (data.direction === "zoho_to_portal") {
+          await fetchLead();
+        }
+        // Auto-dismiss after 10s (5s for "already in sync")
+        setTimeout(() => setZohoSyncResult(null), data.direction === "none" ? 5000 : 10000);
+      } else {
+        alert(data.error || "Failed to sync with Zoho");
+      }
+    } catch {
+      alert("Failed to sync with Zoho");
+    } finally {
+      setZohoSyncing(false);
     }
   }
 
@@ -1346,8 +1381,19 @@ export default function LeadDetailPage() {
                     </div>
                   )}
                   {zohoEnabled && zohoFound && zohoUrl && (
-                    <div className="flex items-center gap-3 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                    <div className="flex items-center gap-2 flex-wrap p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
                       <span className="text-sm text-orange-700 dark:text-orange-300">Available in Zoho CRM</span>
+                      <button
+                        type="button"
+                        onClick={handleSyncWithZoho}
+                        disabled={zohoSyncing}
+                        className="text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 px-3 py-1 rounded-md disabled:opacity-50 transition inline-flex items-center gap-1.5"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={zohoSyncing ? "animate-spin" : ""}>
+                          <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+                        </svg>
+                        {zohoSyncing ? "Syncing..." : "Sync"}
+                      </button>
                       <a
                         href={zohoUrl}
                         target="_blank"
@@ -1568,35 +1614,67 @@ export default function LeadDetailPage() {
 
                   {/* Zoho CRM Status */}
                   {zohoEnabled && (
-                    <div className="flex items-center gap-3 mb-4 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-600 dark:text-orange-400 flex-shrink-0">
-                        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
-                        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
-                      </svg>
-                      {zohoLoading ? (
-                        <span className="text-sm text-orange-700 dark:text-orange-300">Checking Zoho CRM...</span>
-                      ) : zohoFound && zohoUrl ? (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-orange-700 dark:text-orange-300">Available in Zoho CRM</span>
-                          <a
-                            href={zohoUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm font-medium text-orange-800 dark:text-orange-200 bg-orange-100 dark:bg-orange-800 px-2.5 py-1 rounded-md hover:bg-orange-200 dark:hover:bg-orange-700 transition"
-                          >
-                            View in Zoho &rarr;
-                          </a>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-orange-700 dark:text-orange-300">Not in Zoho CRM</span>
-                          <button
-                            onClick={handleCreateInZoho}
-                            disabled={zohoCreating}
-                            className="text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 px-3 py-1 rounded-md disabled:opacity-50 transition"
-                          >
-                            {zohoCreating ? "Creating..." : "Create in Zoho"}
-                          </button>
+                    <div className="mb-4 p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg space-y-2">
+                      <div className="flex items-center gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-orange-600 dark:text-orange-400 flex-shrink-0">
+                          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                        </svg>
+                        {zohoLoading ? (
+                          <span className="text-sm text-orange-700 dark:text-orange-300">Checking Zoho CRM...</span>
+                        ) : zohoFound && zohoUrl ? (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm text-orange-700 dark:text-orange-300">Available in Zoho CRM</span>
+                            <button
+                              onClick={handleSyncWithZoho}
+                              disabled={zohoSyncing}
+                              className="text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 px-3 py-1 rounded-md disabled:opacity-50 transition inline-flex items-center gap-1.5"
+                            >
+                              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={zohoSyncing ? "animate-spin" : ""}>
+                                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2" />
+                              </svg>
+                              {zohoSyncing ? "Syncing..." : "Sync with Zoho"}
+                            </button>
+                            <a
+                              href={zohoUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm font-medium text-orange-800 dark:text-orange-200 bg-orange-100 dark:bg-orange-800 px-2.5 py-1 rounded-md hover:bg-orange-200 dark:hover:bg-orange-700 transition"
+                            >
+                              View in Zoho &rarr;
+                            </a>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-orange-700 dark:text-orange-300">Not in Zoho CRM</span>
+                            <button
+                              onClick={handleCreateInZoho}
+                              disabled={zohoCreating}
+                              className="text-sm font-medium text-white bg-orange-600 hover:bg-orange-700 px-3 py-1 rounded-md disabled:opacity-50 transition"
+                            >
+                              {zohoCreating ? "Creating..." : "Create in Zoho"}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      {/* Sync result */}
+                      {zohoSyncResult && (
+                        <div className={`text-sm rounded-md px-3 py-2 ${
+                          zohoSyncResult.direction === "none"
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300"
+                            : "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                        }`}>
+                          <p className="font-medium">{zohoSyncResult.message}</p>
+                          {zohoSyncResult.changes && zohoSyncResult.changes.length > 0 && (
+                            <ul className="mt-1 space-y-0.5 text-xs">
+                              {zohoSyncResult.changes.map((c, i) => (
+                                <li key={i}>{c.field}: <span className="line-through opacity-60">{c.from || "(empty)"}</span> &rarr; {c.to || "(empty)"}</li>
+                              ))}
+                            </ul>
+                          )}
+                          {zohoSyncResult.changes && zohoSyncResult.changes.length === 0 && zohoSyncResult.direction !== "none" && (
+                            <p className="text-xs mt-1 opacity-75">No field differences detected.</p>
+                          )}
                         </div>
                       )}
                     </div>
