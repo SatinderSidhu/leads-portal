@@ -343,7 +343,7 @@ export default function ZohoSettingsPage() {
         {configured && hasRefreshToken && (
           <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6 space-y-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Lead Management</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Find Unlinked Leads</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
@@ -366,6 +366,18 @@ export default function ZohoSettingsPage() {
                   className="bg-[#01358d] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#012a70] transition w-full"
                 >
                   Import Leads
+                </button>
+              </div>
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Export to Zoho</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Portal leads that aren&apos;t in Zoho yet — export them.
+                </p>
+                <button
+                  onClick={() => router.push("/zoho-settings/export")}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 transition w-full"
+                >
+                  Export Leads
                 </button>
               </div>
             </div>
