@@ -183,6 +183,11 @@ export async function createZohoLead(
     zip?: string | null;
     projectDescription: string;
     source?: string;
+    jobTitle?: string | null;
+    companyName?: string | null;
+    location?: string | null;
+    industry?: string | null;
+    companyWebsite?: string | null;
   }
 ): Promise<{ zohoLeadId: string }> {
   const token = await getAccessToken(config);
@@ -193,16 +198,35 @@ export async function createZohoLead(
   const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : nameParts[0];
   const firstName = nameParts.length > 1 ? nameParts[0] : undefined;
 
+  // Map lead source to Zoho lead source
+  const sourceMap: Record<string, string> = {
+    LINKEDIN_SALES_NAV: "LinkedIn",
+    APOLLO: "Cold Call",
+    LINKEDIN_COMPANY_PAGE: "LinkedIn",
+    REFERRAL: "External Referral",
+    WEBSITE: "Web Form",
+    COLD_OUTREACH: "Cold Call",
+    BARK: "External Referral",
+    EVENT: "Trade Show",
+    MANUAL: "Web Form",
+    AGENT: "Web Form",
+    OTHER: "Other",
+  };
+
   const zohoData: Record<string, string | undefined> = {
     Last_Name: lastName,
     First_Name: firstName,
     Email: leadData.customerEmail,
-    Company: leadData.projectName,
+    Company: leadData.companyName || leadData.projectName,
     Phone: leadData.phone || undefined,
     City: leadData.city || undefined,
     Zip_Code: leadData.zip || undefined,
     Description: leadData.projectDescription,
-    Lead_Source: leadData.source === "BARK" ? "External Referral" : "Web Form",
+    Lead_Source: sourceMap[leadData.source || "MANUAL"] || "Web Form",
+    Designation: leadData.jobTitle || undefined,
+    Industry: leadData.industry || undefined,
+    Website: leadData.companyWebsite || undefined,
+    State: leadData.location || undefined,
   };
 
   // Remove undefined values

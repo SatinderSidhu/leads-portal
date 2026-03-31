@@ -18,18 +18,24 @@ export async function GET(req: Request) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: any = {};
 
+  const industry = searchParams.get("industry") || "";
+
   if (search) {
     where.OR = [
       { projectName: { contains: search, mode: "insensitive" } },
       { customerName: { contains: search, mode: "insensitive" } },
       { customerEmail: { contains: search, mode: "insensitive" } },
       { city: { contains: search, mode: "insensitive" } },
+      { companyName: { contains: search, mode: "insensitive" } },
+      { jobTitle: { contains: search, mode: "insensitive" } },
+      { location: { contains: search, mode: "insensitive" } },
     ];
   }
 
   if (status) where.status = status;
   if (stage) where.stage = stage;
   if (source) where.source = source;
+  if (industry) where.industry = { contains: industry, mode: "insensitive" };
 
   // Filter by assigned admin: "me" = current user, specific ID, or "" = all
   if (assignedTo === "me" && session) {
@@ -77,8 +83,29 @@ export async function POST(req: Request) {
       city: body.city?.trim() || null,
       zip: body.zip?.trim() || null,
       dateCreated: body.dateCreated ? new Date(body.dateCreated) : null,
-      source: "MANUAL",
+      source: body.source || "MANUAL",
+      stage: body.stage || "COLD",
       createdBy: adminName,
+      // Core contact fields
+      jobTitle: body.jobTitle?.trim() || null,
+      companyName: body.companyName?.trim() || null,
+      location: body.location?.trim() || null,
+      linkedinUrl: body.linkedinUrl?.trim() || null,
+      // Company intelligence fields
+      industry: body.industry?.trim() || null,
+      companySize: body.companySize?.trim() || null,
+      companyWebsite: body.companyWebsite?.trim() || null,
+      // Lead management fields
+      extractedDate: body.extractedDate ? new Date(body.extractedDate) : null,
+      lastContactedDate: body.lastContactedDate ? new Date(body.lastContactedDate) : null,
+      leadScore: body.leadScore != null ? parseInt(body.leadScore, 10) : null,
+      // Outreach tracking
+      connectionRequestSent: body.connectionRequestSent ?? false,
+      connectionAccepted: body.connectionAccepted ?? false,
+      initialMessageSent: body.initialMessageSent ?? false,
+      meetingBooked: body.meetingBooked ?? false,
+      meetingDate: body.meetingDate ? new Date(body.meetingDate) : null,
+      responseReceived: body.responseReceived ?? false,
       ...(session && { assignedToId: session.id }),
     },
   });

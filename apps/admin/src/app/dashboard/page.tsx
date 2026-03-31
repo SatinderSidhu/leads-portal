@@ -23,6 +23,13 @@ const STAGE_LABELS: Record<string, string> = {
   HOT: "Hot",
   ACTIVE: "Active",
   CLOSED: "Closed",
+  NEW: "New",
+  CONTACTED: "Contacted",
+  RESPONDED: "Responded",
+  MEETING_BOOKED: "Meeting Booked",
+  QUALIFIED: "Qualified",
+  DISQUALIFIED: "Disqualified",
+  NURTURE: "Nurture",
 };
 
 const STAGE_COLORS: Record<string, string> = {
@@ -31,6 +38,13 @@ const STAGE_COLORS: Record<string, string> = {
   HOT: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
   ACTIVE: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
   CLOSED: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
+  NEW: "bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200",
+  CONTACTED: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
+  RESPONDED: "bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200",
+  MEETING_BOOKED: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
+  QUALIFIED: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+  DISQUALIFIED: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+  NURTURE: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -50,6 +64,14 @@ const SOURCE_LABELS: Record<string, string> = {
   MANUAL: "Manual",
   AGENT: "Agent",
   BARK: "Bark",
+  LINKEDIN_SALES_NAV: "LinkedIn Sales Nav",
+  APOLLO: "Apollo.io",
+  LINKEDIN_COMPANY_PAGE: "LinkedIn Co. Page",
+  REFERRAL: "Referral",
+  WEBSITE: "Website",
+  COLD_OUTREACH: "Cold Outreach",
+  EVENT: "Event",
+  OTHER: "Other",
 };
 
 interface AdminUser {

@@ -78,6 +78,26 @@ export async function PUT(
         ...(body.city !== undefined && { city: body.city?.trim() || null }),
         ...(body.zip !== undefined && { zip: body.zip?.trim() || null }),
         ...(body.dateCreated !== undefined && { dateCreated: body.dateCreated ? new Date(body.dateCreated) : null }),
+        // Core contact fields
+        ...(body.jobTitle !== undefined && { jobTitle: body.jobTitle?.trim() || null }),
+        ...(body.companyName !== undefined && { companyName: body.companyName?.trim() || null }),
+        ...(body.location !== undefined && { location: body.location?.trim() || null }),
+        // Company intelligence fields
+        ...(body.industry !== undefined && { industry: body.industry?.trim() || null }),
+        ...(body.companySize !== undefined && { companySize: body.companySize?.trim() || null }),
+        ...(body.companyWebsite !== undefined && { companyWebsite: body.companyWebsite?.trim() || null }),
+        // Lead management fields
+        ...(body.source !== undefined && { source: body.source }),
+        ...(body.extractedDate !== undefined && { extractedDate: body.extractedDate ? new Date(body.extractedDate) : null }),
+        ...(body.lastContactedDate !== undefined && { lastContactedDate: body.lastContactedDate ? new Date(body.lastContactedDate) : null }),
+        ...(body.leadScore !== undefined && { leadScore: body.leadScore != null ? parseInt(body.leadScore, 10) : null }),
+        // Outreach tracking
+        ...(body.connectionRequestSent !== undefined && { connectionRequestSent: body.connectionRequestSent }),
+        ...(body.connectionAccepted !== undefined && { connectionAccepted: body.connectionAccepted }),
+        ...(body.initialMessageSent !== undefined && { initialMessageSent: body.initialMessageSent }),
+        ...(body.meetingBooked !== undefined && { meetingBooked: body.meetingBooked }),
+        ...(body.meetingDate !== undefined && { meetingDate: body.meetingDate ? new Date(body.meetingDate) : null }),
+        ...(body.responseReceived !== undefined && { responseReceived: body.responseReceived }),
         updatedBy: session?.name || "Unknown",
       },
     });

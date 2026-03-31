@@ -30,6 +30,14 @@ enum LeadSource {
   MANUAL
   AGENT
   BARK
+  LINKEDIN_SALES_NAV
+  APOLLO
+  LINKEDIN_COMPANY_PAGE
+  REFERRAL
+  WEBSITE
+  COLD_OUTREACH
+  EVENT
+  OTHER
 }
 
 enum AppFlowType {
@@ -91,6 +99,29 @@ model Lead {
   linkedinUrl    String?      @map("linkedin_url")
   facebookUrl    String?      @map("facebook_url")
   twitterUrl     String?      @map("twitter_url")
+
+  // Core contact fields
+  jobTitle       String?      @map("job_title")
+  companyName    String?      @map("company_name")
+  location       String?
+
+  // Company intelligence fields
+  industry       String?
+  companySize    String?      @map("company_size")
+  companyWebsite String?      @map("company_website")
+
+  // Lead management fields
+  extractedDate      DateTime?  @map("extracted_date")
+  lastContactedDate  DateTime?  @map("last_contacted_date")
+  leadScore          Int?       @map("lead_score")
+
+  // Outreach tracking fields
+  connectionRequestSent  Boolean  @default(false)  @map("connection_request_sent")
+  connectionAccepted     Boolean  @default(false)  @map("connection_accepted")
+  initialMessageSent     Boolean  @default(false)  @map("initial_message_sent")
+  meetingBooked          Boolean  @default(false)  @map("meeting_booked")
+  meetingDate            DateTime? @map("meeting_date")
+  responseReceived       Boolean  @default(false)  @map("response_received")
 
   assignedToId   String?      @map("assigned_to_id")
   assignedTo     AdminUser?   @relation("AssignedLeads", fields: [assignedToId], references: [id], onDelete: SetNull)
@@ -179,6 +210,13 @@ enum LeadStage {
   HOT
   ACTIVE
   CLOSED
+  NEW
+  CONTACTED
+  RESPONDED
+  MEETING_BOOKED
+  QUALIFIED
+  DISQUALIFIED
+  NURTURE
 }
 
 enum SentEmailStatus {

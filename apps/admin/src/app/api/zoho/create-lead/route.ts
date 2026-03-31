@@ -45,6 +45,11 @@ export async function POST(req: Request) {
       zip: lead.zip,
       projectDescription: lead.projectDescription,
       source: lead.source,
+      jobTitle: lead.jobTitle,
+      companyName: lead.companyName,
+      location: lead.location,
+      industry: lead.industry,
+      companyWebsite: lead.companyWebsite,
     });
 
     // Save Zoho lead ID to our database

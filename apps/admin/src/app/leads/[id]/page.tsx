@@ -49,7 +49,7 @@ const STATUS_COLORS: Record<string, string> = {
   GO_LIVE: "bg-emerald-100 text-emerald-800",
 };
 
-const STAGE_OPTIONS = ["COLD", "WARM", "HOT", "ACTIVE", "CLOSED"] as const;
+const STAGE_OPTIONS = ["NEW", "COLD", "WARM", "HOT", "CONTACTED", "RESPONDED", "MEETING_BOOKED", "QUALIFIED", "DISQUALIFIED", "NURTURE", "ACTIVE", "CLOSED"] as const;
 
 const STAGE_LABELS: Record<string, string> = {
   COLD: "Cold",
@@ -57,6 +57,13 @@ const STAGE_LABELS: Record<string, string> = {
   HOT: "Hot",
   ACTIVE: "Active",
   CLOSED: "Closed",
+  NEW: "New",
+  CONTACTED: "Contacted",
+  RESPONDED: "Responded",
+  MEETING_BOOKED: "Meeting Booked",
+  QUALIFIED: "Qualified",
+  DISQUALIFIED: "Disqualified",
+  NURTURE: "Nurture",
 };
 
 const STAGE_COLORS: Record<string, string> = {
@@ -65,6 +72,13 @@ const STAGE_COLORS: Record<string, string> = {
   HOT: "bg-orange-100 text-orange-800",
   ACTIVE: "bg-green-100 text-green-800",
   CLOSED: "bg-gray-100 text-gray-800",
+  NEW: "bg-sky-100 text-sky-800",
+  CONTACTED: "bg-indigo-100 text-indigo-800",
+  RESPONDED: "bg-violet-100 text-violet-800",
+  MEETING_BOOKED: "bg-emerald-100 text-emerald-800",
+  QUALIFIED: "bg-green-100 text-green-800",
+  DISQUALIFIED: "bg-red-100 text-red-800",
+  NURTURE: "bg-amber-100 text-amber-800",
 };
 
 const EMAIL_STATUS_COLORS: Record<string, string> = {
@@ -176,6 +190,21 @@ interface Lead {
   createdAt: string;
   updatedAt: string;
   zohoLeadId: string | null;
+  jobTitle: string | null;
+  companyName: string | null;
+  location: string | null;
+  industry: string | null;
+  companySize: string | null;
+  companyWebsite: string | null;
+  extractedDate: string | null;
+  lastContactedDate: string | null;
+  leadScore: number | null;
+  connectionRequestSent: boolean;
+  connectionAccepted: boolean;
+  initialMessageSent: boolean;
+  meetingBooked: boolean;
+  meetingDate: string | null;
+  responseReceived: boolean;
   notes: Note[];
   statusHistory: StatusHistoryEntry[];
   nda: Nda | null;
@@ -250,6 +279,13 @@ export default function LeadDetailPage() {
   const [editCity, setEditCity] = useState("");
   const [editZip, setEditZip] = useState("");
   const [editDateCreated, setEditDateCreated] = useState("");
+  const [editJobTitle, setEditJobTitle] = useState("");
+  const [editCompanyName, setEditCompanyName] = useState("");
+  const [editLocation, setEditLocation] = useState("");
+  const [editIndustry, setEditIndustry] = useState("");
+  const [editCompanySize, setEditCompanySize] = useState("");
+  const [editCompanyWebsite, setEditCompanyWebsite] = useState("");
+  const [editSource, setEditSource] = useState("");
   const [editSaving, setEditSaving] = useState(false);
 
   // File upload state
@@ -587,6 +623,13 @@ export default function LeadDetailPage() {
     setEditCity(lead.city || "");
     setEditZip(lead.zip || "");
     setEditDateCreated(lead.dateCreated ? lead.dateCreated.slice(0, 10) : "");
+    setEditJobTitle(lead.jobTitle || "");
+    setEditCompanyName(lead.companyName || "");
+    setEditLocation(lead.location || "");
+    setEditIndustry(lead.industry || "");
+    setEditCompanySize(lead.companySize || "");
+    setEditCompanyWebsite(lead.companyWebsite || "");
+    setEditSource(lead.source || "MANUAL");
     setEditing(true);
   }
 
@@ -614,6 +657,13 @@ export default function LeadDetailPage() {
           city: editCity.trim() || null,
           zip: editZip.trim() || null,
           dateCreated: editDateCreated || null,
+          jobTitle: editJobTitle.trim() || null,
+          companyName: editCompanyName.trim() || null,
+          location: editLocation.trim() || null,
+          industry: editIndustry.trim() || null,
+          companySize: editCompanySize.trim() || null,
+          companyWebsite: editCompanyWebsite.trim() || null,
+          source: editSource,
         }),
       });
       if (res.ok) {
@@ -1135,6 +1185,112 @@ export default function LeadDetailPage() {
                     </div>
                   </div>
 
+                  {/* Job Title, Company Name, Location */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Job Title
+                      </label>
+                      <input
+                        type="text"
+                        value={editJobTitle}
+                        onChange={(e) => setEditJobTitle(e.target.value)}
+                        placeholder="e.g. CTO"
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Company Name
+                      </label>
+                      <input
+                        type="text"
+                        value={editCompanyName}
+                        onChange={(e) => setEditCompanyName(e.target.value)}
+                        placeholder="e.g. Acme Inc"
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Location
+                      </label>
+                      <input
+                        type="text"
+                        value={editLocation}
+                        onChange={(e) => setEditLocation(e.target.value)}
+                        placeholder="e.g. San Francisco, CA"
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Industry, Company Size, Company Website */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Industry
+                      </label>
+                      <input
+                        type="text"
+                        value={editIndustry}
+                        onChange={(e) => setEditIndustry(e.target.value)}
+                        placeholder="e.g. Technology"
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Company Size
+                      </label>
+                      <input
+                        type="text"
+                        value={editCompanySize}
+                        onChange={(e) => setEditCompanySize(e.target.value)}
+                        placeholder="e.g. 50-200"
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Company Website
+                      </label>
+                      <input
+                        type="url"
+                        value={editCompanyWebsite}
+                        onChange={(e) => setEditCompanyWebsite(e.target.value)}
+                        placeholder="https://example.com"
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Lead Source */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Lead Source
+                      </label>
+                      <select
+                        value={editSource}
+                        onChange={(e) => setEditSource(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                      >
+                        <option value="MANUAL">Manual</option>
+                        <option value="AGENT">Agent</option>
+                        <option value="BARK">Bark</option>
+                        <option value="LINKEDIN_SALES_NAV">LinkedIn Sales Nav</option>
+                        <option value="APOLLO">Apollo.io</option>
+                        <option value="LINKEDIN_COMPANY_PAGE">LinkedIn Company Page</option>
+                        <option value="REFERRAL">Referral</option>
+                        <option value="WEBSITE">Website</option>
+                        <option value="COLD_OUTREACH">Cold Outreach</option>
+                        <option value="EVENT">Event</option>
+                        <option value="OTHER">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
                   {/* Social Links */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
@@ -1302,7 +1458,77 @@ export default function LeadDetailPage() {
                         {lead.emailSent ? "Sent" : "Not sent"}
                       </p>
                     </div>
+                    {lead.jobTitle && (
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Job Title</p>
+                        <p className="text-gray-900 dark:text-white font-medium">{lead.jobTitle}</p>
+                      </div>
+                    )}
+                    {lead.companyName && (
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Company Name</p>
+                        <p className="text-gray-900 dark:text-white font-medium">{lead.companyName}</p>
+                      </div>
+                    )}
+                    {lead.location && (
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Location</p>
+                        <p className="text-gray-900 dark:text-white font-medium">{lead.location}</p>
+                      </div>
+                    )}
+                    {lead.industry && (
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Industry</p>
+                        <p className="text-gray-900 dark:text-white font-medium">{lead.industry}</p>
+                      </div>
+                    )}
+                    {lead.companySize && (
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Company Size</p>
+                        <p className="text-gray-900 dark:text-white font-medium">{lead.companySize}</p>
+                      </div>
+                    )}
+                    {lead.companyWebsite && (
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Company Website</p>
+                        <p className="text-gray-900 dark:text-white font-medium">
+                          <a href={lead.companyWebsite} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
+                            {lead.companyWebsite}
+                          </a>
+                        </p>
+                      </div>
+                    )}
+                    {lead.leadScore != null && (
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Lead Score</p>
+                        <p className="text-gray-900 dark:text-white font-medium">{lead.leadScore}</p>
+                      </div>
+                    )}
+                    {lead.lastContactedDate && (
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Last Contacted</p>
+                        <p className="text-gray-900 dark:text-white font-medium">{new Date(lead.lastContactedDate).toLocaleDateString()}</p>
+                      </div>
+                    )}
+                    {lead.extractedDate && (
+                      <div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Extracted Date</p>
+                        <p className="text-gray-900 dark:text-white font-medium">{new Date(lead.extractedDate).toLocaleDateString()}</p>
+                      </div>
+                    )}
                   </div>
+
+                  {/* Outreach Tracking */}
+                  {(lead.connectionRequestSent || lead.connectionAccepted || lead.initialMessageSent || lead.meetingBooked || lead.responseReceived) && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {lead.connectionRequestSent && <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">Connection Sent</span>}
+                      {lead.connectionAccepted && <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">Connection Accepted</span>}
+                      {lead.initialMessageSent && <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">Message Sent</span>}
+                      {lead.meetingBooked && <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">Meeting Booked</span>}
+                      {lead.responseReceived && <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">Response Received</span>}
+                      {lead.meetingDate && <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300">Meeting: {new Date(lead.meetingDate).toLocaleDateString()}</span>}
+                    </div>
+                  )}
 
                   {/* Social Links */}
                   {(lead.linkedinUrl || lead.facebookUrl || lead.twitterUrl) && (
