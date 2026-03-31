@@ -143,7 +143,9 @@ export async function getAccessToken(config: ZohoConfig): Promise<string> {
 }
 
 /**
- * Fetch the Zoho org ID
+ * Fetch the Zoho org ID (zgid) used in CRM web URLs
+ * The /crm/v7/org endpoint returns both `id` (API internal) and `zgid` (used in URLs).
+ * The CRM URL format is: crm.zoho.com/crm/org{zgid}/tab/Leads/{recordId}
  */
 export async function fetchOrgId(config: ZohoConfig): Promise<string> {
   const token = await getAccessToken(config);
@@ -154,11 +156,13 @@ export async function fetchOrgId(config: ZohoConfig): Promise<string> {
   });
 
   const data = await res.json();
-  if (!data.org || !data.org[0]?.id) {
+  if (!data.org || !data.org[0]) {
     throw new Error("Could not fetch Zoho org ID");
   }
 
-  const orgId = data.org[0].id;
+  // Use zgid (Zoho Group ID) which is the one used in CRM web URLs,
+  // NOT the API-internal `id` field which leads to "Page cannot be accessed"
+  const orgId = data.org[0].zgid || data.org[0].id;
 
   // Save org ID
   await prisma.zohoConfig.update({
