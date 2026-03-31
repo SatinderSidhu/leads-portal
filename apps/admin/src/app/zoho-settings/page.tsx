@@ -339,22 +339,35 @@ export default function ZohoSettingsPage() {
           </div>
         </div>
 
-        {/* Find Unlinked Leads */}
+        {/* Lead Management Tools */}
         {configured && hasRefreshToken && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Find Unlinked Leads</h2>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  Scan for Portal leads that also exist in Zoho (by email) but aren&apos;t linked yet.
+          <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6 space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Lead Management</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Find Unlinked Leads</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Portal leads that exist in Zoho but aren&apos;t linked yet.
                 </p>
+                <button
+                  onClick={() => router.push("/zoho-settings/unlinked")}
+                  className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-700 transition w-full"
+                >
+                  Find &amp; Link
+                </button>
               </div>
-              <button
-                onClick={() => router.push("/zoho-settings/unlinked")}
-                className="bg-orange-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-orange-700 transition"
-              >
-                Find &amp; Link Leads
-              </button>
+              <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Import from Zoho</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Zoho leads that don&apos;t exist in Portal yet — import them.
+                </p>
+                <button
+                  onClick={() => router.push("/zoho-settings/import")}
+                  className="bg-[#01358d] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#012a70] transition w-full"
+                >
+                  Import Leads
+                </button>
+              </div>
             </div>
           </div>
         )}
