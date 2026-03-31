@@ -44,13 +44,13 @@ leads-portal/
 │   │   ├── src/
 │   │   │   ├── app/     # Next.js App Router pages & API routes
 │   │   │   ├── components/  # ThemeProvider, ThemeToggle, FlowBuilder, RichTextEditor, AppFlowBuilder, app-flow-nodes
-│   │   │   └── lib/     # session.ts, email.ts, api-auth.ts, nda-template.ts, app-flow-prompt.ts, sow-prompt.ts, extract-file-text.ts
+│   │   │   └── lib/     # session.ts, email.ts, api-auth.ts, nda-template.ts, app-flow-prompt.ts, sow-prompt.ts, extract-file-text.ts, zoho.ts, notify.ts
 │   │   ├── public/      # openapi.json, uploads/, kitlabs-logo.jpg
 │   │   └── next.config.ts
 │   └── customer/        # Customer portal (port 3001)
 │       ├── src/
 │       │   ├── app/     # Pages (login, register, project) + API routes (auth, nda, sow, app-flows)
-│       │   ├── components/  # NdaSection.tsx, SowSection.tsx, AppFlowSection.tsx
+│       │   ├── components/  # NdaSection.tsx, SowSection.tsx, AppFlowSection.tsx, ProjectFeedback.tsx, VisitTracker.tsx
 │       │   └── lib/     # session.ts, email.ts, generate-pdf.ts
 │       ├── public/      # kitlabs-logo.jpg
 │       └── next.config.ts
@@ -93,13 +93,15 @@ leads-portal/
 | LeadWatcher | lead_watchers | Join table for admin watch subscriptions on leads |
 | BrandingConfig | branding_config | Company branding (logo, name, colors, footer, copyright) for SOW/App Flow docs |
 | ZohoConfig | zoho_config | Zoho CRM OAuth credentials, tokens, data center, org ID, enabled flag |
+| CustomerVisit | customer_visits | Tracks customer portal page views (leadId, visitorEmail, page, timestamp) |
+| NotificationPreference | notification_preferences | Per-admin notification toggles (9 event types) + optional notification email |
 | Content | content | Social media content posts |
 | CustomerUser | customer_users | Customer portal users (email, name, password, leadIds) |
 
 ### Key Enums
-- `LeadSource`: MANUAL, AGENT, BARK
+- `LeadSource`: MANUAL, AGENT, BARK, LINKEDIN_SALES_NAV, APOLLO, LINKEDIN_COMPANY_PAGE, REFERRAL, WEBSITE, COLD_OUTREACH, EVENT, OTHER
 - `LeadStatus`: NEW → SOW_READY → SOW_SIGNED → APP_FLOW_READY → DESIGN_READY → DESIGN_APPROVED → BUILD_IN_PROGRESS → BUILD_READY_FOR_REVIEW → BUILD_SUBMITTED → GO_LIVE
-- `LeadStage`: COLD, WARM, HOT, ACTIVE, CLOSED
+- `LeadStage`: COLD, WARM, HOT, ACTIVE, CLOSED, NEW, CONTACTED, RESPONDED, MEETING_BOOKED, QUALIFIED, DISQUALIFIED, NURTURE
 - `AppFlowType`: BASIC, WIREFRAME
 - `NdaStatus`: GENERATED, SENT, SIGNED
 - `SentEmailStatus`: SENT, OPENED, FAILED
@@ -134,7 +136,11 @@ leads-portal/
 | `/content/new` | Create content |
 | `/content/[id]` | Edit content |
 | `/branding` | Company branding settings (logo, name, colors, footer, copyright) |
-| `/zoho-settings` | Zoho CRM integration settings (credentials, authorization, connection test) |
+| `/zoho-settings` | Zoho CRM integration settings (credentials, authorization, connection test, lead management tools) |
+| `/zoho-settings/unlinked` | Find Portal leads that exist in Zoho but aren't linked — link them |
+| `/zoho-settings/import` | Import leads from Zoho CRM that don't exist in Portal |
+| `/zoho-settings/export` | Export Portal leads to Zoho CRM that aren't synced yet |
+| `/notification-settings` | Per-admin notification preferences (9 event types, optional notification email) |
 | `/api-docs` | Swagger UI |
 
 ## Admin API Routes
@@ -179,11 +185,20 @@ leads-portal/
 - `GET /api/zoho/status` — Quick check if Zoho integration is enabled
 - `POST /api/zoho/create-lead` — Create a lead in Zoho CRM (maps fields, stores zohoLeadId)
 - `GET /api/zoho/search-lead?leadId=X` — Check if lead exists in Zoho (by email), auto-links if found
-- `GET /api/track/[id]` — Email open tracking pixel
+- `POST /api/zoho/sync-lead` — Bidirectional sync: compares timestamps, pushes/pulls whichever is newer
+- `GET /api/zoho/find-unlinked` — Find Portal leads with matching Zoho records (by email) not yet linked
+- `POST /api/zoho/find-unlinked` — Link a Portal lead to a Zoho record
+- `GET /api/zoho/import-leads` — Fetch all Zoho leads not in Portal (for import)
+- `POST /api/zoho/import-leads` — Import a Zoho lead into Portal (creates lead + links)
+- `GET /api/zoho/export-leads` — List Portal leads not yet in Zoho (for export)
+- `POST /api/zoho/export-leads` — Export a Portal lead to Zoho (creates in Zoho + links)
+- `GET/PUT /api/notifications/preferences` — Get/update admin notification preferences
+- `GET /api/track/[id]` — Email open tracking pixel (also triggers customer_response notification)
 - `POST /api/webhooks/ses-inbound` — SES inbound email webhook
 
 ### External API (Bearer token auth via API_TOKEN)
-- `GET /api/v1/leads` — List leads
+- `GET /api/v1/leads` — List leads (supports filters: status, stage, source, industry, assignedTo, search)
+- `POST /api/v1/leads` — Create lead (accepts all expanded fields incl. jobTitle, companyName, industry, outreach tracking; validates leadSource/leadStatus enums)
 - `GET/POST /api/v1/content` — Content endpoints
 - `POST /api/v1/content/upload` — Upload media
 
@@ -236,6 +251,7 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 - `GET /api/app-flows?leadId=X` — Fetch shared app flows with comments
 - `POST /api/app-flows/[flowId]/comments` — Add comment to app flow
 - `GET/POST /api/notes?leadId=X` — Customer comments/feedback on project overview
+- `POST /api/track-visit` — Track customer portal visit (rate-limited 30min per lead/email, notifies watchers)
 - `GET /api/branding` — Public branding config for document rendering (reads from shared DB)
 
 ## Key Lib Files
@@ -251,7 +267,8 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 | `apps/admin/src/lib/app-flow-prompt.ts` | `buildAppFlowPrompt()` — AI prompt for generating app flow JSON nodes/edges |
 | `apps/admin/src/lib/sow-prompt.ts` | `buildSowPrompt()` — AI prompt for SOW generation (supports editor template, file reference, both, or default) |
 | `apps/admin/src/lib/extract-file-text.ts` | `extractFileContent()` — Extracts text/HTML from uploaded PDF (pdf-parse) or DOCX (mammoth) files |
-| `apps/admin/src/lib/zoho.ts` | `getZohoConfig()`, `getAccessToken()`, `createZohoLead()`, `searchZohoLead()`, `getZohoLeadUrl()`, `isZohoEnabled()` — Zoho CRM OAuth + API |
+| `apps/admin/src/lib/zoho.ts` | `getZohoConfig()`, `getAccessToken()`, `createZohoLead()`, `updateZohoLead()`, `getZohoLead()`, `searchZohoLead()`, `getZohoLeadUrl()`, `isZohoEnabled()` — Zoho CRM OAuth + API + bidirectional sync |
+| `apps/admin/src/lib/notify.ts` | `sendNotification()` — Central notification dispatcher; checks admin preferences before sending, supports broadcast and lead-specific events |
 | `apps/customer/src/lib/session.ts` | `getCustomerSession()` — reads customer-session cookie, returns CustomerSession |
 | `apps/customer/src/lib/email.ts` | `sendNdaSignedEmail()`, `sendSowCommentNotification()`, `sendSowSignedNotification()`, `sendAppFlowCommentNotification()`, `notifyLeadWatchers()` |
 | `apps/customer/src/lib/generate-pdf.ts` | `downloadNdaPdf()`, `downloadSowPdf()` — jsPDF generation |
@@ -270,6 +287,7 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 | SowSection | `apps/customer/src/components/SowSection.tsx` | SOW viewer with comments, signing, full-screen, PDF download |
 | AppFlowSection | `apps/customer/src/components/AppFlowSection.tsx` | Read-only flow viewer with comments, full-screen, PNG/PDF download |
 | ProjectFeedback | `apps/customer/src/components/ProjectFeedback.tsx` | Customer comment box on project overview tab, notifies admin watchers |
+| VisitTracker | `apps/customer/src/components/VisitTracker.tsx` | Invisible component that tracks customer portal visits on page load |
 
 ## Development
 
@@ -354,7 +372,7 @@ docker compose exec db pg_dump -U postgres leads_portal > backup.sql  # DB backu
 - Reply-To uses lead-specific `reply+{leadId}@reply.kitlabs.us` for SES inbound routing, wrapped with admin's display name
 - Inbound email replies processed via SES → SNS → `/api/webhooks/ses-inbound` webhook, stored as ReceivedEmail
 
-### Email Notifications
+### Email Notifications (Customer-Facing)
 | Trigger | Function | Location | Recipients |
 |---------|----------|----------|------------|
 | Welcome email | `sendWelcomeEmail()` | admin email.ts | Customer |
@@ -363,12 +381,23 @@ docker compose exec db pg_dump -U postgres leads_portal > backup.sql  # DB backu
 | SOW ready | `sendSowReadyEmail()` | admin email.ts | Customer |
 | App flow ready | `sendAppFlowReadyEmail()` | admin email.ts | Customer |
 | NDA signed | `sendNdaSignedEmail()` | customer email.ts | Customer + Admin |
-| SOW comment | `sendSowCommentNotification()` | customer email.ts | Admin |
 | SOW signed | `sendSowSignedNotification()` | customer email.ts | Customer + Admin |
-| App flow comment | `sendAppFlowCommentNotification()` | customer email.ts | Admin |
-| Lead assigned | `sendLeadAssignedEmail()` | admin email.ts | Assigned admin |
-| Watcher update (status/note) | `notifyWatchers()` | admin watcher-notifications.ts | Watchers + assigned admin |
-| Watcher update (customer comment) | `notifyLeadWatchers()` | customer email.ts | Watchers + assigned admin |
+
+### Admin Notifications (Preference-Aware via `sendNotification()`)
+All admin notifications respect per-admin preferences in `NotificationPreference` table. Admins can opt out of any event type at `/notification-settings`.
+
+| Event | Pref Key | Recipients | Trigger Location |
+|-------|----------|-----------|-----------------|
+| New lead created | `newLeadCreated` | All admins (broadcast) | `POST /api/leads` |
+| Email sent to customer | `emailSentToCustomer` | Watchers + assigned | `POST /api/leads/[id]/emails` |
+| Customer opens email | `customerResponse` | Watchers + assigned | `GET /api/track/[id]` (pixel) |
+| Customer replies | `customerResponse` | Watchers + assigned | `POST /api/webhooks/ses-inbound` |
+| Customer portal visit | `customerPortalVisit` | Watchers + assigned | `POST /api/track-visit` (30min rate limit) |
+| Customer comment | `customerComment` | Watchers + assigned | `notifyLeadWatchers()` in customer email.ts |
+| Lead status change | `leadStatusChange` | Watchers + assigned | `notifyWatchers()` in watcher-notifications.ts |
+| Lead assigned | `leadAssigned` | Assigned admin | `PUT /api/leads/[id]/assign` |
+| SOW signed | `sowSigned` | Watchers + assigned | `POST /api/sow/[sowId]/sign` |
+| NDA signed | `ndaSigned` | Watchers + assigned | `POST /api/nda/sign` |
 
 ## Lead Assignment & Watch List
 - Leads are auto-assigned to the creating admin and that admin is auto-added as a watcher
@@ -423,17 +452,42 @@ docker compose exec db pg_dump -U postgres leads_portal > backup.sql  # DB backu
 - Supports all 6 Zoho data centers (US, EU, IN, AU, JP, CA)
 - **Setup**: Admin configures at `/zoho-settings` — enter Client ID/Secret, paste grant token to authorize, test connection
 - **New leads**: "Also create in Zoho CRM" checkbox on `/leads/new` (defaults to checked when Zoho enabled)
-- **Existing leads**: Lead detail page shows Zoho status — "View in Zoho" link if synced, or "Create in Zoho" button if not
+- **Existing leads**: Lead detail page shows Zoho status — "Sync with Zoho" + "View in Zoho" if linked, or "Create in Zoho" if not
 - **Auto-detection**: On lead detail page load, searches Zoho by customer email and auto-links if found
-- **Field mapping**: customerName → First_Name/Last_Name, customerEmail → Email, projectName → Company, phone → Phone, city → City, zip → Zip_Code, projectDescription → Description, source → Lead_Source
+- **Bidirectional sync**: "Sync with Zoho" button compares `updatedAt` (Portal) vs `Modified_Time` (Zoho), syncs whichever is newer. Shows changed fields with before/after values. Auto-dismisses result after 5-10s
+- **Field mapping** (Portal → Zoho): customerName → First_Name/Last_Name, customerEmail → Email, companyName/projectName → Company, phone → Phone, city → City, zip → Zip_Code, projectDescription → Description, source → Lead_Source, jobTitle → Designation, industry → Industry, companyWebsite → Website, location → State
+- **Reverse mapping** (Zoho → Portal): First_Name+Last_Name → customerName, Designation → jobTitle, Company → companyName, State → location, Industry → industry, Website → companyWebsite (Lead_Source NOT reverse-mapped to avoid lossy many-to-one)
 - `zohoLeadId` on Lead model stores the Zoho record ID for direct linking
-- Zoho lead URL format: `https://crm.zoho.com/crm/org{orgId}/tab/Leads/{recordId}`
+- Zoho lead URL uses `zgid` (not API internal `id`) for correct CRM web URLs
+- **Lead Management Tools** on `/zoho-settings`:
+  - **Find & Link** (`/zoho-settings/unlinked`): Scan Portal leads, search Zoho by email, link matches individually or bulk
+  - **Import from Zoho** (`/zoho-settings/import`): Fetch all Zoho leads with pagination, show those not in Portal, import individually or bulk. Handles email collision by linking instead of duplicating
+  - **Export to Zoho** (`/zoho-settings/export`): List Portal leads without `zohoLeadId`, create in Zoho individually or bulk
 - See `docs/zoho-setup-guide.md` for complete Zoho admin setup instructions
 
 ## Customer Portal Features
 - **Book Meeting**: Tab with embedded Zoho Bookings iframe (satinder-kitlabs.zohobookings.com)
 - **Project Feedback**: Comment box on Overview tab replacing AI description enhancer; customers leave manual comments, admin watchers notified via email
 - **Notes API**: `POST /api/notes` creates notes on lead with `createdBy: "Name (Customer)"` to distinguish from admin notes
+- **Visit Tracking**: `VisitTracker` component fires `POST /api/track-visit` on project page load; rate-limited to 1 notification per lead per 30 minutes; notifies watchers + assigned admin
+
+## Expanded Lead Fields
+- **Core contact**: jobTitle, companyName, location (broader than city)
+- **Company intelligence**: industry, companySize, companyWebsite
+- **Lead management**: extractedDate (auto-set by API), lastContactedDate, leadScore (1-100)
+- **Outreach tracking**: connectionRequestSent, connectionAccepted, initialMessageSent, meetingBooked, meetingDate, responseReceived
+- Lead detail page shows outreach tracking as colored badge pills in view mode
+- New lead page organized into sections: Contact Info, Company Info, Project Details, Lead Classification
+- Dashboard filters updated for all new LeadSource and LeadStage values
+
+## Notification System
+- **NotificationPreference** model: per-admin toggles for 9 event types + optional notification email override
+- All notifications default to ON (no preference record = all enabled)
+- Admin configures at `/notification-settings` — toggle individual events, set notification email, enable/disable all
+- **Central dispatcher** (`notify.ts`): `sendNotification()` checks each admin's preferences before sending
+- Supports two modes: `broadcastToAll` (all active admins, e.g. new lead) or lead-specific (watchers + assigned admin)
+- Notification email override: if `notificationEmail` is set in preferences, emails go there instead of profile email
+- Customer portal `notifyLeadWatchers()` also checks preferences before sending comment notifications
 
 ## Important Patterns
 - All admin API routes use `getAdminSession()` for auth (returns null if not logged in)
