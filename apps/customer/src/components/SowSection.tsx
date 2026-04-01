@@ -161,11 +161,6 @@ export default function SowSection({
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
             Scope of Work — v{selectedSow.version}
           </h3>
-          {isAiGenerated && (
-            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-              AI Generated
-            </span>
-          )}
         </div>
         <div className="flex items-center gap-3">
           {isAiGenerated && (
@@ -241,11 +236,6 @@ export default function SowSection({
                   <p className="text-sm font-semibold text-gray-900 dark:text-white">
                     Version {selectedSow.version}
                   </p>
-                  {isAiGenerated && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                      AI Generated
-                    </span>
-                  )}
                   {currentSigned && (
                     <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                       Approved
