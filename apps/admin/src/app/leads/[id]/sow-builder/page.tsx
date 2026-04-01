@@ -296,7 +296,7 @@ export default function SowBuilderPage() {
           content: trimmed,
           isDraft,
           sowId: currentSowId || undefined,
-          comments: isDraft ? "AI-generated draft" : "AI-generated SOW",
+          comments: isDraft ? "Draft" : null,
         }),
       });
       if (res.ok) {
@@ -404,7 +404,7 @@ export default function SowBuilderPage() {
         const res = await fetch(`/api/leads/${leadId}/sow`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: trimmed, isDraft: false, comments: "AI-generated SOW" }),
+          body: JSON.stringify({ content: trimmed, isDraft: false }),
         });
         if (!res.ok) {
           alert("Failed to save before sharing");
