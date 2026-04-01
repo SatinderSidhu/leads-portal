@@ -363,14 +363,47 @@ export default function SowBuilderPage() {
     if (!trimmed || trimmed === "<p></p>") return;
 
     const html2pdf = (await import("html2pdf.js")).default;
+
+    // Create a styled container that preserves all HTML formatting
     const container = document.createElement("div");
-    container.innerHTML = trimmed;
-    container.style.padding = "40px";
-    container.style.fontFamily = "Arial, sans-serif";
-    container.style.fontSize = "14px";
-    container.style.lineHeight = "1.6";
-    container.style.color = "#1a1a1a";
+    container.innerHTML = `
+      <div style="font-family: 'Segoe UI', Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.7; color: #1a1a1a; max-width: 700px; margin: 0 auto;">
+        <style>
+          h1 { font-size: 24px; font-weight: 700; margin: 24px 0 12px; color: #01358d; }
+          h2 { font-size: 20px; font-weight: 700; margin: 20px 0 10px; color: #01358d; }
+          h3 { font-size: 16px; font-weight: 700; margin: 16px 0 8px; color: #01358d; }
+          p { margin: 8px 0; }
+          ul, ol { margin: 8px 0; padding-left: 24px; }
+          li { margin: 4px 0; }
+          strong, b { font-weight: 700; }
+          em, i { font-style: italic; }
+          table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+          th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; font-size: 13px; }
+          th { background: #f5f5f5; font-weight: 700; }
+          hr { border: none; border-top: 1px solid #ddd; margin: 16px 0; }
+          img { max-width: 100%; height: auto; }
+        </style>
+        ${trimmed}
+      </div>
+    `;
+    container.style.position = "absolute";
+    container.style.left = "-9999px";
+    container.style.top = "0";
+    container.style.width = "700px";
     document.body.appendChild(container);
+
+    // Wait for images to load
+    const images = container.querySelectorAll("img");
+    await Promise.all(
+      Array.from(images).map(
+        (img) =>
+          new Promise<void>((resolve) => {
+            if (img.complete) return resolve();
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+          })
+      )
+    );
 
     const fileName = lead?.projectName
       ? `SOW - ${lead.projectName}.pdf`
@@ -378,9 +411,9 @@ export default function SowBuilderPage() {
 
     await html2pdf()
       .set({
-        margin: [15, 15, 15, 15],
+        margin: [10, 10, 10, 10],
         filename: fileName,
-        html2canvas: { scale: 2 },
+        html2canvas: { scale: 2, useCORS: true, allowTaint: true, logging: false },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
       })
       .from(container)
