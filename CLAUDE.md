@@ -92,6 +92,7 @@ leads-portal/
 | AppFlowComment | app_flow_comments | Customer/admin comments on app flows |
 | LeadWatcher | lead_watchers | Join table for admin watch subscriptions on leads |
 | BrandingConfig | branding_config | Company branding (logo, name, colors, footer, copyright) for SOW/App Flow docs |
+| NextStep | next_steps | Task list per lead (content, dueDate, completed, completedAt, createdBy) |
 | ZohoConfig | zoho_config | Zoho CRM OAuth credentials, tokens, data center, org ID, enabled flag |
 | CustomerVisit | customer_visits | Tracks customer portal page views (leadId, visitorEmail, page, timestamp) |
 | NotificationPreference | notification_preferences | Per-admin notification toggles (9 event types) + optional notification email |
@@ -149,7 +150,8 @@ leads-portal/
 - `POST/DELETE /api/auth` — Login/logout
 - `GET/POST /api/leads` — List/create leads
 - `GET/PUT/DELETE /api/leads/[id]` — Lead CRUD
-- `GET/POST /api/leads/[id]/notes` — Notes
+- `GET/POST /api/leads/[id]/notes` — Admin notes (internal, not shared with customer)
+- `GET/POST/PUT/DELETE /api/leads/[id]/next-steps` — Next steps task list (create, toggle complete, delete)
 - `GET/POST /api/leads/[id]/files` — File uploads
 - `DELETE /api/leads/[id]/files/[fileId]` — Delete file
 - `GET/POST /api/leads/[id]/status` — Status changes (creates audit trail, notifies watchers)
@@ -492,6 +494,11 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - Supports two modes: `broadcastToAll` (all active admins, e.g. new lead) or lead-specific (watchers + assigned admin)
 - Notification email override: if `notificationEmail` is set in preferences, emails go there instead of profile email
 - Customer portal `notifyLeadWatchers()` also checks preferences before sending comment notifications
+
+## Admin Notes & Next Steps
+- **Admin Notes**: Internal notes on a lead, not visible to customers. Notes history shown above the input area with author name and date. Watchers notified when notes are added.
+- **Next Steps**: Task list per lead. Admin creates next steps with optional due date. Each step can be toggled as completed (with completion date). Overdue tasks highlighted in red, completed in green. Steps can be deleted. Sorted: incomplete first, then by due date, then by creation date.
+- Both sections are on the lead detail page under the right sidebar
 
 ## Important Patterns
 - All admin API routes use `getAdminSession()` for auth (returns null if not logged in)

@@ -139,6 +139,7 @@ model Lead {
   appFlows        AppFlow[]
   watchers        LeadWatcher[]
   customerVisits  CustomerVisit[]
+  nextSteps       NextStep[]
 
   @@map("leads")
 }
@@ -427,6 +428,20 @@ model AppFlowComment {
 enum AuthProvider {
   GOOGLE
   LINKEDIN
+}
+
+model NextStep {
+  id          String    @id @default(uuid())
+  leadId      String    @map("lead_id")
+  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  content     String    @db.Text
+  dueDate     DateTime? @map("due_date")
+  completed   Boolean   @default(false)
+  completedAt DateTime? @map("completed_at")
+  createdBy   String?   @map("created_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@map("next_steps")
 }
 
 model CustomerVisit {
