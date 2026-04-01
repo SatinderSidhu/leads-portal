@@ -65,7 +65,10 @@ export default async function ProjectPage({
   const lead = await prisma.lead.findUnique({
     where: { id },
     include: {
-      notes: { orderBy: { createdAt: "desc" } },
+      notes: {
+        where: { createdBy: { endsWith: "(Customer)" } },
+        orderBy: { createdAt: "desc" },
+      },
       statusHistory: { orderBy: { createdAt: "asc" } },
       nda: true,
       scopeOfWorks: {

@@ -16,7 +16,7 @@ export async function GET(req: Request) {
   }
 
   const notes = await prisma.note.findMany({
-    where: { leadId },
+    where: { leadId, createdBy: { endsWith: "(Customer)" } },
     orderBy: { createdAt: "asc" },
   });
 
