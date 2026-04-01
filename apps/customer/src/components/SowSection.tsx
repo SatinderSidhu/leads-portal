@@ -579,9 +579,9 @@ function SowHtmlPreview({
       margin: 0;
       max-width: 800px;
     }
-    h1 { font-size: 24px; font-weight: 700; margin: 0 0 16px; color: #111; }
-    h2 { font-size: 20px; font-weight: 600; margin: 32px 0 12px; color: #222; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; }
-    h3 { font-size: 16px; font-weight: 600; margin: 24px 0 8px; color: #333; }
+    h1 { font-size: 24px; font-weight: 700; margin: 0 0 16px; color: #01358d; }
+    h2 { font-size: 20px; font-weight: 600; margin: 32px 0 12px; color: #01358d; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; }
+    h3 { font-size: 16px; font-weight: 600; margin: 24px 0 8px; color: #01358d; }
     p { margin: 8px 0; }
     ul, ol { margin: 8px 0; padding-left: 24px; }
     li { margin: 4px 0; }
@@ -590,6 +590,7 @@ function SowHtmlPreview({
     th { background: #f3f4f6; font-weight: 600; }
     hr { border: none; border-top: 1px solid #e5e7eb; margin: 24px 0; }
     strong { font-weight: 600; }
+    img { max-width: 280px; height: auto; }
   </style>
 </head>
 <body>${content}</body>

@@ -372,6 +372,12 @@ export default function SowBuilderPage() {
     container.style.color = "#1a1a1a";
     container.innerHTML = trimmed;
 
+    // Constrain logo/images to reasonable size for PDF
+    container.querySelectorAll("img").forEach((img) => {
+      img.style.maxWidth = "250px";
+      img.style.height = "auto";
+    });
+
     // Wait for images to load after appending temporarily
     document.body.appendChild(container);
     const images = container.querySelectorAll("img");
