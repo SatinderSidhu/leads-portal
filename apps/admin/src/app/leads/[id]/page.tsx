@@ -1173,10 +1173,10 @@ export default function LeadDetailPage() {
         </div>
       </header>
 
-      <main className="max-w-[1600px] mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-          {/* Left Column — Lead Info */}
-          <div className="lg:col-span-3 space-y-5">
+      <main className="w-full mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 xl:grid-cols-12 lg:grid-cols-2 gap-4">
+          {/* Left Column — Lead Info + Emails */}
+          <div className="xl:col-span-6 space-y-4">
             {/* Project Details */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
               <div className="flex items-center justify-between mb-4">
@@ -1852,10 +1852,7 @@ export default function LeadDetailPage() {
                 </>
               )}
             </div>
-          </div>
 
-          {/* Center Column — Communications & Documents */}
-          <div className="lg:col-span-5 space-y-5">
             {/* Email Compose */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
               <div className="flex items-center justify-between mb-4">
@@ -2684,7 +2681,8 @@ export default function LeadDetailPage() {
           </div>
 
           {/* Right Column — Status, Notes, Next Steps, Audit */}
-          <div className="lg:col-span-4 space-y-5">
+          <div className="xl:col-span-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Status Update */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -2762,8 +2760,8 @@ export default function LeadDetailPage() {
             </div>
 
             {/* NDA */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
                 Non-Disclosure Agreement
               </h2>
 
@@ -2976,7 +2974,7 @@ export default function LeadDetailPage() {
             </div>
 
             {/* Audit Log */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
+            <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
               <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
                 Audit Log
               </h2>
@@ -2998,6 +2996,7 @@ export default function LeadDetailPage() {
                   ))}
                 </div>
               )}
+            </div>
             </div>
           </div>
         </div>
