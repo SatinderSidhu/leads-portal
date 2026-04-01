@@ -136,29 +136,47 @@ export async function downloadSowPdf(htmlContent: string, projectName: string, v
   container.style.color = "#1a1a1a";
   container.innerHTML = htmlContent;
 
-  // Constrain logo/images to reasonable size for PDF
-  container.querySelectorAll("img").forEach((img) => {
+  // Convert images to base64 data URLs to avoid cross-origin issues in PDF
+  const images = container.querySelectorAll("img");
+  for (const img of Array.from(images)) {
     img.style.maxWidth = "250px";
     img.style.height = "auto";
-  });
-
-  // Wait for images to load
-  document.body.appendChild(container);
-  const images = container.querySelectorAll("img");
-  if (images.length > 0) {
-    await Promise.all(
-      Array.from(images).map(
-        (img) =>
-          new Promise<void>((resolve) => {
-            if (img.complete) return resolve();
-            img.onload = () => resolve();
-            img.onerror = () => resolve();
-            setTimeout(resolve, 5000);
-          })
-      )
-    );
+    const src = img.getAttribute("src");
+    if (src && !src.startsWith("data:")) {
+      try {
+        const resp = await fetch(src, { mode: "cors" }).catch(() => null);
+        if (resp && resp.ok) {
+          const blob = await resp.blob();
+          const dataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.readAsDataURL(blob);
+          });
+          img.src = dataUrl;
+        }
+      } catch {
+        // If fetch fails, try loading via canvas
+        try {
+          await new Promise<void>((resolve) => {
+            const tempImg = new Image();
+            tempImg.crossOrigin = "anonymous";
+            tempImg.onload = () => {
+              const canvas = document.createElement("canvas");
+              canvas.width = tempImg.naturalWidth;
+              canvas.height = tempImg.naturalHeight;
+              canvas.getContext("2d")?.drawImage(tempImg, 0, 0);
+              img.src = canvas.toDataURL("image/png");
+              resolve();
+            };
+            tempImg.onerror = () => resolve();
+            tempImg.src = src;
+          });
+        } catch {
+          // Skip this image
+        }
+      }
+    }
   }
-  document.body.removeChild(container);
 
   const fileName = `SOW-v${version}-${projectName.replace(/[^a-zA-Z0-9]/g, "-")}.pdf`;
 
