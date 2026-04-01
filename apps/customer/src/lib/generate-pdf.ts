@@ -128,60 +128,42 @@ export function downloadNdaPdf(content: string, projectName: string, branding?: 
 export async function downloadSowPdf(htmlContent: string, projectName: string, version: number, _branding?: PdfBranding) {
   const html2pdf = (await import("html2pdf.js")).default;
 
+  // Create container — html2pdf will move this into its own visible overlay for capture
   const container = document.createElement("div");
-  container.innerHTML = `
-    <div style="font-family: 'Segoe UI', Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.7; color: #1a1a1a; max-width: 700px; margin: 0 auto;">
-      <style>
-        h1 { font-size: 24px; font-weight: 700; margin: 24px 0 12px; color: #01358d; }
-        h2 { font-size: 20px; font-weight: 700; margin: 20px 0 10px; color: #01358d; }
-        h3 { font-size: 16px; font-weight: 700; margin: 16px 0 8px; color: #01358d; }
-        p { margin: 8px 0; }
-        ul, ol { margin: 8px 0; padding-left: 24px; }
-        li { margin: 4px 0; }
-        strong, b { font-weight: 700; }
-        em, i { font-style: italic; }
-        table { width: 100%; border-collapse: collapse; margin: 12px 0; }
-        th, td { border: 1px solid #ddd; padding: 8px 12px; text-align: left; font-size: 13px; }
-        th { background: #f5f5f5; font-weight: 700; }
-        hr { border: none; border-top: 1px solid #ddd; margin: 16px 0; }
-        img { max-width: 100%; height: auto; }
-      </style>
-      ${htmlContent}
-    </div>
-  `;
-  container.style.position = "fixed";
-  container.style.left = "0";
-  container.style.top = "0";
-  container.style.width = "700px";
-  container.style.opacity = "0";
-  container.style.zIndex = "-1";
-  container.style.pointerEvents = "none";
-  document.body.appendChild(container);
+  container.style.fontFamily = "'Segoe UI', Arial, Helvetica, sans-serif";
+  container.style.fontSize = "14px";
+  container.style.lineHeight = "1.7";
+  container.style.color = "#1a1a1a";
+  container.innerHTML = htmlContent;
 
   // Wait for images to load
+  document.body.appendChild(container);
   const images = container.querySelectorAll("img");
-  await Promise.all(
-    Array.from(images).map(
-      (img) =>
-        new Promise<void>((resolve) => {
-          if (img.complete) return resolve();
-          img.onload = () => resolve();
-          img.onerror = () => resolve();
-        })
-    )
-  );
+  if (images.length > 0) {
+    await Promise.all(
+      Array.from(images).map(
+        (img) =>
+          new Promise<void>((resolve) => {
+            if (img.complete) return resolve();
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+            setTimeout(resolve, 5000);
+          })
+      )
+    );
+  }
+  document.body.removeChild(container);
 
   const fileName = `SOW-v${version}-${projectName.replace(/[^a-zA-Z0-9]/g, "-")}.pdf`;
 
   await html2pdf()
     .set({
-      margin: [10, 10, 10, 10],
+      margin: [15, 15, 15, 15],
       filename: fileName,
-      html2canvas: { scale: 2, useCORS: true, allowTaint: true, logging: false },
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, allowTaint: true },
       jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
     })
     .from(container)
     .save();
-
-  document.body.removeChild(container);
 }
