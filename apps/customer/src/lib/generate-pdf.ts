@@ -149,10 +149,13 @@ export async function downloadSowPdf(htmlContent: string, projectName: string, v
       ${htmlContent}
     </div>
   `;
-  container.style.position = "absolute";
-  container.style.left = "-9999px";
+  container.style.position = "fixed";
+  container.style.left = "0";
   container.style.top = "0";
   container.style.width = "700px";
+  container.style.opacity = "0";
+  container.style.zIndex = "-1";
+  container.style.pointerEvents = "none";
   document.body.appendChild(container);
 
   // Wait for images to load
