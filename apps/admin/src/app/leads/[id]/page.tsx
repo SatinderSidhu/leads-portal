@@ -268,6 +268,8 @@ export default function LeadDetailPage() {
   const [nextStepContent, setNextStepContent] = useState("");
   const [nextStepDueDate, setNextStepDueDate] = useState("");
   const [nextStepAdding, setNextStepAdding] = useState(false);
+  // Audit log state
+  const [auditLogs, setAuditLogs] = useState<{ id: string; action: string; detail: string | null; actor: string | null; createdAt: string }[]>([]);
   const [ndaGenerating, setNdaGenerating] = useState(false);
 
   // Edit mode state
@@ -459,6 +461,20 @@ export default function LeadDetailPage() {
   useEffect(() => {
     fetchNextSteps();
   }, [fetchNextSteps]);
+
+  // Load Audit Logs
+  const fetchAuditLogs = useCallback(async () => {
+    if (!params.id) return;
+    const res = await fetch(`/api/leads/${params.id}/audit`);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) setAuditLogs(data);
+    }
+  }, [params.id]);
+
+  useEffect(() => {
+    fetchAuditLogs();
+  }, [fetchAuditLogs]);
 
   // Load SOWs
   const fetchSows = useCallback(async () => {
@@ -813,6 +829,7 @@ export default function LeadDetailPage() {
       if (res.ok) {
         setNoteContent("");
         await fetchLead();
+        fetchAuditLogs();
       }
     } catch {
       alert("Failed to add note");
@@ -834,6 +851,7 @@ export default function LeadDetailPage() {
         setNextStepContent("");
         setNextStepDueDate("");
         fetchNextSteps();
+        fetchAuditLogs();
       }
     } catch {
       alert("Failed to add next step");
@@ -850,6 +868,7 @@ export default function LeadDetailPage() {
         body: JSON.stringify({ stepId, completed }),
       });
       fetchNextSteps();
+      fetchAuditLogs();
     } catch {
       // silently fail
     }
@@ -860,6 +879,7 @@ export default function LeadDetailPage() {
     try {
       await fetch(`/api/leads/${lead!.id}/next-steps?stepId=${stepId}`, { method: "DELETE" });
       fetchNextSteps();
+      fetchAuditLogs();
     } catch {
       // silently fail
     }
@@ -1153,10 +1173,10 @@ export default function LeadDetailPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column */}
-          <div className="lg:col-span-2 space-y-6">
+      <main className="max-w-[1600px] mx-auto px-6 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+          {/* Left Column — Lead Info */}
+          <div className="lg:col-span-3 space-y-5">
             {/* Project Details */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
               <div className="flex items-center justify-between mb-4">
@@ -1832,7 +1852,10 @@ export default function LeadDetailPage() {
                 </>
               )}
             </div>
+          </div>
 
+          {/* Center Column — Communications & Documents */}
+          <div className="lg:col-span-5 space-y-5">
             {/* Email Compose */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
               <div className="flex items-center justify-between mb-4">
@@ -2384,148 +2407,6 @@ export default function LeadDetailPage() {
               );
             })()}
 
-            {/* Notes Section */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Admin Notes
-              </h2>
-              <p className="text-xs text-gray-400 dark:text-gray-500 -mt-3 mb-4">Internal only — not visible to customers</p>
-
-              {/* Notes History */}
-              {lead.notes.length > 0 && (
-                <div className="space-y-3 mb-6 max-h-80 overflow-y-auto">
-                  {lead.notes.map((note) => (
-                    <div
-                      key={note.id}
-                      className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4 border border-gray-100 dark:border-gray-600"
-                    >
-                      <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-sm">
-                        {note.content}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-2">
-                        {note.createdBy && (
-                          <span className="font-medium text-gray-500 dark:text-gray-300">{note.createdBy}</span>
-                        )}
-                        {note.createdBy && " — "}
-                        {new Date(note.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Add Note Input */}
-              <div className="flex gap-3">
-                <textarea
-                  value={noteContent}
-                  onChange={(e) => setNoteContent(e.target.value)}
-                  placeholder="Write a note..."
-                  rows={2}
-                  className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition resize-none text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm"
-                />
-                <button
-                  onClick={handleAddNote}
-                  disabled={!noteContent.trim() || noteAdding}
-                  className="self-end bg-[#01358d] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#012a70] disabled:opacity-50 disabled:cursor-not-allowed transition"
-                >
-                  {noteAdding ? "Saving..." : "Save Note"}
-                </button>
-              </div>
-            </div>
-
-            {/* Next Steps Section */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Next Steps
-              </h2>
-
-              {/* Existing Steps */}
-              {nextSteps.length > 0 && (
-                <div className="space-y-2 mb-6">
-                  {nextSteps.map((step) => (
-                    <div
-                      key={step.id}
-                      className={`flex items-start gap-3 p-3 rounded-lg border transition ${
-                        step.completed
-                          ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
-                          : step.dueDate && new Date(step.dueDate) < new Date() ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800" : "bg-gray-50 dark:bg-gray-700 border-gray-100 dark:border-gray-600"
-                      }`}
-                    >
-                      <button
-                        onClick={() => handleToggleNextStep(step.id, !step.completed)}
-                        className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition ${
-                          step.completed
-                            ? "bg-green-500 border-green-500 text-white"
-                            : "border-gray-300 dark:border-gray-500 hover:border-[#01358d]"
-                        }`}
-                      >
-                        {step.completed && (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                        )}
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm ${step.completed ? "line-through text-gray-400 dark:text-gray-500" : "text-gray-700 dark:text-gray-300"}`}>
-                          {step.content}
-                        </p>
-                        <div className="flex items-center gap-3 mt-1">
-                          {step.dueDate && (
-                            <span className={`text-xs ${
-                              step.completed ? "text-gray-400" : new Date(step.dueDate) < new Date() ? "text-red-600 dark:text-red-400 font-medium" : "text-gray-500 dark:text-gray-400"
-                            }`}>
-                              Due: {new Date(step.dueDate).toLocaleDateString()}
-                            </span>
-                          )}
-                          <span className="text-xs text-gray-400">
-                            {step.createdBy && `${step.createdBy} — `}{new Date(step.createdAt).toLocaleDateString()}
-                          </span>
-                          {step.completed && step.completedAt && (
-                            <span className="text-xs text-green-600 dark:text-green-400">
-                              Completed {new Date(step.completedAt).toLocaleDateString()}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleDeleteNextStep(step.id)}
-                        className="text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 transition flex-shrink-0"
-                        title="Delete"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Add Next Step */}
-              <div className="flex gap-3 items-end">
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    value={nextStepContent}
-                    onChange={(e) => setNextStepContent(e.target.value)}
-                    placeholder="Add a next step..."
-                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm"
-                    onKeyDown={(e) => { if (e.key === "Enter" && nextStepContent.trim()) handleAddNextStep(); }}
-                  />
-                </div>
-                <input
-                  type="date"
-                  value={nextStepDueDate}
-                  onChange={(e) => setNextStepDueDate(e.target.value)}
-                  className="px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm w-40"
-                  title="Due date (optional)"
-                />
-                <button
-                  onClick={handleAddNextStep}
-                  disabled={!nextStepContent.trim() || nextStepAdding}
-                  className="bg-[#01358d] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#012a70] disabled:opacity-50 disabled:cursor-not-allowed transition whitespace-nowrap"
-                >
-                  {nextStepAdding ? "Adding..." : "Add Step"}
-                </button>
-              </div>
-            </div>
-
             {/* Files Section */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
               <div className="flex items-center justify-between mb-4">
@@ -2802,8 +2683,8 @@ export default function LeadDetailPage() {
             </div>
           </div>
 
-          {/* Right Column */}
-          <div className="space-y-6">
+          {/* Right Column — Status, Notes, Next Steps, Audit */}
+          <div className="lg:col-span-4 space-y-5">
             {/* Status Update */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -2948,6 +2829,173 @@ export default function LeadDetailPage() {
                   >
                     View NDA
                   </button>
+                </div>
+              )}
+            </div>
+
+            {/* Notes Section */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                Admin Notes
+              </h2>
+              <p className="text-xs text-gray-400 dark:text-gray-500 -mt-2 mb-3">Internal only — not visible to customers</p>
+
+              {/* Notes History */}
+              {lead.notes.length > 0 && (
+                <div className="space-y-3 mb-4 max-h-80 overflow-y-auto">
+                  {lead.notes.map((note) => (
+                    <div
+                      key={note.id}
+                      className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-100 dark:border-gray-600"
+                    >
+                      <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-sm">
+                        {note.content}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-2">
+                        {note.createdBy && (
+                          <span className="font-medium text-gray-500 dark:text-gray-300">{note.createdBy}</span>
+                        )}
+                        {note.createdBy && " — "}
+                        {new Date(note.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add Note Input */}
+              <div className="flex gap-3">
+                <textarea
+                  value={noteContent}
+                  onChange={(e) => setNoteContent(e.target.value)}
+                  placeholder="Write a note..."
+                  rows={2}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition resize-none text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm"
+                />
+                <button
+                  onClick={handleAddNote}
+                  disabled={!noteContent.trim() || noteAdding}
+                  className="self-end bg-[#01358d] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#012a70] disabled:opacity-50 disabled:cursor-not-allowed transition"
+                >
+                  {noteAdding ? "Saving..." : "Save Note"}
+                </button>
+              </div>
+            </div>
+
+            {/* Next Steps Section */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                Next Steps
+              </h2>
+
+              {/* Existing Steps */}
+              {nextSteps.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  {nextSteps.map((step) => (
+                    <div
+                      key={step.id}
+                      className={`flex items-start gap-3 p-3 rounded-lg border transition ${
+                        step.completed
+                          ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                          : step.dueDate && new Date(step.dueDate) < new Date() ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800" : "bg-gray-50 dark:bg-gray-700 border-gray-100 dark:border-gray-600"
+                      }`}
+                    >
+                      <button
+                        onClick={() => handleToggleNextStep(step.id, !step.completed)}
+                        className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition ${
+                          step.completed
+                            ? "bg-green-500 border-green-500 text-white"
+                            : "border-gray-300 dark:border-gray-500 hover:border-[#01358d]"
+                        }`}
+                      >
+                        {step.completed && (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                        )}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm ${step.completed ? "line-through text-gray-400 dark:text-gray-500" : "text-gray-700 dark:text-gray-300"}`}>
+                          {step.content}
+                        </p>
+                        <div className="flex items-center gap-3 mt-1">
+                          {step.dueDate && (
+                            <span className={`text-xs ${
+                              step.completed ? "text-gray-400" : new Date(step.dueDate) < new Date() ? "text-red-600 dark:text-red-400 font-medium" : "text-gray-500 dark:text-gray-400"
+                            }`}>
+                              Due: {new Date(step.dueDate).toLocaleDateString()}
+                            </span>
+                          )}
+                          <span className="text-xs text-gray-400">
+                            {step.createdBy && `${step.createdBy} — `}{new Date(step.createdAt).toLocaleDateString()}
+                          </span>
+                          {step.completed && step.completedAt && (
+                            <span className="text-xs text-green-600 dark:text-green-400">
+                              Completed {new Date(step.completedAt).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteNextStep(step.id)}
+                        className="text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 transition flex-shrink-0"
+                        title="Delete"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add Next Step */}
+              <div className="flex gap-3 items-end">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={nextStepContent}
+                    onChange={(e) => setNextStepContent(e.target.value)}
+                    placeholder="Add a next step..."
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm"
+                    onKeyDown={(e) => { if (e.key === "Enter" && nextStepContent.trim()) handleAddNextStep(); }}
+                  />
+                </div>
+                <input
+                  type="date"
+                  value={nextStepDueDate}
+                  onChange={(e) => setNextStepDueDate(e.target.value)}
+                  className="px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm w-40"
+                  title="Due date (optional)"
+                />
+                <button
+                  onClick={handleAddNextStep}
+                  disabled={!nextStepContent.trim() || nextStepAdding}
+                  className="bg-[#01358d] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#012a70] disabled:opacity-50 disabled:cursor-not-allowed transition whitespace-nowrap"
+                >
+                  {nextStepAdding ? "Adding..." : "Add Step"}
+                </button>
+              </div>
+            </div>
+
+            {/* Audit Log */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                Audit Log
+              </h2>
+              {auditLogs.length === 0 ? (
+                <p className="text-gray-400 text-xs">No activity recorded yet</p>
+              ) : (
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {auditLogs.map((log) => (
+                    <div key={log.id} className="flex gap-2 text-xs">
+                      <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600 mt-1.5" />
+                      <div className="min-w-0">
+                        <p className="text-gray-700 dark:text-gray-300 font-medium">{log.action}</p>
+                        {log.detail && <p className="text-gray-500 dark:text-gray-400 truncate">{log.detail}</p>}
+                        <p className="text-gray-400">
+                          {log.actor && `${log.actor} — `}{new Date(log.createdAt).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
             </div>

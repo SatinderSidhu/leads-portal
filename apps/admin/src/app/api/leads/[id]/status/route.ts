@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { sendStatusUpdateEmail } from "../../../../../lib/email";
 import { getAdminSession } from "../../../../../lib/session";
 import { notifyWatchers } from "../../../../../lib/watcher-notifications";
+import { logAudit } from "../../../../../lib/audit";
 
 export async function PATCH(
   req: Request,
@@ -49,6 +50,8 @@ export async function PATCH(
       });
     }
   }
+
+  logAudit(id, "Status Changed", `${previousStatus} → ${status}`, session?.name).catch(() => {});
 
   // Notify watchers (non-blocking)
   notifyWatchers({

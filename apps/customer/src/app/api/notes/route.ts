@@ -54,6 +54,8 @@ export async function POST(req: Request) {
     },
   });
 
+  await prisma.auditLog.create({ data: { leadId, action: "Customer Comment Added", detail: content.trim().slice(0, 100), actor: `${session.name} (Customer)` } }).catch(() => {});
+
   // Notify watchers (non-blocking)
   notifyLeadWatchers(leadId, lead.projectName, {
     commenterName: session.name,

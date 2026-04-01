@@ -2,6 +2,7 @@ import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { sendWelcomeEmail } from "../../../../../lib/email";
 import { getAdminSession } from "../../../../../lib/session";
+import { logAudit } from "../../../../../lib/audit";
 
 export async function POST(
   _req: Request,
@@ -37,6 +38,8 @@ export async function POST(
         sentBy: session.name,
       },
     });
+
+    logAudit(id, "Welcome Email Sent", `To: ${lead.customerEmail}`, session.name).catch(() => {});
 
     return NextResponse.json({ success: true });
   } catch (error) {

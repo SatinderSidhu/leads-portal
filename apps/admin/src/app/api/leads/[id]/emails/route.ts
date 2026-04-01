@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getAdminSession } from "../../../../../lib/session";
 import { transporter, getFromAddress, getReplyToAddress } from "../../../../../lib/email";
 import { sendNotification } from "../../../../../lib/notify";
+import { logAudit } from "../../../../../lib/audit";
 
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
@@ -205,6 +206,8 @@ export async function POST(
       `,
       excludeAdminId: session?.id,
     }).catch(() => {});
+
+    logAudit(id, "Email Sent", `Subject: ${subject.trim()}, To: ${lead.customerEmail}`, session?.name).catch(() => {});
 
     return NextResponse.json(sentEmail);
   } catch {

@@ -90,6 +90,8 @@ export async function POST(
     signerIp
   ).catch(() => {});
 
+  await prisma.auditLog.create({ data: { leadId: sow.leadId, action: "SOW Signed", detail: `Version ${sow.version} signed by ${signerName.trim()}`, actor: `${signerName.trim()} (Customer)` } }).catch(() => {});
+
   return NextResponse.json({
     signedAt: signedAt.toISOString(),
     signerName: signerName.trim(),

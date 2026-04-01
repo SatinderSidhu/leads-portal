@@ -1,6 +1,7 @@
 import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { getAdminSession } from "../../../../lib/session";
+import { logAudit } from "../../../../lib/audit";
 
 export async function GET(
   _req: Request,
@@ -101,6 +102,8 @@ export async function PUT(
         updatedBy: session?.name || "Unknown",
       },
     });
+
+    logAudit(id, "Lead Updated", null, session?.name || "Unknown").catch(() => {});
 
     return NextResponse.json(updatedLead);
   } catch (error) {

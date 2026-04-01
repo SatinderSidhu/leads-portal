@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { sendWelcomeEmail } from "../../../lib/email";
 import { getAdminSession } from "../../../lib/session";
 import { sendNotification } from "../../../lib/notify";
+import { logAudit } from "../../../lib/audit";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -127,6 +128,8 @@ export async function POST(req: Request) {
     },
   });
 
+  logAudit(lead.id, "Lead Created", `Project: ${lead.projectName}, Customer: ${lead.customerName}`, adminName).catch(() => {});
+
   if (body.sendEmail) {
     try {
       const { subject, html } = await sendWelcomeEmail(lead, session ? { name: session.name } : undefined);
@@ -144,6 +147,7 @@ export async function POST(req: Request) {
           sentBy: adminName,
         },
       });
+      logAudit(lead.id, "Welcome Email Sent", `To: ${lead.customerEmail}`, adminName).catch(() => {});
     } catch (error) {
       console.error("Failed to send welcome email:", error);
       return NextResponse.json(

@@ -2,6 +2,7 @@ import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { getAdminSession } from "../../../../../../../lib/session";
 import { sendAppFlowReadyEmail } from "../../../../../../../lib/email";
+import { logAudit } from "../../../../../../../lib/audit";
 
 export async function POST(
   _req: Request,
@@ -78,6 +79,8 @@ export async function POST(
       { status: 200 }
     );
   }
+
+  logAudit(id, "App Flow Shared", `"${flow.name}" shared with customer`, session?.name).catch(() => {});
 
   return NextResponse.json({ success: true });
 }

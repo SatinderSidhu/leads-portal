@@ -1,6 +1,7 @@
 import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { getAdminSession } from "../../../../../lib/session";
+import { logAudit } from "../../../../../lib/audit";
 
 export async function GET(
   _req: Request,
@@ -45,6 +46,8 @@ export async function POST(
     },
   });
 
+  logAudit(id, "Next Step Added", content.trim().slice(0, 100), session.name).catch(() => {});
+
   return NextResponse.json(step, { status: 201 });
 }
 
@@ -78,6 +81,8 @@ export async function PUT(
     },
   });
 
+  logAudit(id, "Next Step " + (updated.completed ? "Completed" : "Reopened"), step.content.slice(0, 100), session.name).catch(() => {});
+
   return NextResponse.json(updated);
 }
 
@@ -105,5 +110,8 @@ export async function DELETE(
   }
 
   await prisma.nextStep.delete({ where: { id: stepId } });
+
+  logAudit(id, "Next Step Deleted", step.content.slice(0, 100), session.name).catch(() => {});
+
   return NextResponse.json({ success: true });
 }

@@ -93,6 +93,7 @@ leads-portal/
 | LeadWatcher | lead_watchers | Join table for admin watch subscriptions on leads |
 | BrandingConfig | branding_config | Company branding (logo, name, colors, footer, copyright) for SOW/App Flow docs |
 | NextStep | next_steps | Task list per lead (content, dueDate, completed, completedAt, createdBy) |
+| AuditLog | audit_logs | Complete audit trail per lead (action, detail, actor, timestamp) |
 | ZohoConfig | zoho_config | Zoho CRM OAuth credentials, tokens, data center, org ID, enabled flag |
 | CustomerVisit | customer_visits | Tracks customer portal page views (leadId, visitorEmail, page, timestamp) |
 | NotificationPreference | notification_preferences | Per-admin notification toggles (9 event types) + optional notification email |
@@ -116,7 +117,7 @@ leads-portal/
 | `/` | Activity feed — latest emails, status changes, notes across all leads |
 | `/dashboard` | Leads grid with pagination, search, filters (status/stage/source/assignedTo), defaults to "My Leads" |
 | `/leads/new` | Create lead (with optional "Also create in Zoho CRM" checkbox) |
-| `/leads/[id]` | Lead detail — edit, notes, files, email compose, status, assignment, watch, SOW section, app flows section, Zoho CRM status/link |
+| `/leads/[id]` | Lead detail — 3-column layout: lead info (left), communications/docs (center), status/notes/tasks/audit (right) |
 | `/leads/[id]/nda` | NDA management |
 | `/leads/[id]/sow-builder` | AI-powered SOW builder with Claude streaming, DOCX/PDF export |
 | `/leads/[id]/app-flow-builder` | AI-powered app flow builder with ReactFlow canvas |
@@ -152,6 +153,7 @@ leads-portal/
 - `GET/PUT/DELETE /api/leads/[id]` — Lead CRUD
 - `GET/POST /api/leads/[id]/notes` — Admin notes (internal, not shared with customer)
 - `GET/POST/PUT/DELETE /api/leads/[id]/next-steps` — Next steps task list (create, toggle complete, delete)
+- `GET /api/leads/[id]/audit` — Audit log (complete activity trail for a lead)
 - `GET/POST /api/leads/[id]/files` — File uploads
 - `DELETE /api/leads/[id]/files/[fileId]` — Delete file
 - `GET/POST /api/leads/[id]/status` — Status changes (creates audit trail, notifies watchers)
@@ -272,6 +274,7 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 | `apps/admin/src/lib/extract-file-text.ts` | `extractFileContent()` — Extracts text/HTML from uploaded PDF (pdf-parse) or DOCX (mammoth) files |
 | `apps/admin/src/lib/zoho.ts` | `getZohoConfig()`, `getAccessToken()`, `createZohoLead()`, `updateZohoLead()`, `getZohoLead()`, `searchZohoLead()`, `getZohoLeadUrl()`, `isZohoEnabled()` — Zoho CRM OAuth + API + bidirectional sync |
 | `apps/admin/src/lib/notify.ts` | `sendNotification()` — Central notification dispatcher; checks admin preferences before sending, supports broadcast and lead-specific events |
+| `apps/admin/src/lib/audit.ts` | `logAudit()` — Non-blocking audit trail logger for all lead write operations |
 | `apps/customer/src/lib/session.ts` | `getCustomerSession()` — reads customer-session cookie, returns CustomerSession |
 | `apps/customer/src/lib/email.ts` | `sendNdaSignedEmail()`, `sendSowCommentNotification()`, `sendSowSignedNotification()`, `sendAppFlowCommentNotification()`, `notifyLeadWatchers()` |
 | `apps/customer/src/lib/generate-pdf.ts` | `downloadNdaPdf()`, `downloadSowPdf()` — jsPDF generation |
@@ -498,7 +501,22 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 ## Admin Notes & Next Steps
 - **Admin Notes**: Internal notes on a lead, not visible to customers. Notes history shown above the input area with author name and date. Watchers notified when notes are added.
 - **Next Steps**: Task list per lead. Admin creates next steps with optional due date. Each step can be toggled as completed (with completion date). Overdue tasks highlighted in red, completed in green. Steps can be deleted. Sorted: incomplete first, then by due date, then by creation date.
-- Both sections are on the lead detail page under the right sidebar
+- Both sections are in the right sidebar of the lead detail page
+
+## Audit Log
+- **AuditLog** model tracks all write operations on a lead: created, updated, email sent, NDA sent, SOW shared, app flow shared, status changed, notes added, next steps, customer actions (comments, NDA/SOW signed)
+- Audit logged from 14 API routes (11 admin + 3 customer) — non-blocking `.catch(() => {})`
+- `GET /api/leads/[id]/audit` returns up to 100 most recent entries
+- Displayed in right sidebar of lead detail page as a compact scrollable timeline
+- Each entry shows: action name, detail (truncated), actor name, timestamp
+
+## Lead Detail Page Layout
+- **3-column responsive layout** using CSS Grid `lg:grid-cols-12` with `max-w-[1600px]`
+- **Left column (col-span-3)**: Project details card (customer info, company info, Zoho status, portal URL)
+- **Center column (col-span-5)**: Email compose, recommended email, email thread, files, SOW versions, app flows
+- **Right column (col-span-4)**: Status update, status history, NDA, admin notes, next steps, audit log
+- On mobile: single column with all sections stacked
+- Optimized for desktop: minimizes scrolling by distributing content across 3 columns
 
 ## Important Patterns
 - All admin API routes use `getAdminSession()` for auth (returns null if not logged in)

@@ -69,5 +69,7 @@ export async function POST(req: NextRequest) {
     console.error("Failed to send NDA signed emails:", error);
   }
 
+  await prisma.auditLog.create({ data: { leadId, action: "NDA Signed", detail: `Signed by ${signerName.trim()}`, actor: `${signerName.trim()} (Customer)` } }).catch(() => {});
+
   return NextResponse.json(updatedNda);
 }

@@ -2,6 +2,7 @@ import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { getAdminSession } from "../../../../../lib/session";
 import { notifyWatchers } from "../../../../../lib/watcher-notifications";
+import { logAudit } from "../../../../../lib/audit";
 
 export async function POST(
   req: Request,
@@ -20,6 +21,8 @@ export async function POST(
   const note = await prisma.note.create({
     data: { content, leadId: id, createdBy: adminName },
   });
+
+  logAudit(id, "Note Added", content.trim().slice(0, 100), session?.name).catch(() => {});
 
   // Notify watchers (non-blocking)
   notifyWatchers({

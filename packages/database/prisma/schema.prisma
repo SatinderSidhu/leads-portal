@@ -140,6 +140,7 @@ model Lead {
   watchers        LeadWatcher[]
   customerVisits  CustomerVisit[]
   nextSteps       NextStep[]
+  auditLogs       AuditLog[]
 
   @@map("leads")
 }
@@ -428,6 +429,18 @@ model AppFlowComment {
 enum AuthProvider {
   GOOGLE
   LINKEDIN
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  leadId    String   @map("lead_id")
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  action    String
+  detail    String?  @db.Text
+  actor     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("audit_logs")
 }
 
 model NextStep {

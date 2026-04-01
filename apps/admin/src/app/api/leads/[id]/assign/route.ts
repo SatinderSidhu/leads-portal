@@ -2,6 +2,7 @@ import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { getAdminSession } from "../../../../../lib/session";
 import { sendLeadAssignedEmail } from "../../../../../lib/email";
+import { logAudit } from "../../../../../lib/audit";
 
 export async function PUT(
   req: Request,
@@ -78,6 +79,8 @@ export async function PUT(
       console.error("[Assign] Failed to send assignment email:", err)
     );
   }
+
+  logAudit(id, "Lead Reassigned", `Assigned to ${targetAdmin.name} by ${session.name}`, session.name).catch(() => {});
 
   return NextResponse.json(updatedLead);
 }
