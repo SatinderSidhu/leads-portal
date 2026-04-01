@@ -366,6 +366,11 @@ export default function LeadDetailPage() {
   const [watcherCount, setWatcherCount] = useState(0);
   const [watchToggling, setWatchToggling] = useState(false);
   const [currentAdminId, setCurrentAdminId] = useState<string | null>(null);
+  const [currentAdminName, setCurrentAdminName] = useState<string | null>(null);
+
+  // Note editing state
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [editingNoteContent, setEditingNoteContent] = useState("");
 
   const fetchLead = useCallback(async () => {
     const res = await fetch(`/api/leads/${params.id}`);
@@ -397,6 +402,7 @@ export default function LeadDetailPage() {
       .then((data) => {
         if (data.emailSignature) setAdminSignature(data.emailSignature);
         if (data.id) setCurrentAdminId(data.id);
+        if (data.name) setCurrentAdminName(data.name);
       });
   }, []);
 
@@ -835,6 +841,41 @@ export default function LeadDetailPage() {
       alert("Failed to add note");
     } finally {
       setNoteAdding(false);
+    }
+  }
+
+  async function handleEditNote(noteId: string, content: string) {
+    if (!lead || !content.trim()) return;
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/notes`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ noteId, content: content.trim() }),
+      });
+      if (res.ok) {
+        setEditingNoteId(null);
+        setEditingNoteContent("");
+        await fetchLead();
+        fetchAuditLogs();
+      }
+    } catch {
+      alert("Failed to update note");
+    }
+  }
+
+  async function handleDeleteNote(noteId: string) {
+    if (!lead || !confirm("Delete this note?")) return;
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/notes?noteId=${noteId}`, { method: "DELETE" });
+      if (res.ok) {
+        await fetchLead();
+        fetchAuditLogs();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to delete note");
+      }
+    } catch {
+      alert("Failed to delete note");
     }
   }
 
@@ -2841,23 +2882,74 @@ export default function LeadDetailPage() {
               {/* Notes History */}
               {lead.notes.length > 0 && (
                 <div className="space-y-3 mb-4 max-h-80 overflow-y-auto">
-                  {lead.notes.map((note) => (
-                    <div
-                      key={note.id}
-                      className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-100 dark:border-gray-600"
-                    >
-                      <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-sm">
-                        {note.content}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-2">
-                        {note.createdBy && (
-                          <span className="font-medium text-gray-500 dark:text-gray-300">{note.createdBy}</span>
+                  {lead.notes.map((note) => {
+                    const isOwner = note.createdBy === currentAdminName;
+                    const isEditing = editingNoteId === note.id;
+
+                    return (
+                      <div
+                        key={note.id}
+                        className="bg-gray-50 dark:bg-gray-700 rounded-lg p-3 border border-gray-100 dark:border-gray-600"
+                      >
+                        {isEditing ? (
+                          <div className="space-y-2">
+                            <textarea
+                              value={editingNoteContent}
+                              onChange={(e) => setEditingNoteContent(e.target.value)}
+                              rows={2}
+                              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 outline-none resize-none"
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleEditNote(note.id, editingNoteContent)}
+                                disabled={!editingNoteContent.trim()}
+                                className="text-xs font-medium text-white bg-[#01358d] hover:bg-[#012a70] px-3 py-1 rounded disabled:opacity-50 transition"
+                              >
+                                Save
+                              </button>
+                              <button
+                                onClick={() => { setEditingNoteId(null); setEditingNoteContent(""); }}
+                                className="text-xs text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-sm">
+                              {note.content}
+                            </p>
+                            <div className="flex items-center justify-between mt-2">
+                              <p className="text-xs text-gray-400">
+                                {note.createdBy && (
+                                  <span className="font-medium text-gray-500 dark:text-gray-300">{note.createdBy}</span>
+                                )}
+                                {note.createdBy && " — "}
+                                {new Date(note.createdAt).toLocaleString()}
+                              </p>
+                              {isOwner && (
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={() => { setEditingNoteId(note.id); setEditingNoteContent(note.content); }}
+                                    className="text-xs text-gray-400 hover:text-[#01358d] dark:hover:text-blue-400 transition"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteNote(note.id)}
+                                    className="text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </>
                         )}
-                        {note.createdBy && " — "}
-                        {new Date(note.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                  ))}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
