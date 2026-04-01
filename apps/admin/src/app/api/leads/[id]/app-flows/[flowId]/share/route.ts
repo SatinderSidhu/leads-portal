@@ -55,12 +55,22 @@ export async function POST(
 
   // Send email to customer
   try {
-    await sendAppFlowReadyEmail(
+    const { subject, html } = await sendAppFlowReadyEmail(
       lead,
       id,
       flow.name,
       session ? { name: session.name } : undefined
     );
+    // Log in email history
+    await prisma.sentEmail.create({
+      data: {
+        leadId: id,
+        subject,
+        body: html,
+        status: "SENT",
+        sentBy: session?.name || "System",
+      },
+    });
   } catch (error) {
     console.error("Failed to send app flow email:", error);
     return NextResponse.json(

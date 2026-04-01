@@ -129,14 +129,23 @@ export async function POST(req: Request) {
 
   if (body.sendEmail) {
     try {
-      await sendWelcomeEmail(lead, session ? { name: session.name } : undefined);
+      const { subject, html } = await sendWelcomeEmail(lead, session ? { name: session.name } : undefined);
       await prisma.lead.update({
         where: { id: lead.id },
         data: { emailSent: true },
       });
+      // Log in email history
+      await prisma.sentEmail.create({
+        data: {
+          leadId: lead.id,
+          subject,
+          body: html,
+          status: "SENT",
+          sentBy: adminName,
+        },
+      });
     } catch (error) {
       console.error("Failed to send welcome email:", error);
-      // Lead is still saved — return it with a warning
       return NextResponse.json(
         { ...lead, emailWarning: "Lead saved but email failed to send" },
         { status: 201 }

@@ -153,6 +153,7 @@ leads-portal/
 - `GET/POST /api/leads/[id]/files` — File uploads
 - `DELETE /api/leads/[id]/files/[fileId]` — Delete file
 - `GET/POST /api/leads/[id]/status` — Status changes (creates audit trail, notifies watchers)
+- `POST /api/leads/[id]/welcome-email` — Send/resend welcome email to customer (logs in email history)
 - `PUT /api/leads/[id]/assign` — Reassign lead to another admin (auto-adds watcher, sends email)
 - `GET/POST/DELETE /api/leads/[id]/watch` — Watch list (subscribe/unsubscribe for lead updates)
 - `GET/POST /api/leads/[id]/nda` — NDA operations
@@ -367,6 +368,9 @@ docker compose exec db pg_dump -U postgres leads_portal > backup.sql  # DB backu
 - Signature appended server-side in the email API route
 - Relative image paths (`/uploads/...`) converted to absolute URLs before sending (for Gmail compatibility)
 - Email open tracking via 1x1 pixel at `/api/track/[sentEmailId]`
+- **Email history logging**: Welcome, NDA, SOW share, and App Flow share emails are automatically logged as SentEmail records and appear in the lead's email history
+- **Resend welcome email**: Send/Resend button on lead detail page next to "Welcome Email" status; creates SentEmail record
+- **Customer Portal URL**: Displayed on lead detail page with copy button; allows admin to preview the customer's portal view
 - Preview modal renders email HTML in an iframe
 - From address uses logged-in admin's name as display name (e.g. `"Satinder Sidhu" <leads@kitlabs.us>`)
 - Reply-To uses lead-specific `reply+{leadId}@reply.kitlabs.us` for SES inbound routing, wrapped with admin's display name

@@ -52,48 +52,52 @@ interface AdminInfo {
   name: string;
 }
 
-export async function sendWelcomeEmail(lead: Lead, admin?: AdminInfo) {
+export async function sendWelcomeEmail(lead: Lead, admin?: AdminInfo): Promise<{ subject: string; html: string }> {
   const customerPortalUrl = `${process.env.CUSTOMER_PORTAL_URL}?id=${lead.id}`;
 
   console.log(`[Email] Sending welcome email to ${lead.customerEmail} for project "${lead.projectName}"...`);
   const start = Date.now();
 
+  const subject = `Welcome to ${lead.projectName}!`;
+  const html = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
+        <h1 style="color: white; margin: 0; font-size: 28px;">Welcome, ${lead.customerName}!</h1>
+      </div>
+
+      <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+        <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
+          We're excited to get started on <strong>${lead.projectName}</strong> with you.
+        </p>
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">
+          You can view your project details and stay updated by visiting your personal project portal:
+        </p>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${customerPortalUrl}"
+             style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 32px;
+                    border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">
+            View Your Project
+          </a>
+        </div>
+      </div>
+
+      <p style="color: #999; font-size: 13px; text-align: center;">
+        If you have any questions, simply reply to this email.
+      </p>
+    </div>
+  `;
+
   const info = await transporter.sendMail({
     from: getFromAddress(admin?.name),
     replyTo: getReplyToAddress(lead.id, admin?.name),
     to: lead.customerEmail,
-    subject: `Welcome to ${lead.projectName}!`,
-    html: `
-      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
-          <h1 style="color: white; margin: 0; font-size: 28px;">Welcome, ${lead.customerName}!</h1>
-        </div>
-
-        <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
-          <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
-            We're excited to get started on <strong>${lead.projectName}</strong> with you.
-          </p>
-          <p style="color: #333; font-size: 16px; line-height: 1.6;">
-            You can view your project details and stay updated by visiting your personal project portal:
-          </p>
-
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${customerPortalUrl}"
-               style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 32px;
-                      border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">
-              View Your Project
-            </a>
-          </div>
-        </div>
-
-        <p style="color: #999; font-size: 13px; text-align: center;">
-          If you have any questions, simply reply to this email.
-        </p>
-      </div>
-    `,
+    subject,
+    html,
   });
 
   console.log(`[Email] Welcome email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
+  return { subject, html };
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -164,52 +168,56 @@ export async function sendStatusUpdateEmail(
   console.log(`[Email] Status email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
 }
 
-export async function sendNdaReadyEmail(lead: Lead, admin?: AdminInfo) {
+export async function sendNdaReadyEmail(lead: Lead, admin?: AdminInfo): Promise<{ subject: string; html: string }> {
   const ndaUrl = `${process.env.CUSTOMER_PORTAL_URL}?id=${lead.id}&tab=nda`;
 
   console.log(`[Email] Sending NDA ready email to ${lead.customerEmail}...`);
   const start = Date.now();
 
+  const subject = `NDA Ready for Review — ${lead.projectName}`;
+  const html = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">Non-Disclosure Agreement</h1>
+        <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">Ready for Your Review</p>
+      </div>
+
+      <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+        <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
+          Hi ${lead.customerName},
+        </p>
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">
+          A Non-Disclosure Agreement for <strong>${lead.projectName}</strong> has been prepared and is ready for your review and signature.
+        </p>
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">
+          You can review the full document online, download a PDF copy, and sign it electronically — all from your project portal.
+        </p>
+
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${ndaUrl}"
+             style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 32px;
+                    border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">
+            Review &amp; Sign NDA
+          </a>
+        </div>
+      </div>
+
+      <p style="color: #999; font-size: 13px; text-align: center;">
+        If you have any questions, simply reply to this email.
+      </p>
+    </div>
+  `;
+
   const info = await transporter.sendMail({
     from: getFromAddress(admin?.name),
     replyTo: getReplyToAddress(lead.id, admin?.name),
     to: lead.customerEmail,
-    subject: `NDA Ready for Review — ${lead.projectName}`,
-    html: `
-      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">Non-Disclosure Agreement</h1>
-          <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">Ready for Your Review</p>
-        </div>
-
-        <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
-          <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
-            Hi ${lead.customerName},
-          </p>
-          <p style="color: #333; font-size: 16px; line-height: 1.6;">
-            A Non-Disclosure Agreement for <strong>${lead.projectName}</strong> has been prepared and is ready for your review and signature.
-          </p>
-          <p style="color: #333; font-size: 16px; line-height: 1.6;">
-            You can review the full document online, download a PDF copy, and sign it electronically — all from your project portal.
-          </p>
-
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${ndaUrl}"
-               style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 32px;
-                      border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">
-              Review &amp; Sign NDA
-            </a>
-          </div>
-        </div>
-
-        <p style="color: #999; font-size: 13px; text-align: center;">
-          If you have any questions, simply reply to this email.
-        </p>
-      </div>
-    `,
+    subject,
+    html,
   });
 
   console.log(`[Email] NDA ready email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
+  return { subject, html };
 }
 
 interface AdminUser {
@@ -276,19 +284,15 @@ export async function sendSowReadyEmail(
   leadId: string,
   version: number,
   admin?: AdminInfo
-) {
+): Promise<{ subject: string; html: string }> {
   const customerPortalUrl = `${process.env.CUSTOMER_PORTAL_URL}?id=${leadId}&tab=sow`;
   const sowDirectUrl = `${process.env.CUSTOMER_PORTAL_URL}?id=${leadId}&tab=sow&v=${version}`;
 
   console.log(`[Email] Sending SOW ready email to ${lead.customerEmail} for v${version}...`);
   const start = Date.now();
 
-  const info = await transporter.sendMail({
-    from: getFromAddress(admin?.name),
-    replyTo: getReplyToAddress(leadId, admin?.name),
-    to: lead.customerEmail,
-    subject: `Scope of Work Ready — ${lead.projectName}`,
-    html: `
+  const subject = `Scope of Work Ready — ${lead.projectName}`;
+  const html = `
       <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
           <h1 style="color: white; margin: 0; font-size: 24px;">Scope of Work</h1>
@@ -329,10 +333,18 @@ export async function sendSowReadyEmail(
           If you have any questions, simply reply to this email.
         </p>
       </div>
-    `,
+    `;
+
+  const info = await transporter.sendMail({
+    from: getFromAddress(admin?.name),
+    replyTo: getReplyToAddress(leadId, admin?.name),
+    to: lead.customerEmail,
+    subject,
+    html,
   });
 
   console.log(`[Email] SOW ready email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
+  return { subject, html };
 }
 
 export async function sendLeadAssignedEmail(
@@ -389,18 +401,14 @@ export async function sendAppFlowReadyEmail(
   leadId: string,
   flowName: string,
   admin?: AdminInfo
-) {
+): Promise<{ subject: string; html: string }> {
   const portalUrl = `${process.env.CUSTOMER_PORTAL_URL}?id=${leadId}&tab=app-flow`;
 
   console.log(`[Email] Sending app flow ready email to ${lead.customerEmail}...`);
   const start = Date.now();
 
-  const info = await transporter.sendMail({
-    from: getFromAddress(admin?.name),
-    replyTo: getReplyToAddress(leadId, admin?.name),
-    to: lead.customerEmail,
-    subject: `App Flow Ready — ${lead.projectName}`,
-    html: `
+  const subject = `App Flow Ready — ${lead.projectName}`;
+  const html = `
       <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
         <div style="background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
           <h1 style="color: white; margin: 0; font-size: 24px;">App Flow</h1>
@@ -431,8 +439,16 @@ export async function sendAppFlowReadyEmail(
           If you have any questions, simply reply to this email.
         </p>
       </div>
-    `,
+    `;
+
+  const info = await transporter.sendMail({
+    from: getFromAddress(admin?.name),
+    replyTo: getReplyToAddress(leadId, admin?.name),
+    to: lead.customerEmail,
+    subject,
+    html,
   });
 
   console.log(`[Email] App flow ready email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
+  return { subject, html };
 }

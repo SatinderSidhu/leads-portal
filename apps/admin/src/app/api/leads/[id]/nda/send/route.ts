@@ -28,10 +28,20 @@ export async function POST(
   }
 
   try {
-    await sendNdaReadyEmail(lead, session ? { name: session.name } : undefined);
+    const { subject, html } = await sendNdaReadyEmail(lead, session ? { name: session.name } : undefined);
     const updated = await prisma.nda.update({
       where: { id: nda.id },
       data: { status: "SENT" },
+    });
+    // Log in email history
+    await prisma.sentEmail.create({
+      data: {
+        leadId: id,
+        subject,
+        body: html,
+        status: "SENT",
+        sentBy: session?.name || "System",
+      },
     });
     return NextResponse.json(updated);
   } catch (error) {

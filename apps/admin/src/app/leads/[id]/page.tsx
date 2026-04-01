@@ -349,6 +349,9 @@ export default function LeadDetailPage() {
     changes?: { field: string; from: string | null; to: string | null }[];
   } | null>(null);
 
+  // Welcome email state
+  const [sendingWelcome, setSendingWelcome] = useState(false);
+
   // Assignment & watch state
   const [adminUsers, setAdminUsers] = useState<{ id: string; name: string; email: string; active: boolean }[]>([]);
   const [assigning, setAssigning] = useState(false);
@@ -593,6 +596,24 @@ export default function LeadDetailPage() {
       alert("Failed to sync with Zoho");
     } finally {
       setZohoSyncing(false);
+    }
+  }
+
+  async function handleSendWelcomeEmail() {
+    if (!lead) return;
+    setSendingWelcome(true);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/welcome-email`, { method: "POST" });
+      if (res.ok) {
+        await fetchLead();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to send welcome email");
+      }
+    } catch {
+      alert("Failed to send welcome email");
+    } finally {
+      setSendingWelcome(false);
     }
   }
 
@@ -1500,9 +1521,18 @@ export default function LeadDetailPage() {
                       <p className="text-sm text-gray-500 dark:text-gray-400">
                         Welcome Email
                       </p>
-                      <p className="text-gray-900 dark:text-white font-medium">
-                        {lead.emailSent ? "Sent" : "Not sent"}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-gray-900 dark:text-white font-medium">
+                          {lead.emailSent ? "Sent" : "Not sent"}
+                        </p>
+                        <button
+                          onClick={handleSendWelcomeEmail}
+                          disabled={sendingWelcome}
+                          className="text-xs font-medium text-[#01358d] dark:text-blue-400 hover:underline disabled:opacity-50"
+                        >
+                          {sendingWelcome ? "Sending..." : lead.emailSent ? "Resend" : "Send Now"}
+                        </button>
+                      </div>
                     </div>
                     {lead.jobTitle && (
                       <div>
@@ -1687,6 +1717,30 @@ export default function LeadDetailPage() {
                     <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                       {lead.projectDescription}
                     </p>
+                  </div>
+
+                  {/* Customer Portal Link */}
+                  <div className="mt-4 p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg">
+                    <p className="text-xs font-medium text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1">Customer Portal URL</p>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`${process.env.NEXT_PUBLIC_CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us"}/project?id=${lead.id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-indigo-700 dark:text-indigo-300 hover:underline break-all"
+                      >
+                        {`${process.env.NEXT_PUBLIC_CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us"}/project?id=${lead.id}`}
+                      </a>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(`${process.env.NEXT_PUBLIC_CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us"}/project?id=${lead.id}`);
+                        }}
+                        className="text-xs text-indigo-500 hover:text-indigo-700 dark:hover:text-indigo-300 flex-shrink-0"
+                        title="Copy URL"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                      </button>
+                    </div>
                   </div>
 
                   {/* Audit Info */}

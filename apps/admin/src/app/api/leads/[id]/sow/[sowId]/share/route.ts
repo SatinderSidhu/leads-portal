@@ -55,7 +55,17 @@ export async function POST(
 
   // Send email to customer
   try {
-    await sendSowReadyEmail(lead, id, sow.version, session ? { name: session.name } : undefined);
+    const { subject, html } = await sendSowReadyEmail(lead, id, sow.version, session ? { name: session.name } : undefined);
+    // Log in email history
+    await prisma.sentEmail.create({
+      data: {
+        leadId: id,
+        subject,
+        body: html,
+        status: "SENT",
+        sentBy: session?.name || "System",
+      },
+    });
   } catch (error) {
     console.error("Failed to send SOW email:", error);
     return NextResponse.json(
