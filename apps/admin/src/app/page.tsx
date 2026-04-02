@@ -4,28 +4,62 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 
 const STATUS_LABELS: Record<string, string> = {
-  NEW: "New",
-  SOW_READY: "SOW Ready",
-  DESIGN_READY: "Design Ready",
-  DESIGN_APPROVED: "Design Approved",
-  BUILD_IN_PROGRESS: "Build In Progress",
-  BUILD_READY_FOR_REVIEW: "Build Ready for Review",
-  BUILD_SUBMITTED: "Build Submitted",
-  GO_LIVE: "Go Live",
+  NEW: "New", SOW_READY: "SOW Ready", SOW_SIGNED: "SOW Signed", APP_FLOW_READY: "App Flow Ready",
+  DESIGN_READY: "Design Ready", DESIGN_APPROVED: "Design Approved", BUILD_IN_PROGRESS: "Build In Progress",
+  BUILD_READY_FOR_REVIEW: "Build Ready for Review", BUILD_SUBMITTED: "Build Submitted", GO_LIVE: "Go Live",
+  LOST: "Lost", NO_RESPONSE: "No Response", ON_HOLD: "On Hold", CANCELLED: "Cancelled",
 };
 
-interface ActivityLead {
-  id: string;
+const STATUS_COLORS: Record<string, string> = {
+  NEW: "bg-blue-100 text-blue-800", SOW_READY: "bg-cyan-100 text-cyan-800", SOW_SIGNED: "bg-cyan-100 text-cyan-800",
+  APP_FLOW_READY: "bg-teal-100 text-teal-800", DESIGN_READY: "bg-yellow-100 text-yellow-800",
+  DESIGN_APPROVED: "bg-green-100 text-green-800", BUILD_IN_PROGRESS: "bg-orange-100 text-orange-800",
+  BUILD_READY_FOR_REVIEW: "bg-purple-100 text-purple-800", BUILD_SUBMITTED: "bg-indigo-100 text-indigo-800",
+  GO_LIVE: "bg-emerald-100 text-emerald-800", LOST: "bg-red-100 text-red-800", NO_RESPONSE: "bg-gray-100 text-gray-800",
+  ON_HOLD: "bg-amber-100 text-amber-800", CANCELLED: "bg-red-100 text-red-800",
+};
+
+const TYPE_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
+  received_email: { label: "Email Received", color: "bg-blue-100 text-blue-800", icon: "↓" },
+  sent_email: { label: "Email Sent", color: "bg-green-100 text-green-800", icon: "↑" },
+  status_change: { label: "Status Changed", color: "bg-amber-100 text-amber-800", icon: "→" },
+  note: { label: "Note Added", color: "bg-purple-100 text-purple-800", icon: "✎" },
+  email_opened: { label: "Email Opened", color: "bg-cyan-100 text-cyan-800", icon: "👁" },
+  portal_visit: { label: "Portal Visit", color: "bg-teal-100 text-teal-800", icon: "🌐" },
+};
+
+interface DashboardStats {
+  totalLeads: number;
+  myLeads: number;
+  newLeadsToday: number;
+  newLeadsThisWeek: number;
+  activeLeads: number;
+  closedLeads: number;
+  recentEmailOpens: number;
+  recentPortalVisits: number;
+  recentCustomerComments: number;
+  recentReceivedEmails: number;
+  needsAttentionCount: number;
+}
+
+interface AttentionLead {
+  leadId: string;
   projectName: string;
   customerName: string;
-  customerEmail: string;
+  status: string;
+  assignedTo: string | null;
+  lastAction: string;
+  lastDetail: string | null;
+  lastActor: string | null;
+  lastActivityAt: string;
+  activityCount: number;
 }
 
 interface ActivityItem {
   id: string;
-  type: "received_email" | "sent_email" | "status_change" | "note" | "email_opened" | "portal_visit";
+  type: string;
   timestamp: string;
-  lead: ActivityLead;
+  lead: { id: string; projectName: string; customerName: string };
   data: Record<string, string | null>;
 }
 
@@ -41,235 +75,241 @@ function timeAgo(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString();
 }
 
-const TYPE_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
-  received_email: { label: "Email Received", color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200", icon: "↓" },
-  sent_email: { label: "Email Sent", color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200", icon: "↑" },
-  status_change: { label: "Status Changed", color: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200", icon: "→" },
-  note: { label: "Note Added", color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200", icon: "✎" },
-  email_opened: { label: "Email Opened", color: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200", icon: "👁" },
-  portal_visit: { label: "Portal Visit", color: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200", icon: "🌐" },
-};
+function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
 
-const FILTER_TABS = [
-  { key: "all", label: "All Activity" },
-  { key: "received_email", label: "Received" },
-  { key: "sent_email", label: "Sent" },
-  { key: "email_opened", label: "Opened" },
-  { key: "portal_visit", label: "Portal Visits" },
-  { key: "status_change", label: "Status" },
-  { key: "note", label: "Notes" },
-];
-
-export default function ActivityDashboard() {
+export default function DashboardPage() {
   const router = useRouter();
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [filter, setFilter] = useState<string>("all");
-  const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
+  const [adminName, setAdminName] = useState("");
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [needsAttention, setNeedsAttention] = useState<AttentionLead[]>([]);
+  const [statusDistribution, setStatusDistribution] = useState<Record<string, number>>({});
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [activityLoading, setActivityLoading] = useState(true);
 
-  const fetchActivities = useCallback(async (pageNum: number, typeFilter: string, append: boolean) => {
-    if (pageNum === 1) setLoading(true); else setLoadingMore(true);
-    try {
-      const params = new URLSearchParams({ page: String(pageNum), limit: "30" });
-      if (typeFilter !== "all") params.set("type", typeFilter);
-      const res = await fetch(`/api/activity?${params}`);
-      if (!res.ok) {
-        if (res.redirected || res.status === 401) router.push("/login");
-        return;
-      }
-      const data = await res.json();
-      if (append) {
-        setActivities((prev) => [...prev, ...(data.activities || [])]);
-      } else {
-        setActivities(data.activities || []);
-      }
-      setHasMore(data.pagination?.hasMore || false);
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-    }
+  useEffect(() => {
+    fetch("/api/dashboard")
+      .then((res) => {
+        if (!res.ok) { if (res.status === 401) router.push("/login"); return null; }
+        return res.json();
+      })
+      .then((data) => {
+        if (data) {
+          setAdminName(data.admin?.name || "");
+          setStats(data.stats);
+          setNeedsAttention(data.needsAttention || []);
+          setStatusDistribution(data.statusDistribution || {});
+        }
+      })
+      .finally(() => setLoading(false));
   }, [router]);
 
   useEffect(() => {
-    setPage(1);
-    fetchActivities(1, filter, false);
-  }, [filter, fetchActivities]);
+    fetch("/api/activity?limit=15")
+      .then((res) => res.ok ? res.json() : { activities: [] })
+      .then((data) => setActivities(data.activities || []))
+      .finally(() => setActivityLoading(false));
+  }, []);
 
-  function handleLoadMore() {
-    const nextPage = page + 1;
-    setPage(nextPage);
-    fetchActivities(nextPage, filter, true);
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#01358d]" />
+      </div>
+    );
   }
 
-  // Count stats from current loaded activities
-  const recentReceivedCount = activities.filter(
-    (a) => a.type === "received_email" && Date.now() - new Date(a.timestamp).getTime() < 86400000
-  ).length;
-  const emailOpenedCount = activities.filter((a) => a.type === "email_opened").length;
-  const portalVisitCount = activities.filter((a) => a.type === "portal_visit").length;
-
   return (
-    <div>
-        {/* Summary cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+    <div className="space-y-6">
+      {/* Welcome */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          {getGreeting()}, {adminName}!
+        </h1>
+        <p className="text-gray-500 dark:text-gray-400 mt-1">
+          Here&apos;s what&apos;s happening with your leads today.
+        </p>
+      </div>
+
+      {/* Stats Grid */}
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+          <StatCard label="Total Leads" value={stats.totalLeads} color="text-gray-900 dark:text-white" onClick={() => router.push("/dashboard?assignedTo=all")} />
+          <StatCard label="My Leads" value={stats.myLeads} color="text-[#01358d]" onClick={() => router.push("/dashboard")} />
+          <StatCard label="New Today" value={stats.newLeadsToday} color="text-green-600" highlight={stats.newLeadsToday > 0} />
+          <StatCard label="This Week" value={stats.newLeadsThisWeek} color="text-blue-600" />
+          <StatCard label="Active Pipeline" value={stats.activeLeads} color="text-amber-600" />
+          <StatCard label="Needs Attention" value={stats.needsAttentionCount} color="text-red-600" highlight={stats.needsAttentionCount > 0} />
+        </div>
+      )}
+
+      {/* Customer Engagement Stats */}
+      {stats && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total</p>
-            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{activities.length}</p>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-cyan-500">👁</span>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Emails Opened (24h)</p>
+            </div>
+            <p className="text-xl font-bold text-cyan-600">{stats.recentEmailOpens}</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Received (24h)</p>
-            <p className="text-2xl font-bold text-blue-600 mt-1">{recentReceivedCount}</p>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-teal-500">🌐</span>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Portal Visits (24h)</p>
+            </div>
+            <p className="text-xl font-bold text-teal-600">{stats.recentPortalVisits}</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Emails Sent</p>
-            <p className="text-2xl font-bold text-green-600 mt-1">{activities.filter((a) => a.type === "sent_email").length}</p>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-purple-500">💬</span>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Comments (24h)</p>
+            </div>
+            <p className="text-xl font-bold text-purple-600">{stats.recentCustomerComments}</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Emails Opened</p>
-            <p className="text-2xl font-bold text-cyan-600 mt-1">{emailOpenedCount}</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Portal Visits</p>
-            <p className="text-2xl font-bold text-teal-600 mt-1">{portalVisitCount}</p>
-          </div>
-          <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status Changes</p>
-            <p className="text-2xl font-bold text-amber-600 mt-1">{activities.filter((a) => a.type === "status_change").length}</p>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-blue-500">↓</span>
+              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Replies (24h)</p>
+            </div>
+            <p className="text-xl font-bold text-blue-600">{stats.recentReceivedEmails}</p>
           </div>
         </div>
+      )}
 
-        {/* Filter tabs */}
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
-          {FILTER_TABS.map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setFilter(tab.key)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
-                filter === tab.key
-                  ? "bg-[#01358d] text-white"
-                  : "bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-              }`}
-            >
-              {tab.label}
-              {tab.key === "received_email" && recentReceivedCount > 0 && (
-                <span className="ml-1.5 bg-red-500 text-white text-xs rounded-full px-1.5 py-0.5">{recentReceivedCount}</span>
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* Activity feed */}
-        {loading ? (
-          <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#01358d] mx-auto" />
-            <p className="text-gray-500 dark:text-gray-400 mt-3">Loading activity...</p>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Needs Attention */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Needs Attention</h2>
+            <span className="text-xs text-gray-400">Last 7 days</span>
           </div>
-        ) : activities.length === 0 ? (
-          <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700">
-            <p className="text-gray-500 dark:text-gray-400">No activity yet</p>
-          </div>
-        ) : (
-          <>
-            <div className="space-y-3">
-              {activities.map((item) => {
-                const config = TYPE_CONFIG[item.type] || { label: item.type, color: "bg-gray-100 text-gray-800", icon: "•" };
-                return (
-                  <div
-                    key={`${item.type}-${item.id}`}
-                    onClick={() => router.push(`/leads/${item.lead.id}`)}
-                    className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4 hover:shadow-md transition cursor-pointer"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-start gap-3 min-w-0">
-                        <span className="text-lg mt-0.5 flex-shrink-0">{config.icon}</span>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
-                              {config.label}
-                            </span>
-                            <span className="text-sm font-medium text-blue-600 truncate">
-                              {item.lead.projectName}
-                            </span>
-                            <span className="text-xs text-gray-400">
-                              {item.lead.customerName}
-                            </span>
-                          </div>
-
-                          {/* Activity-specific details */}
-                          <div className="mt-1.5">
-                            {item.type === "received_email" && (
-                              <p className="text-sm text-gray-700 dark:text-gray-300">
-                                <span className="font-medium">{item.data.fromName || item.data.fromEmail}</span>
-                                {" — "}{item.data.subject}
-                              </p>
-                            )}
-                            {item.type === "sent_email" && (
-                              <p className="text-sm text-gray-700 dark:text-gray-300">
-                                Sent by <span className="font-medium">{item.data.sentBy}</span>
-                                {" — "}{item.data.subject}
-                                {item.data.status === "FAILED" && (
-                                  <span className="ml-2 text-red-500 text-xs font-medium">FAILED</span>
-                                )}
-                              </p>
-                            )}
-                            {item.type === "email_opened" && (
-                              <p className="text-sm text-gray-700 dark:text-gray-300">
-                                Customer opened <span className="font-medium">&ldquo;{item.data.subject}&rdquo;</span>
-                              </p>
-                            )}
-                            {item.type === "portal_visit" && (
-                              <p className="text-sm text-gray-700 dark:text-gray-300">
-                                <span className="font-medium">{item.data.visitorName || "Customer"}</span>
-                                {" visited the portal"}
-                                {item.data.page && <span className="text-gray-500"> ({item.data.page} tab)</span>}
-                              </p>
-                            )}
-                            {item.type === "status_change" && (
-                              <p className="text-sm text-gray-700 dark:text-gray-300">
-                                {item.data.changedBy && <span className="font-medium">{item.data.changedBy}</span>}
-                                {" changed status "}
-                                {item.data.fromStatus && (
-                                  <><span className="font-medium">{STATUS_LABELS[item.data.fromStatus] || item.data.fromStatus}</span>{" → "}</>
-                                )}
-                                <span className="font-medium">{STATUS_LABELS[item.data.toStatus!] || item.data.toStatus}</span>
-                              </p>
-                            )}
-                            {item.type === "note" && (
-                              <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
-                                {item.data.createdBy && <span className="font-medium">{item.data.createdBy}: </span>}
-                                {(item.data.content || "").replace(/<[^>]*>/g, "").slice(0, 200)}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0 mt-1">
-                        {timeAgo(item.timestamp)}
+          {needsAttention.length === 0 ? (
+            <p className="text-gray-400 text-sm py-6 text-center">No leads need attention right now.</p>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {needsAttention.map((lead) => (
+                <div
+                  key={lead.leadId}
+                  onClick={() => router.push(`/leads/${lead.leadId}`)}
+                  className="flex items-start gap-3 p-3 rounded-lg border border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition"
+                >
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center text-xs font-bold">
+                    {lead.activityCount}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{lead.projectName}</p>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STATUS_COLORS[lead.status] || "bg-gray-100 text-gray-800"}`}>
+                        {STATUS_LABELS[lead.status] || lead.status}
                       </span>
                     </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{lead.customerName}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">
+                      {lead.lastAction}{lead.lastActor ? ` by ${lead.lastActor}` : ""} — {timeAgo(lead.lastActivityAt)}
+                    </p>
                   </div>
-                );
-              })}
+                  {lead.assignedTo && (
+                    <span className="text-[10px] text-gray-400 flex-shrink-0">{lead.assignedTo}</span>
+                  )}
+                </div>
+              ))}
             </div>
+          )}
+        </div>
 
-            {/* Load More */}
-            {hasMore && (
-              <div className="text-center mt-6">
-                <button
-                  onClick={handleLoadMore}
-                  disabled={loadingMore}
-                  className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition"
+        {/* Pipeline Distribution */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-5">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Pipeline Overview</h2>
+          {Object.keys(statusDistribution).length === 0 ? (
+            <p className="text-gray-400 text-sm py-6 text-center">No leads in the pipeline yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {Object.entries(statusDistribution)
+                .sort((a, b) => b[1] - a[1])
+                .map(([status, count]) => {
+                  const total = Object.values(statusDistribution).reduce((s, c) => s + c, 0);
+                  const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+                  return (
+                    <div key={status} className="flex items-center gap-3">
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-medium w-32 text-center ${STATUS_COLORS[status] || "bg-gray-100 text-gray-800"}`}>
+                        {STATUS_LABELS[status] || status}
+                      </span>
+                      <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-2.5 overflow-hidden">
+                        <div className="bg-[#01358d] h-full rounded-full transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300 w-8 text-right">{count}</span>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Activity</h2>
+          <button
+            onClick={() => router.push("/activity")}
+            className="text-xs text-[#01358d] dark:text-blue-400 hover:underline font-medium"
+          >
+            View All Activity
+          </button>
+        </div>
+        {activityLoading ? (
+          <div className="flex justify-center py-6">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#01358d]" />
+          </div>
+        ) : activities.length === 0 ? (
+          <p className="text-gray-400 text-sm py-6 text-center">No recent activity.</p>
+        ) : (
+          <div className="space-y-2">
+            {activities.map((item) => {
+              const config = TYPE_CONFIG[item.type] || { label: item.type, color: "bg-gray-100 text-gray-800", icon: "•" };
+              return (
+                <div
+                  key={`${item.type}-${item.id}`}
+                  onClick={() => router.push(`/leads/${item.lead.id}`)}
+                  className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition"
                 >
-                  {loadingMore ? "Loading..." : "Load More"}
-                </button>
-              </div>
-            )}
-          </>
+                  <span className="text-sm flex-shrink-0">{config.icon}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${config.color}`}>
+                    {config.label}
+                  </span>
+                  <span className="text-sm text-gray-700 dark:text-gray-300 truncate flex-1">
+                    <span className="font-medium text-blue-600">{item.lead.projectName}</span>
+                    <span className="text-gray-400"> — {item.lead.customerName}</span>
+                  </span>
+                  <span className="text-xs text-gray-400 flex-shrink-0">{timeAgo(item.timestamp)}</span>
+                </div>
+              );
+            })}
+          </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, color, highlight, onClick }: {
+  label: string; value: number; color: string; highlight?: boolean; onClick?: () => void;
+}) {
+  return (
+    <div
+      onClick={onClick}
+      className={`bg-white dark:bg-gray-800 rounded-xl border p-4 transition ${
+        highlight ? "border-red-200 dark:border-red-800 ring-1 ring-red-100 dark:ring-red-900" : "border-gray-200 dark:border-gray-700"
+      } ${onClick ? "cursor-pointer hover:shadow-md" : ""}`}
+    >
+      <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">{label}</p>
+      <p className={`text-2xl font-bold mt-1 ${color}`}>{value}</p>
     </div>
   );
 }

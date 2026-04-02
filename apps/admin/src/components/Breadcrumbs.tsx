@@ -3,8 +3,9 @@
 import { usePathname } from "next/navigation";
 
 const ROUTE_LABELS: Record<string, string> = {
-  "": "Activity Feed",
+  "": "Dashboard",
   dashboard: "Leads",
+  activity: "Activity Feed",
   leads: "Leads",
   new: "New Lead",
   "sow-builder": "SOW Builder",
@@ -32,7 +33,7 @@ export default function Breadcrumbs() {
   if (segments.length === 0) {
     return (
       <div className="text-sm text-gray-500 dark:text-gray-400">
-        <span className="font-medium text-gray-900 dark:text-white">Activity Feed</span>
+        <span className="font-medium text-gray-900 dark:text-white">Dashboard</span>
       </div>
     );
   }
