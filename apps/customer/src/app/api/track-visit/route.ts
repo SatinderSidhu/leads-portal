@@ -44,6 +44,18 @@ export async function POST(req: Request) {
     },
   });
 
+  // Log to audit trail
+  const visitorName = session?.name || "Customer";
+  const tabLabel = page ? ` (${page} tab)` : "";
+  await prisma.auditLog.create({
+    data: {
+      leadId,
+      action: "Customer Portal Visit",
+      detail: `${visitorName} visited the portal${tabLabel}`,
+      actor: `${visitorName} (Customer)`,
+    },
+  }).catch(() => {});
+
   // Send notification to watchers + assigned admin
   try {
     const lead = await prisma.lead.findUnique({

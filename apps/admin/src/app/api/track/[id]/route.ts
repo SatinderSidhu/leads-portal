@@ -1,6 +1,7 @@
 import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { sendNotification } from "../../../../lib/notify";
+import { logAudit } from "../../../../lib/audit";
 
 // 1x1 transparent GIF
 const PIXEL = Buffer.from(
@@ -26,8 +27,15 @@ export async function GET(
       },
     });
 
-    // Notify watchers that customer opened the email
+    // Notify watchers and log audit
     if (email.lead) {
+      logAudit(
+        email.lead.id,
+        "Email Opened by Customer",
+        `"${email.subject}" opened at ${new Date().toLocaleString()}`,
+        email.lead.customerName
+      ).catch(() => {});
+
       sendNotification({
         event: "customer_response",
         leadId: email.lead.id,
