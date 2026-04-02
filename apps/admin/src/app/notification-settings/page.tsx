@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ThemeToggle } from "../../components/ThemeToggle";
 
 interface Preferences {
   notificationEmail: string | null;
@@ -107,30 +106,14 @@ export default function NotificationSettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#01358d]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
-        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.push("/")}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm font-medium transition"
-            >
-              &larr; Dashboard
-            </button>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Notification Settings</h1>
-          </div>
-          <ThemeToggle />
-        </div>
-      </header>
-
-      <main className="max-w-3xl mx-auto px-6 py-8 space-y-6">
+    <div className="max-w-3xl space-y-6">
         {/* Notification Email */}
         <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">Notification Email</h2>
@@ -216,7 +199,6 @@ export default function NotificationSettingsPage() {
             <span className="text-sm text-green-600 dark:text-green-400 font-medium">Saved!</span>
           )}
         </div>
-      </main>
     </div>
   );
 }

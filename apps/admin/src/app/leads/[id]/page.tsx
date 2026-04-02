@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ThemeToggle } from "../../../components/ThemeToggle";
 import dynamic from "next/dynamic";
 
 const RichTextEditor = dynamic(
@@ -1142,7 +1141,7 @@ export default function LeadDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <p className="text-gray-500 dark:text-gray-400">Loading...</p>
       </div>
     );
@@ -1150,7 +1149,7 @@ export default function LeadDetailPage() {
 
   if (!lead) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <p className="text-gray-500 dark:text-gray-400">Lead not found</p>
       </div>
     );
@@ -1163,16 +1162,10 @@ export default function LeadDetailPage() {
     editProjectDescription.trim();
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+    <div>
+      {/* Top bar with lead info and actions */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 px-6 py-4 mb-4 flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm font-medium transition"
-            >
-              &larr; Back
-            </button>
             <h1 className="text-xl font-bold text-gray-900 dark:text-white">
               {lead.projectName}
             </h1>
@@ -1226,7 +1219,6 @@ export default function LeadDetailPage() {
               )}
             </button>
 
-            <ThemeToggle />
             {!editing && (
               <button
                 onClick={startEditing}
@@ -1243,10 +1235,9 @@ export default function LeadDetailPage() {
               {deleting ? "Deleting..." : "Delete"}
             </button>
           </div>
-        </div>
-      </header>
+      </div>
 
-      <main className="w-full mx-auto px-4 py-6">
+      <div>
         <div className="grid grid-cols-1 xl:grid-cols-12 lg:grid-cols-2 gap-4">
           {/* Left Column — Lead Info + Emails */}
           <div className="xl:col-span-6 space-y-4">
@@ -3153,7 +3144,7 @@ export default function LeadDetailPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

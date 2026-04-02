@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ThemeToggle } from "../../components/ThemeToggle";
 import dynamic from "next/dynamic";
 
 const RichTextEditor = dynamic(
@@ -140,7 +139,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <p className="text-gray-500 dark:text-gray-400">Loading...</p>
       </div>
     );
@@ -148,7 +147,7 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <p className="text-gray-500 dark:text-gray-400">
           Could not load profile
         </p>
@@ -157,25 +156,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm font-medium transition"
-            >
-              &larr; Dashboard
-            </button>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-              My Profile
-            </h1>
-          </div>
-          <ThemeToggle />
-        </div>
-      </header>
-
-      <main className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+    <div className="max-w-4xl space-y-6">
         {/* Profile Picture */}
         <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -318,7 +299,6 @@ export default function ProfilePage() {
             </p>
           </div>
         </div>
-      </main>
     </div>
   );
 }

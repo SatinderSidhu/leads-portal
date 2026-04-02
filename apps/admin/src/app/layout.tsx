@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "../components/ThemeProvider";
 import { HelpButton } from "../components/HelpOverlay";
+import AdminShell from "../components/AdminShell";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -30,7 +31,9 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider>
-          {children}
+          <AdminShell>
+            {children}
+          </AdminShell>
           <HelpButton />
         </ThemeProvider>
       </body>

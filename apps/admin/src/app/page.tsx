@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ThemeToggle } from "../components/ThemeToggle";
 
 const STATUS_LABELS: Record<string, string> = {
   NEW: "New",
@@ -106,11 +105,6 @@ export default function ActivityDashboard() {
     fetchActivities(nextPage, filter, true);
   }
 
-  async function handleLogout() {
-    await fetch("/api/auth", { method: "DELETE" });
-    router.push("/login");
-  }
-
   // Count stats from current loaded activities
   const recentReceivedCount = activities.filter(
     (a) => a.type === "received_email" && Date.now() - new Date(a.timestamp).getTime() < 86400000
@@ -119,92 +113,7 @@ export default function ActivityDashboard() {
   const portalVisitCount = activities.filter((a) => a.type === "portal_visit").length;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="/kitlabs-logo.jpg" alt="KITLabs" className="h-9 object-contain" />
-            <h1 className="text-xl font-bold text-[#01358d] dark:text-white">Leads Portal</h1>
-          </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <ThemeToggle />
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="bg-[#01358d] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#012a70] transition"
-            >
-              All Leads
-            </button>
-            <button
-              onClick={() => router.push("/admin-users")}
-              className="bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition"
-            >
-              Admin Users
-            </button>
-            <button
-              onClick={() => router.push("/profile")}
-              className="bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition"
-            >
-              My Profile
-            </button>
-            <button
-              onClick={() => router.push("/email-templates")}
-              className="bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 transition"
-            >
-              Email Templates
-            </button>
-            <button
-              onClick={() => router.push("/sow-templates")}
-              className="bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-cyan-700 transition"
-            >
-              SOW Templates
-            </button>
-            <button
-              onClick={() => router.push("/email-flows")}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition"
-            >
-              Email Flows
-            </button>
-            <button
-              onClick={() => router.push("/content")}
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition"
-            >
-              Content
-            </button>
-            <button
-              onClick={() => router.push("/branding")}
-              className="bg-rose-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-700 transition"
-            >
-              Branding
-            </button>
-            <button
-              onClick={() => router.push("/zoho-settings")}
-              className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-700 transition"
-            >
-              Zoho CRM
-            </button>
-            <button
-              onClick={() => router.push("/notification-settings")}
-              className="bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition"
-            >
-              Notifications
-            </button>
-            <button
-              onClick={() => router.push("/leads/new")}
-              className="bg-[#f9556d] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#e8445c] transition"
-            >
-              + New Lead
-            </button>
-            <button
-              onClick={handleLogout}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm font-medium transition"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-5xl mx-auto px-6 py-8">
+    <div>
         {/* Summary cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
           <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
@@ -361,7 +270,6 @@ export default function ActivityDashboard() {
             )}
           </>
         )}
-      </main>
     </div>
   );
 }

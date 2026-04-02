@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ThemeToggle } from "../../components/ThemeToggle";
 
 const DATA_CENTERS = [
   { value: "us", label: "United States (.com)" },
@@ -150,30 +149,14 @@ export default function ZohoSettingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#01358d]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
-        <div className="max-w-3xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.push("/")}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm font-medium transition"
-            >
-              &larr; Dashboard
-            </button>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Zoho CRM Settings</h1>
-          </div>
-          <ThemeToggle />
-        </div>
-      </header>
-
-      <main className="max-w-3xl mx-auto px-6 py-8 space-y-6">
+    <div className="max-w-3xl space-y-6">
         {/* Message */}
         {message && (
           <div className={`p-4 rounded-lg text-sm font-medium ${
@@ -395,7 +378,6 @@ export default function ZohoSettingsPage() {
             <li>Use "Find &amp; Link Leads" above to discover leads that exist in both systems but aren&apos;t connected.</li>
           </ul>
         </div>
-      </main>
     </div>
   );
 }

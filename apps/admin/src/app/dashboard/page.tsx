@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ThemeToggle } from "../../components/ThemeToggle";
 
 const STATUS_LABELS: Record<string, string> = {
   NEW: "New",
@@ -165,98 +164,8 @@ export default function DashboardPage() {
     fetchLeads(1);
   }, [fetchLeads]);
 
-  async function handleLogout() {
-    await fetch("/api/auth", { method: "DELETE" });
-    router.push("/login");
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src="/kitlabs-logo.jpg" alt="KITLabs" className="h-9 object-contain" />
-            <h1 className="text-xl font-bold text-[#01358d] dark:text-white">Leads Portal</h1>
-          </div>
-          <div className="flex items-center gap-3 flex-wrap">
-            <ThemeToggle />
-            <button
-              onClick={() => router.push("/")}
-              className="bg-[#01358d] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#012a70] transition"
-            >
-              Activity Feed
-            </button>
-            <button
-              onClick={() => router.push("/profile")}
-              className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-            >
-              My Profile
-            </button>
-            <button
-              onClick={() => router.push("/admin-users")}
-              className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-            >
-              Admin Users
-            </button>
-            <button
-              onClick={() => router.push("/email-templates")}
-              className="bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 transition"
-            >
-              Email Templates
-            </button>
-            <button
-              onClick={() => router.push("/sow-templates")}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition"
-            >
-              SOW Templates
-            </button>
-            <button
-              onClick={() => router.push("/email-flows")}
-              className="bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 transition"
-            >
-              Email Flows
-            </button>
-            <button
-              onClick={() => router.push("/content")}
-              className="bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 transition"
-            >
-              Content
-            </button>
-            <button
-              onClick={() => router.push("/branding")}
-              className="bg-rose-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-rose-700 transition"
-            >
-              Branding
-            </button>
-            <button
-              onClick={() => router.push("/zoho-settings")}
-              className="bg-orange-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-orange-700 transition"
-            >
-              Zoho CRM
-            </button>
-            <button
-              onClick={() => router.push("/notification-settings")}
-              className="bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-700 transition"
-            >
-              Notifications
-            </button>
-            <button
-              onClick={() => router.push("/leads/new")}
-              className="bg-[#f9556d] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#e8445c] transition"
-            >
-              + New Lead
-            </button>
-            <button
-              onClick={handleLogout}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm font-medium transition"
-            >
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main className="max-w-7xl mx-auto px-6 py-8">
+    <div>
         {/* Search & Filters */}
         <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4 mb-6">
           <div className="flex flex-wrap gap-3 items-end">
@@ -490,7 +399,6 @@ export default function DashboardPage() {
             )}
           </>
         )}
-      </main>
     </div>
   );
 }

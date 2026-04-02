@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ThemeToggle } from "../../components/ThemeToggle";
 
 interface BrandingData {
   id: string;
@@ -118,32 +117,14 @@ export default function BrandingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+      <div className="flex items-center justify-center py-16">
         <p className="text-gray-500 dark:text-gray-400">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <header className="bg-white dark:bg-gray-800 shadow-sm border-b dark:border-gray-700">
-        <div className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.push("/dashboard")}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-sm font-medium transition"
-            >
-              &larr; Dashboard
-            </button>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-white">
-              Branding
-            </h1>
-          </div>
-          <ThemeToggle />
-        </div>
-      </header>
-
-      <main className="max-w-5xl mx-auto px-6 py-8">
+    <div>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left column — Form */}
           <div className="lg:col-span-2 space-y-6">
@@ -397,7 +378,6 @@ export default function BrandingPage() {
             </div>
           </div>
         </div>
-      </main>
     </div>
   );
 }
