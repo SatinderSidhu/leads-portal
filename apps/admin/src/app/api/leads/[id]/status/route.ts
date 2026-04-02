@@ -21,10 +21,18 @@ export async function PATCH(
 
   const previousStatus = lead.status;
 
+  // Auto-enable doNotContact for closed statuses
+  const DO_NOT_CONTACT_STATUSES = ["LOST", "NO_RESPONSE", "ON_HOLD", "CANCELLED"];
+  const autoDoNotContact = DO_NOT_CONTACT_STATUSES.includes(status);
+
   const updatedLead = await prisma.$transaction(async (tx) => {
     const updated = await tx.lead.update({
       where: { id },
-      data: { status, updatedBy: adminName },
+      data: {
+        status,
+        updatedBy: adminName,
+        ...(autoDoNotContact && !lead.doNotContact && { doNotContact: true }),
+      },
     });
 
     await tx.statusHistory.create({
@@ -38,6 +46,20 @@ export async function PATCH(
 
     return updated;
   });
+
+  // Log doNotContact auto-enable
+  if (autoDoNotContact && !lead.doNotContact) {
+    logAudit(id, "Do Not Contact Enabled", `Auto-enabled due to status change to ${status}`, adminName).catch(() => {});
+  }
+
+  // Block email if doNotContact
+  if (sendEmail && updatedLead.doNotContact) {
+    logAudit(id, "Status Changed", `${previousStatus} → ${status}`, session?.name).catch(() => {});
+    return NextResponse.json({
+      ...updatedLead,
+      emailWarning: "Status updated but email blocked — Do Not Contact is enabled",
+    });
+  }
 
   if (sendEmail) {
     try {

@@ -16,6 +16,13 @@ export async function POST(
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
 
+  if (lead.doNotContact) {
+    return NextResponse.json(
+      { error: "Cannot send email — Do Not Contact is enabled for this lead." },
+      { status: 403 }
+    );
+  }
+
   const nda = await prisma.nda.findUnique({ where: { leadId: id } });
   if (!nda) {
     return NextResponse.json({ error: "NDA not found" }, { status: 404 });

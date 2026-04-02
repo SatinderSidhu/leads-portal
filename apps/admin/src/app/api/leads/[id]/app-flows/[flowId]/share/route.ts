@@ -12,11 +12,18 @@ export async function POST(
 
   const lead = await prisma.lead.findUnique({
     where: { id },
-    select: { customerName: true, customerEmail: true, projectName: true, status: true },
+    select: { customerName: true, customerEmail: true, projectName: true, status: true, doNotContact: true },
   });
 
   if (!lead) {
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+  }
+
+  if (lead.doNotContact) {
+    return NextResponse.json(
+      { error: "Cannot share — Do Not Contact is enabled for this lead." },
+      { status: 403 }
+    );
   }
 
   const flow = await prisma.appFlow.findFirst({

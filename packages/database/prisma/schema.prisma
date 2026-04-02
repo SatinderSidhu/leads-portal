@@ -56,6 +56,10 @@ enum LeadStatus {
   BUILD_READY_FOR_REVIEW
   BUILD_SUBMITTED
   GO_LIVE
+  LOST
+  NO_RESPONSE
+  ON_HOLD
+  CANCELLED
 }
 
 model AdminUser {
@@ -86,6 +90,7 @@ model Lead {
   source             LeadSource   @default(MANUAL)
   status             LeadStatus   @default(NEW)
   emailSent          Boolean      @default(false) @map("email_sent")
+  doNotContact       Boolean      @default(false) @map("do_not_contact")
   createdBy          String?      @map("created_by")
   updatedBy          String?      @map("updated_by")
   createdAt          DateTime     @default(now()) @map("created_at")

@@ -89,11 +89,19 @@ export async function POST(
     select: {
       customerEmail: true, customerName: true, projectName: true,
       phone: true, city: true, status: true, stage: true, source: true, dateCreated: true,
+      doNotContact: true,
     },
   });
 
   if (!lead) {
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
+  }
+
+  if (lead.doNotContact) {
+    return NextResponse.json(
+      { error: "Cannot send email — Do Not Contact is enabled for this lead. Disable it first." },
+      { status: 403 }
+    );
   }
 
   const session = await getAdminSession();

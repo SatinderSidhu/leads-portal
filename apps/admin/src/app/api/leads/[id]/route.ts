@@ -99,10 +99,14 @@ export async function PUT(
         ...(body.meetingBooked !== undefined && { meetingBooked: body.meetingBooked }),
         ...(body.meetingDate !== undefined && { meetingDate: body.meetingDate ? new Date(body.meetingDate) : null }),
         ...(body.responseReceived !== undefined && { responseReceived: body.responseReceived }),
+        ...(body.doNotContact !== undefined && { doNotContact: body.doNotContact }),
         updatedBy: session?.name || "Unknown",
       },
     });
 
+    if (body.doNotContact !== undefined && body.doNotContact !== lead.doNotContact) {
+      logAudit(id, body.doNotContact ? "Do Not Contact Enabled" : "Do Not Contact Disabled", null, session?.name || "Unknown").catch(() => {});
+    }
     logAudit(id, "Lead Updated", null, session?.name || "Unknown").catch(() => {});
 
     return NextResponse.json(updatedLead);

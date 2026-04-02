@@ -15,6 +15,10 @@ const STATUS_LABELS: Record<string, string> = {
   BUILD_READY_FOR_REVIEW: "Build Ready for Review",
   BUILD_SUBMITTED: "Build Submitted",
   GO_LIVE: "Go Live",
+  LOST: "Lost",
+  NO_RESPONSE: "No Response",
+  ON_HOLD: "On Hold",
+  CANCELLED: "Cancelled",
 };
 
 const STAGE_LABELS: Record<string, string> = {
@@ -58,6 +62,10 @@ const STATUS_COLORS: Record<string, string> = {
   BUILD_READY_FOR_REVIEW: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
   BUILD_SUBMITTED: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
   GO_LIVE: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
+  LOST: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+  NO_RESPONSE: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200",
+  ON_HOLD: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+  CANCELLED: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
 };
 
 const SOURCE_LABELS: Record<string, string> = {

@@ -21,6 +21,10 @@ const STATUS_OPTIONS = [
   "BUILD_READY_FOR_REVIEW",
   "BUILD_SUBMITTED",
   "GO_LIVE",
+  "LOST",
+  "NO_RESPONSE",
+  "ON_HOLD",
+  "CANCELLED",
 ] as const;
 
 const STATUS_LABELS: Record<string, string> = {
@@ -34,6 +38,10 @@ const STATUS_LABELS: Record<string, string> = {
   BUILD_READY_FOR_REVIEW: "Build Ready for Review",
   BUILD_SUBMITTED: "Build Submitted",
   GO_LIVE: "Go Live",
+  LOST: "Lost",
+  NO_RESPONSE: "No Response",
+  ON_HOLD: "On Hold",
+  CANCELLED: "Cancelled",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -47,6 +55,10 @@ const STATUS_COLORS: Record<string, string> = {
   BUILD_READY_FOR_REVIEW: "bg-purple-100 text-purple-800",
   BUILD_SUBMITTED: "bg-indigo-100 text-indigo-800",
   GO_LIVE: "bg-emerald-100 text-emerald-800",
+  LOST: "bg-red-100 text-red-800",
+  NO_RESPONSE: "bg-gray-100 text-gray-800",
+  ON_HOLD: "bg-amber-100 text-amber-800",
+  CANCELLED: "bg-red-100 text-red-800",
 };
 
 const STAGE_OPTIONS = ["NEW", "COLD", "WARM", "HOT", "CONTACTED", "RESPONDED", "MEETING_BOOKED", "QUALIFIED", "DISQUALIFIED", "NURTURE", "ACTIVE", "CLOSED"] as const;
@@ -190,6 +202,7 @@ interface Lead {
   createdAt: string;
   updatedAt: string;
   zohoLeadId: string | null;
+  doNotContact: boolean;
   jobTitle: string | null;
   companyName: string | null;
   location: string | null;
@@ -637,6 +650,25 @@ export default function LeadDetailPage() {
       alert("Failed to sync with Zoho");
     } finally {
       setZohoSyncing(false);
+    }
+  }
+
+  async function handleToggleDoNotContact() {
+    if (!lead) return;
+    const newValue = !lead.doNotContact;
+    if (lead.doNotContact && !confirm("Are you sure you want to disable Do Not Contact? This will allow emails to be sent to this customer again.")) return;
+    try {
+      const res = await fetch(`/api/leads/${lead.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ doNotContact: newValue }),
+      });
+      if (res.ok) {
+        await fetchLead();
+        fetchAuditLogs();
+      }
+    } catch {
+      alert("Failed to update Do Not Contact flag");
     }
   }
 
@@ -1649,13 +1681,15 @@ export default function LeadDetailPage() {
                         <p className="text-gray-900 dark:text-white font-medium">
                           {lead.emailSent ? "Sent" : "Not sent"}
                         </p>
-                        <button
-                          onClick={handleSendWelcomeEmail}
-                          disabled={sendingWelcome}
-                          className="text-xs font-medium text-[#01358d] dark:text-blue-400 hover:underline disabled:opacity-50"
-                        >
-                          {sendingWelcome ? "Sending..." : lead.emailSent ? "Resend" : "Send Now"}
-                        </button>
+                        {!lead.doNotContact && (
+                          <button
+                            onClick={handleSendWelcomeEmail}
+                            disabled={sendingWelcome}
+                            className="text-xs font-medium text-[#01358d] dark:text-blue-400 hover:underline disabled:opacity-50"
+                          >
+                            {sendingWelcome ? "Sending..." : lead.emailSent ? "Resend" : "Send Now"}
+                          </button>
+                        )}
                       </div>
                     </div>
                     {lead.jobTitle && (
@@ -1902,8 +1936,12 @@ export default function LeadDetailPage() {
                 </h2>
                 {!composeOpen && (
                   <button
-                    onClick={() => { resetCompose(); setComposeOpen(true); }}
-                    className="px-4 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700 transition"
+                    onClick={() => {
+                      if (lead.doNotContact) { alert("Cannot send email — Do Not Contact is enabled. Disable it first."); return; }
+                      resetCompose(); setComposeOpen(true);
+                    }}
+                    disabled={lead.doNotContact}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition ${lead.doNotContact ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-teal-600 text-white hover:bg-teal-700"}`}
                   >
                     Compose Email
                   </button>
@@ -2724,6 +2762,28 @@ export default function LeadDetailPage() {
           {/* Right Column — Status, Notes, Next Steps, Audit */}
           <div className="xl:col-span-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            {/* Do Not Contact Banner */}
+            {lead.doNotContact && (
+              <div className="md:col-span-2 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-xl p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-red-600 dark:text-red-400 flex-shrink-0">
+                    <circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/>
+                  </svg>
+                  <div>
+                    <p className="text-sm font-semibold text-red-800 dark:text-red-300">Do Not Contact</p>
+                    <p className="text-xs text-red-600 dark:text-red-400">All outbound emails and sharing are blocked for this lead.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleToggleDoNotContact}
+                  className="text-xs font-medium text-red-700 dark:text-red-300 border border-red-300 dark:border-red-700 px-3 py-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/40 transition"
+                >
+                  Disable
+                </button>
+              </div>
+            )}
+
             {/* Status Update */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -2742,15 +2802,16 @@ export default function LeadDetailPage() {
                 ))}
               </select>
 
-              <label className="flex items-center gap-2 mb-4 cursor-pointer">
+              <label className={`flex items-center gap-2 mb-4 ${lead.doNotContact ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}>
                 <input
                   type="checkbox"
-                  checked={notifyCustomer}
+                  checked={lead.doNotContact ? false : notifyCustomer}
                   onChange={(e) => setNotifyCustomer(e.target.checked)}
+                  disabled={lead.doNotContact}
                   className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                 />
                 <span className="text-sm text-gray-700 dark:text-gray-300">
-                  Notify Customer
+                  Notify Customer {lead.doNotContact && <span className="text-red-500 text-xs">(blocked)</span>}
                 </span>
               </label>
 
