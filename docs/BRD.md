@@ -1106,7 +1106,12 @@ _This section will be updated as new features are planned and developed._
 | ~~Search & Filter~~ | ~~Search and filter leads on the dashboard~~ — **Implemented v2.1** | ~~Medium~~ |
 | ~~Email Templates~~ | ~~Customizable email templates for different scenarios~~ — **Implemented v1.6** | ~~Low~~ |
 | Lead Analytics | Dashboard widgets showing lead statistics and trends | Low |
-| Notification System | In-app notifications for admin on customer activity | Low |
+| ~~Notification System~~ | ~~In-app notifications for admin on customer activity~~ — **Implemented v3.0** | ~~Low~~ |
+| ~~Zoho CRM Integration~~ | ~~Bidirectional lead sync with Zoho CRM~~ — **Implemented v2.7-2.9** | ~~High~~ |
+| ~~Expanded Lead Fields~~ | ~~Job title, company, industry, outreach tracking, lead scoring~~ — **Implemented v2.8** | ~~High~~ |
+| ~~Do Not Contact~~ | ~~Block outbound emails for closed/lost leads~~ — **Implemented v3.3** | ~~Medium~~ |
+| ~~Audit Log~~ | ~~Complete activity trail per lead with customer engagement tracking~~ — **Implemented v3.2** | ~~Medium~~ |
+| ~~Persistent Navigation~~ | ~~Sidebar navigation with breadcrumbs across all admin pages~~ — **Implemented v3.4** | ~~Medium~~ |
 
 ---
 
@@ -1123,3 +1128,8 @@ _This section will be updated as new features are planned and developed._
 | 1.6 | March 12, 2026 | Added SOW template system: reusable templates with HTML content, metadata (industry, project type, duration/cost range), default flag, CRUD admin pages, template selector in SOW builder, AI prompt integration | — |
 | 1.7 | March 13, 2026 | Lead assignment & watch list: auto-assign leads to creating admin, reassignment via dropdown with email notification, watch/unwatch leads with watcher notifications on status changes, notes, and customer comments, dashboard defaults to "My Leads" with assignment filter and column | — |
 | 1.8 | March 13, 2026 | SOW template file upload (PDF/DOCX reference documents with content extraction for AI formatting), wireframe app flow upgrade (realistic mobile screen mockups with 17 typed UI element types, horizontal storyboard layout), Google Analytics on customer portal (G-8J4D4JHZGN), Nginx upload limit increased to 50M | — |
+| 2.0 | March 28, 2026 | Branding system, Zoho CRM integration (OAuth, create/search/sync leads), Book Meeting tab, customer feedback comments, expanded lead fields (15 new fields, 11 sources, 12 stages) | — |
+| 3.0 | March 31, 2026 | Configurable notification system (9 event types, per-admin preferences), customer portal visit tracking, central notification dispatcher, bidirectional Zoho sync, Find & Link / Import / Export tools | — |
+| 3.2 | April 1, 2026 | AuditLog model (16+ events), activity feed with email opened + portal visits + pagination, email history logging (welcome/NDA/SOW/App Flow), resend welcome email, admin notes edit/delete, customer portal URL on lead detail | — |
+| 3.3 | April 2, 2026 | Closed statuses (Lost/No Response/On Hold/Cancelled), Do Not Contact flag (auto-enabled, blocks all outbound), SOW PDF fix (html2pdf.js with HTML formatting + base64 images) | — |
+| 3.4 | April 2, 2026 | Persistent sidebar navigation (AdminShell + Sidebar + Breadcrumbs), full-width page layouts, removed per-page headers | — |

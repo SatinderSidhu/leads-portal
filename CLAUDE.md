@@ -29,7 +29,7 @@ A leads management system for KITLabs Inc. Two Next.js apps in a Turborepo monor
 | Flow Builder | @xyflow/react (admin: editable flows, customer: read-only viewer) |
 | App Flow AI | Anthropic Claude API (SSE streaming JSON generation) |
 | Doc Extraction | mammoth (DOCX→HTML), pdf-parse (PDF→text) |
-| PDF | jsPDF (NDA + SOW PDF generation on customer side) |
+| PDF | html2pdf.js (SOW PDF with full HTML rendering, both portals) + jsPDF (NDA PDF) |
 | Image Export | html-to-image (PNG export for app flows on admin + customer) |
 | Analytics | Google Analytics (G-8J4D4JHZGN on customer portal) |
 | Deployment | Docker + Nginx + Let's Encrypt on single EC2 instance |
@@ -43,7 +43,7 @@ leads-portal/
 │   ├── admin/           # Admin portal (port 3000)
 │   │   ├── src/
 │   │   │   ├── app/     # Next.js App Router pages & API routes
-│   │   │   ├── components/  # ThemeProvider, ThemeToggle, FlowBuilder, RichTextEditor, AppFlowBuilder, app-flow-nodes
+│   │   │   ├── components/  # AdminShell, Sidebar, Breadcrumbs, ThemeProvider, ThemeToggle, FlowBuilder, RichTextEditor, AppFlowBuilder, app-flow-nodes
 │   │   │   └── lib/     # session.ts, email.ts, api-auth.ts, nda-template.ts, app-flow-prompt.ts, sow-prompt.ts, extract-file-text.ts, zoho.ts, notify.ts
 │   │   ├── public/      # openapi.json, uploads/, kitlabs-logo.jpg
 │   │   └── next.config.ts
@@ -75,7 +75,7 @@ leads-portal/
 | Model | Table | Purpose |
 |-------|-------|---------|
 | AdminUser | admin_users | Admin portal users (name, email, username, password, profilePicture, emailSignature) |
-| Lead | leads | Core entity — projects/leads with status tracking |
+| Lead | leads | Core entity — projects/leads with status tracking, doNotContact flag |
 | Note | notes | Comments on leads |
 | StatusHistory | status_history | Audit trail of status changes |
 | Nda | ndas | Non-disclosure agreements (one per lead) |
@@ -102,7 +102,7 @@ leads-portal/
 
 ### Key Enums
 - `LeadSource`: MANUAL, AGENT, BARK, LINKEDIN_SALES_NAV, APOLLO, LINKEDIN_COMPANY_PAGE, REFERRAL, WEBSITE, COLD_OUTREACH, EVENT, OTHER
-- `LeadStatus`: NEW → SOW_READY → SOW_SIGNED → APP_FLOW_READY → DESIGN_READY → DESIGN_APPROVED → BUILD_IN_PROGRESS → BUILD_READY_FOR_REVIEW → BUILD_SUBMITTED → GO_LIVE
+- `LeadStatus`: NEW → SOW_READY → SOW_SIGNED → APP_FLOW_READY → DESIGN_READY → DESIGN_APPROVED → BUILD_IN_PROGRESS → BUILD_READY_FOR_REVIEW → BUILD_SUBMITTED → GO_LIVE | LOST | NO_RESPONSE | ON_HOLD | CANCELLED
 - `LeadStage`: COLD, WARM, HOT, ACTIVE, CLOSED, NEW, CONTACTED, RESPONDED, MEETING_BOOKED, QUALIFIED, DISQUALIFIED, NURTURE
 - `AppFlowType`: BASIC, WIREFRAME
 - `NdaStatus`: GENERATED, SENT, SIGNED
@@ -284,6 +284,9 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 
 | Component | File | Notes |
 |-----------|------|-------|
+| AdminShell | `apps/admin/src/components/AdminShell.tsx` | Layout wrapper: sidebar + sticky breadcrumb bar + main content area. Excluded on /login |
+| Sidebar | `apps/admin/src/components/Sidebar.tsx` | Fixed left nav (w-56): logo, New Lead button, grouped nav links, theme toggle, logout |
+| Breadcrumbs | `apps/admin/src/components/Breadcrumbs.tsx` | Auto-generated from URL path, handles UUIDs as "Lead Detail", clickable parent segments |
 | RichTextEditor | `apps/admin/src/components/RichTextEditor.tsx` | TipTap editor with visual/code toggle, syncs external content changes via useEffect |
 | FlowBuilder | `apps/admin/src/components/FlowBuilder.tsx` | @xyflow drag-and-drop email flow builder |
 | AppFlowBuilder | `apps/admin/src/components/AppFlowBuilder.tsx` | @xyflow app flow editor with AI sidebar, save, PNG download |
@@ -504,19 +507,51 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - Both sections are in the right sidebar of the lead detail page
 
 ## Audit Log
-- **AuditLog** model tracks all write operations on a lead: created, updated, email sent, NDA sent, SOW shared, app flow shared, status changed, notes added, next steps, customer actions (comments, NDA/SOW signed)
-- Audit logged from 14 API routes (11 admin + 3 customer) — non-blocking `.catch(() => {})`
+- **AuditLog** model tracks all write operations on a lead: created, updated, email sent, NDA sent, SOW shared, app flow shared, status changed, notes added/edited/deleted, next steps, customer actions (comments, NDA/SOW signed), email opened by customer, customer portal visits
+- Audit logged from 16+ API routes (admin + customer) — non-blocking `.catch(() => {})`
 - `GET /api/leads/[id]/audit` returns up to 100 most recent entries
 - Displayed in right sidebar of lead detail page as a compact scrollable timeline
 - Each entry shows: action name, detail (truncated), actor name, timestamp
+- Customer engagement events: "Email Opened by Customer" (with subject + timestamp), "Customer Portal Visit" (with visitor name + tab)
+
+## Do Not Contact
+- `doNotContact` boolean field on Lead model (default false)
+- **Auto-enabled** when status changes to LOST, NO_RESPONSE, ON_HOLD, or CANCELLED
+- **Blocks all outbound communication**: email compose (button disabled), welcome email send/resend (hidden), NDA send (403), SOW share (403), App Flow share (403), notify customer checkbox (disabled with "blocked" label)
+- **Red banner** on lead detail page when enabled with "Disable" button
+- Admin must manually disable doNotContact before contacting the customer again
+- Toggle logged in audit trail ("Do Not Contact Enabled/Disabled")
+
+## Lead Statuses
+- **Active pipeline**: NEW → SOW_READY → SOW_SIGNED → APP_FLOW_READY → DESIGN_READY → DESIGN_APPROVED → BUILD_IN_PROGRESS → BUILD_READY_FOR_REVIEW → BUILD_SUBMITTED → GO_LIVE
+- **Closed statuses**: LOST (went with competitor), NO_RESPONSE (stopped responding), ON_HOLD (paused — may return), CANCELLED (dropped the project)
+- Closed statuses auto-enable Do Not Contact flag
+
+## Email History Logging
+- Welcome, NDA, SOW share, and App Flow share emails are logged as SentEmail records
+- Appear in the lead's email conversation thread alongside manually composed emails
+- Resend welcome email: Send/Resend button on lead detail page, creates SentEmail record
+
+## SOW PDF Generation
+- Uses html2pdf.js (not jsPDF plain text) for full HTML rendering in PDFs
+- Preserves headings, bold, tables, lists, images with CSS styling
+- Logo images converted to base64 data URLs before capture (avoids cross-origin issues)
+- Image size constrained to max-width 250px in PDF, 280px in preview
+- Applied to both admin SOW builder and customer portal PDF downloads
 
 ## Lead Detail Page Layout
-- **3-column responsive layout** using CSS Grid `lg:grid-cols-12` with `max-w-[1600px]`
-- **Left column (col-span-3)**: Project details card (customer info, company info, Zoho status, portal URL)
-- **Center column (col-span-5)**: Email compose, recommended email, email thread, files, SOW versions, app flows
-- **Right column (col-span-4)**: Status update, status history, NDA, admin notes, next steps, audit log
-- On mobile: single column with all sections stacked
-- Optimized for desktop: minimizes scrolling by distributing content across 3 columns
+- **2-column responsive layout** using CSS Grid `xl:grid-cols-12` (50/50 split on xl screens)
+- **Left column (xl:col-span-6)**: Project details, customer portal URL, email compose/thread, files, SOW, app flows
+- **Right column (xl:col-span-6)**: 2-col sub-grid with Status/History side-by-side, NDA, Do Not Contact banner, admin notes + next steps side-by-side, audit log
+- On mobile/tablet: single column with all sections stacked
+- Full-width layout (no max-width constraint) with AdminShell padding
+
+## Admin Portal Navigation
+- **Persistent sidebar** (fixed left, 224px wide) with logo, New Lead button, grouped nav links, theme toggle, logout
+- **Sticky breadcrumb bar** at top showing current page path (auto-generated from URL)
+- **AdminShell** layout wrapper in root layout — wraps all pages except /login
+- Pages no longer have individual headers/nav — sidebar handles all navigation
+- Nav groups: Leads (Activity Feed, Leads), Templates (Email, SOW, Flows, Content), Settings (Branding, Zoho, Notifications), Users (Admin Users, Profile)
 
 ## Important Patterns
 - All admin API routes use `getAdminSession()` for auth (returns null if not logged in)
@@ -537,3 +572,6 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - When generating SOW with a template that has an uploaded file, the file content is extracted (DOCX→HTML via mammoth, PDF→text via pdf-parse) and injected into the AI prompt as a formatting reference
 - SOW prompt handles 4 scenarios: both editor template + file content, file only, editor template only, or default structure
 - Full-screen views use `fixed inset-0 z-50` overlay pattern with exit button in header bar
+- Admin notes are internal only — customer portal filters notes by `createdBy` ending with "(Customer)"
+- Do Not Contact flag blocks all outbound emails at the API level (returns 403)
+- SOW PDF generation uses html2pdf.js with base64 image conversion for cross-origin logo support
