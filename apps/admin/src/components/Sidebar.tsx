@@ -20,9 +20,19 @@ const NAV_ITEMS = [
   { href: "/profile", label: "My Profile", icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  collapsed: boolean;
+  hovered: boolean;
+  onMouseEnter: () => void;
+  onMouseLeave: () => void;
+  onToggleCollapse: () => void;
+}
+
+export default function Sidebar({ collapsed, hovered, onMouseEnter, onMouseLeave, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+
+  const isExpanded = !collapsed || hovered;
 
   async function handleLogout() {
     await fetch("/api/auth", { method: "DELETE" });
@@ -30,34 +40,57 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="fixed left-0 top-0 h-screen w-56 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col z-40">
-      {/* Logo */}
-      <div className="px-4 py-4 border-b border-gray-100 dark:border-gray-800">
+    <aside
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      className={`fixed left-0 top-0 h-screen bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800 flex flex-col z-40 transition-all duration-200 ${
+        isExpanded ? "w-56" : "w-16"
+      }`}
+    >
+      {/* Logo + collapse toggle */}
+      <div className="px-3 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
         <div
-          className="flex items-center gap-2.5 cursor-pointer"
+          className="flex items-center gap-2.5 cursor-pointer min-w-0"
           onClick={() => router.push("/")}
         >
-          <img src="/kitlabs-logo.jpg" alt="KITLabs" className="h-8 w-8 rounded-lg object-cover" />
-          <div>
-            <p className="text-sm font-bold text-[#01358d] dark:text-white leading-tight">Leads Portal</p>
-            <p className="text-[10px] text-gray-400">KITLabs Inc</p>
-          </div>
+          <img src="/kitlabs-logo.jpg" alt="KITLabs" className="h-8 w-8 rounded-lg object-cover flex-shrink-0" />
+          {isExpanded && (
+            <div className="overflow-hidden">
+              <p className="text-sm font-bold text-[#01358d] dark:text-white leading-tight whitespace-nowrap">Leads Portal</p>
+              <p className="text-[10px] text-gray-400 whitespace-nowrap">KITLabs Inc</p>
+            </div>
+          )}
         </div>
+        {isExpanded && (
+          <button
+            onClick={onToggleCollapse}
+            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition flex-shrink-0 p-1"
+            title={collapsed ? "Lock open" : "Collapse"}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {collapsed ? (
+                <><path d="M15 3h6v18h-6"/><path d="M9 12H3m6 0l-3-3m3 3l-3 3"/></>
+              ) : (
+                <><path d="M3 3h6v18H3"/><path d="M15 12h6m-6 0l3-3m-3 3l3 3"/></>
+              )}
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* New Lead button */}
       <div className="px-3 py-3">
         <button
           onClick={() => router.push("/leads/new")}
-          className="w-full bg-[#f9556d] text-white py-2 rounded-lg text-sm font-medium hover:bg-[#e8445c] transition flex items-center justify-center gap-1.5"
+          className={`w-full bg-[#f9556d] text-white py-2 rounded-lg text-sm font-medium hover:bg-[#e8445c] transition flex items-center justify-center gap-1.5 ${!isExpanded ? "px-0" : ""}`}
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14M5 12h14"/></svg>
-          New Lead
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0"><path d="M12 5v14M5 12h14"/></svg>
+          {isExpanded && "New Lead"}
         </button>
       </div>
 
       {/* Nav links */}
-      <nav className="flex-1 overflow-y-auto px-3 pb-3">
+      <nav className="flex-1 overflow-y-auto px-2 pb-3">
         {NAV_ITEMS.map((item, i) => {
           if ("type" in item && item.type === "divider") {
             return <div key={`d-${i}`} className="my-2 border-t border-gray-100 dark:border-gray-800" />;
@@ -68,32 +101,39 @@ export default function Sidebar() {
             <button
               key={nav.href}
               onClick={() => router.push(nav.href)}
+              title={!isExpanded ? nav.label : undefined}
               className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition mb-0.5 ${
                 isActive
                   ? "bg-[#01358d] text-white"
                   : "text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white"
-              }`}
+              } ${!isExpanded ? "justify-center px-2" : ""}`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0">
                 <path d={nav.icon} />
               </svg>
-              {nav.label}
+              {isExpanded && <span className="whitespace-nowrap overflow-hidden">{nav.label}</span>}
             </button>
           );
         })}
       </nav>
 
       {/* Bottom */}
-      <div className="px-3 py-3 border-t border-gray-100 dark:border-gray-800 space-y-2">
-        <div className="flex items-center justify-between px-2">
-          <ThemeToggle />
-          <button
-            onClick={handleLogout}
-            className="text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition"
-          >
-            Logout
-          </button>
-        </div>
+      <div className="px-3 py-3 border-t border-gray-100 dark:border-gray-800">
+        {isExpanded ? (
+          <div className="flex items-center justify-between px-1">
+            <ThemeToggle />
+            <button
+              onClick={handleLogout}
+              className="text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition"
+            >
+              Logout
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-2">
+            <ThemeToggle />
+          </div>
+        )}
       </div>
     </aside>
   );
