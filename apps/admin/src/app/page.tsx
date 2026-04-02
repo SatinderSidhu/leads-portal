@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "../components/ThemeToggle";
 
@@ -24,7 +24,7 @@ interface ActivityLead {
 
 interface ActivityItem {
   id: string;
-  type: "received_email" | "sent_email" | "status_change" | "note";
+  type: "received_email" | "sent_email" | "status_change" | "note" | "email_opened" | "portal_visit";
   timestamp: string;
   lead: ActivityLead;
   data: Record<string, string | null>;
@@ -47,38 +47,76 @@ const TYPE_CONFIG: Record<string, { label: string; color: string; icon: string }
   sent_email: { label: "Email Sent", color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200", icon: "↑" },
   status_change: { label: "Status Changed", color: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200", icon: "→" },
   note: { label: "Note Added", color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200", icon: "✎" },
+  email_opened: { label: "Email Opened", color: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200", icon: "👁" },
+  portal_visit: { label: "Portal Visit", color: "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200", icon: "🌐" },
 };
+
+const FILTER_TABS = [
+  { key: "all", label: "All Activity" },
+  { key: "received_email", label: "Received" },
+  { key: "sent_email", label: "Sent" },
+  { key: "email_opened", label: "Opened" },
+  { key: "portal_visit", label: "Portal Visits" },
+  { key: "status_change", label: "Status" },
+  { key: "note", label: "Notes" },
+];
 
 export default function ActivityDashboard() {
   const router = useRouter();
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [filter, setFilter] = useState<string>("all");
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+
+  const fetchActivities = useCallback(async (pageNum: number, typeFilter: string, append: boolean) => {
+    if (pageNum === 1) setLoading(true); else setLoadingMore(true);
+    try {
+      const params = new URLSearchParams({ page: String(pageNum), limit: "30" });
+      if (typeFilter !== "all") params.set("type", typeFilter);
+      const res = await fetch(`/api/activity?${params}`);
+      if (!res.ok) {
+        if (res.redirected || res.status === 401) router.push("/login");
+        return;
+      }
+      const data = await res.json();
+      if (append) {
+        setActivities((prev) => [...prev, ...(data.activities || [])]);
+      } else {
+        setActivities(data.activities || []);
+      }
+      setHasMore(data.pagination?.hasMore || false);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [router]);
 
   useEffect(() => {
-    fetch("/api/activity?limit=50")
-      .then((res) => {
-        if (!res.ok) {
-          if (res.redirected || res.status === 401) router.push("/login");
-          return [];
-        }
-        return res.json();
-      })
-      .then(setActivities)
-      .finally(() => setLoading(false));
-  }, [router]);
+    setPage(1);
+    fetchActivities(1, filter, false);
+  }, [filter, fetchActivities]);
+
+  function handleLoadMore() {
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchActivities(nextPage, filter, true);
+  }
 
   async function handleLogout() {
     await fetch("/api/auth", { method: "DELETE" });
     router.push("/login");
   }
 
-  const filtered = filter === "all" ? activities : activities.filter((a) => a.type === filter);
-
-  // Count unread (received emails in last 24h)
+  // Count stats from current loaded activities
   const recentReceivedCount = activities.filter(
     (a) => a.type === "received_email" && Date.now() - new Date(a.timestamp).getTime() < 86400000
   ).length;
+  const emailOpenedCount = activities.filter((a) => a.type === "email_opened").length;
+  const portalVisitCount = activities.filter((a) => a.type === "portal_visit").length;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -97,16 +135,16 @@ export default function ActivityDashboard() {
               All Leads
             </button>
             <button
-              onClick={() => router.push("/profile")}
-              className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-            >
-              My Profile
-            </button>
-            <button
               onClick={() => router.push("/admin-users")}
-              className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+              className="bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition"
             >
               Admin Users
+            </button>
+            <button
+              onClick={() => router.push("/profile")}
+              className="bg-gray-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-800 transition"
+            >
+              My Profile
             </button>
             <button
               onClick={() => router.push("/email-templates")}
@@ -116,13 +154,13 @@ export default function ActivityDashboard() {
             </button>
             <button
               onClick={() => router.push("/sow-templates")}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition"
+              className="bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-cyan-700 transition"
             >
               SOW Templates
             </button>
             <button
               onClick={() => router.push("/email-flows")}
-              className="bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 transition"
+              className="bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition"
             >
               Email Flows
             </button>
@@ -168,18 +206,26 @@ export default function ActivityDashboard() {
 
       <main className="max-w-5xl mx-auto px-6 py-8">
         {/* Summary cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
           <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total Activity</p>
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Total</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{activities.length}</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
-            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Emails Received (24h)</p>
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Received (24h)</p>
             <p className="text-2xl font-bold text-blue-600 mt-1">{recentReceivedCount}</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Emails Sent</p>
             <p className="text-2xl font-bold text-green-600 mt-1">{activities.filter((a) => a.type === "sent_email").length}</p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Emails Opened</p>
+            <p className="text-2xl font-bold text-cyan-600 mt-1">{emailOpenedCount}</p>
+          </div>
+          <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
+            <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Portal Visits</p>
+            <p className="text-2xl font-bold text-teal-600 mt-1">{portalVisitCount}</p>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status Changes</p>
@@ -189,13 +235,7 @@ export default function ActivityDashboard() {
 
         {/* Filter tabs */}
         <div className="flex items-center gap-2 mb-4 flex-wrap">
-          {[
-            { key: "all", label: "All Activity" },
-            { key: "received_email", label: "Received Emails" },
-            { key: "sent_email", label: "Sent Emails" },
-            { key: "status_change", label: "Status Changes" },
-            { key: "note", label: "Notes" },
-          ].map((tab) => (
+          {FILTER_TABS.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setFilter(tab.key)}
@@ -215,81 +255,111 @@ export default function ActivityDashboard() {
 
         {/* Activity feed */}
         {loading ? (
-          <p className="text-gray-500 dark:text-gray-400">Loading activity...</p>
-        ) : filtered.length === 0 ? (
+          <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#01358d] mx-auto" />
+            <p className="text-gray-500 dark:text-gray-400 mt-3">Loading activity...</p>
+          </div>
+        ) : activities.length === 0 ? (
           <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700">
             <p className="text-gray-500 dark:text-gray-400">No activity yet</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filtered.map((item) => {
-              const config = TYPE_CONFIG[item.type];
-              return (
-                <div
-                  key={`${item.type}-${item.id}`}
-                  onClick={() => router.push(`/leads/${item.lead.id}`)}
-                  className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4 hover:shadow-md transition cursor-pointer"
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3 min-w-0">
-                      <span className="text-lg mt-0.5 flex-shrink-0">{config.icon}</span>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
-                            {config.label}
-                          </span>
-                          <span className="text-sm font-medium text-blue-600 truncate">
-                            {item.lead.projectName}
-                          </span>
-                          <span className="text-xs text-gray-400">
-                            {item.lead.customerName}
-                          </span>
-                        </div>
+          <>
+            <div className="space-y-3">
+              {activities.map((item) => {
+                const config = TYPE_CONFIG[item.type] || { label: item.type, color: "bg-gray-100 text-gray-800", icon: "•" };
+                return (
+                  <div
+                    key={`${item.type}-${item.id}`}
+                    onClick={() => router.push(`/leads/${item.lead.id}`)}
+                    className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4 hover:shadow-md transition cursor-pointer"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-3 min-w-0">
+                        <span className="text-lg mt-0.5 flex-shrink-0">{config.icon}</span>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
+                              {config.label}
+                            </span>
+                            <span className="text-sm font-medium text-blue-600 truncate">
+                              {item.lead.projectName}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {item.lead.customerName}
+                            </span>
+                          </div>
 
-                        {/* Activity-specific details */}
-                        <div className="mt-1.5">
-                          {item.type === "received_email" && (
-                            <p className="text-sm text-gray-700 dark:text-gray-300">
-                              <span className="font-medium">{item.data.fromName || item.data.fromEmail}</span>
-                              {" — "}{item.data.subject}
-                            </p>
-                          )}
-                          {item.type === "sent_email" && (
-                            <p className="text-sm text-gray-700 dark:text-gray-300">
-                              Sent by <span className="font-medium">{item.data.sentBy}</span>
-                              {" — "}{item.data.subject}
-                              {item.data.status === "FAILED" && (
-                                <span className="ml-2 text-red-500 text-xs font-medium">FAILED</span>
-                              )}
-                            </p>
-                          )}
-                          {item.type === "status_change" && (
-                            <p className="text-sm text-gray-700 dark:text-gray-300">
-                              {item.data.changedBy && <span className="font-medium">{item.data.changedBy}</span>}
-                              {" changed status "}
-                              {item.data.fromStatus && (
-                                <><span className="font-medium">{STATUS_LABELS[item.data.fromStatus] || item.data.fromStatus}</span>{" → "}</>
-                              )}
-                              <span className="font-medium">{STATUS_LABELS[item.data.toStatus!] || item.data.toStatus}</span>
-                            </p>
-                          )}
-                          {item.type === "note" && (
-                            <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
-                              {item.data.createdBy && <span className="font-medium">{item.data.createdBy}: </span>}
-                              {(item.data.content || "").replace(/<[^>]*>/g, "").slice(0, 200)}
-                            </p>
-                          )}
+                          {/* Activity-specific details */}
+                          <div className="mt-1.5">
+                            {item.type === "received_email" && (
+                              <p className="text-sm text-gray-700 dark:text-gray-300">
+                                <span className="font-medium">{item.data.fromName || item.data.fromEmail}</span>
+                                {" — "}{item.data.subject}
+                              </p>
+                            )}
+                            {item.type === "sent_email" && (
+                              <p className="text-sm text-gray-700 dark:text-gray-300">
+                                Sent by <span className="font-medium">{item.data.sentBy}</span>
+                                {" — "}{item.data.subject}
+                                {item.data.status === "FAILED" && (
+                                  <span className="ml-2 text-red-500 text-xs font-medium">FAILED</span>
+                                )}
+                              </p>
+                            )}
+                            {item.type === "email_opened" && (
+                              <p className="text-sm text-gray-700 dark:text-gray-300">
+                                Customer opened <span className="font-medium">&ldquo;{item.data.subject}&rdquo;</span>
+                              </p>
+                            )}
+                            {item.type === "portal_visit" && (
+                              <p className="text-sm text-gray-700 dark:text-gray-300">
+                                <span className="font-medium">{item.data.visitorName || "Customer"}</span>
+                                {" visited the portal"}
+                                {item.data.page && <span className="text-gray-500"> ({item.data.page} tab)</span>}
+                              </p>
+                            )}
+                            {item.type === "status_change" && (
+                              <p className="text-sm text-gray-700 dark:text-gray-300">
+                                {item.data.changedBy && <span className="font-medium">{item.data.changedBy}</span>}
+                                {" changed status "}
+                                {item.data.fromStatus && (
+                                  <><span className="font-medium">{STATUS_LABELS[item.data.fromStatus] || item.data.fromStatus}</span>{" → "}</>
+                                )}
+                                <span className="font-medium">{STATUS_LABELS[item.data.toStatus!] || item.data.toStatus}</span>
+                              </p>
+                            )}
+                            {item.type === "note" && (
+                              <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
+                                {item.data.createdBy && <span className="font-medium">{item.data.createdBy}: </span>}
+                                {(item.data.content || "").replace(/<[^>]*>/g, "").slice(0, 200)}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
+                      <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0 mt-1">
+                        {timeAgo(item.timestamp)}
+                      </span>
                     </div>
-                    <span className="text-xs text-gray-400 whitespace-nowrap flex-shrink-0 mt-1">
-                      {timeAgo(item.timestamp)}
-                    </span>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+
+            {/* Load More */}
+            {hasMore && (
+              <div className="text-center mt-6">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={loadingMore}
+                  className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition"
+                >
+                  {loadingMore ? "Loading..." : "Load More"}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
     </div>
