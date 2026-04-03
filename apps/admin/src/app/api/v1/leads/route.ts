@@ -133,6 +133,7 @@ export async function POST(req: Request) {
         industry: (body.industry as string)?.trim() || null,
         companySize: (body.companySize as string)?.trim() || null,
         companyWebsite: (body.companyWebsite as string)?.trim() || null,
+        aboutCompany: (body.aboutCompany as string)?.trim() || null,
         // Lead management fields
         extractedDate: body.extractedDate
           ? new Date(body.extractedDate as string)

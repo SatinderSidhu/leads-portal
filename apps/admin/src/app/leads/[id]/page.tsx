@@ -208,6 +208,7 @@ interface Lead {
   industry: string | null;
   companySize: string | null;
   companyWebsite: string | null;
+  aboutCompany: string | null;
   extractedDate: string | null;
   lastContactedDate: string | null;
   leadScore: number | null;
@@ -305,6 +306,7 @@ export default function LeadDetailPage() {
   const [editIndustry, setEditIndustry] = useState("");
   const [editCompanySize, setEditCompanySize] = useState("");
   const [editCompanyWebsite, setEditCompanyWebsite] = useState("");
+  const [editAboutCompany, setEditAboutCompany] = useState("");
   const [editSource, setEditSource] = useState("");
   const [editSaving, setEditSaving] = useState(false);
 
@@ -759,6 +761,7 @@ export default function LeadDetailPage() {
     setEditIndustry(lead.industry || "");
     setEditCompanySize(lead.companySize || "");
     setEditCompanyWebsite(lead.companyWebsite || "");
+    setEditAboutCompany(lead.aboutCompany || "");
     setEditSource(lead.source || "MANUAL");
     setEditing(true);
   }
@@ -793,6 +796,7 @@ export default function LeadDetailPage() {
           industry: editIndustry.trim() || null,
           companySize: editCompanySize.trim() || null,
           companyWebsite: editCompanyWebsite.trim() || null,
+          aboutCompany: editAboutCompany.trim() || null,
           source: editSource,
         }),
       });
@@ -1485,6 +1489,20 @@ export default function LeadDetailPage() {
                     </div>
                   </div>
 
+                  {/* About Company */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      About Company
+                    </label>
+                    <textarea
+                      value={editAboutCompany}
+                      onChange={(e) => setEditAboutCompany(e.target.value)}
+                      rows={3}
+                      placeholder="What does this company do?"
+                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition resize-none text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                    />
+                  </div>
+
                   {/* Lead Source */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
@@ -1738,6 +1756,12 @@ export default function LeadDetailPage() {
                             {lead.companyWebsite}
                           </a>
                         </p>
+                      </div>
+                    )}
+                    {lead.aboutCompany && (
+                      <div className="col-span-2">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">About Company</p>
+                        <p className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap">{lead.aboutCompany}</p>
                       </div>
                     )}
                     {lead.leadScore != null && (

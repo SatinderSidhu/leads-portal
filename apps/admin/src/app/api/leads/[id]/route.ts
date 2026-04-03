@@ -87,6 +87,7 @@ export async function PUT(
         ...(body.industry !== undefined && { industry: body.industry?.trim() || null }),
         ...(body.companySize !== undefined && { companySize: body.companySize?.trim() || null }),
         ...(body.companyWebsite !== undefined && { companyWebsite: body.companyWebsite?.trim() || null }),
+        ...(body.aboutCompany !== undefined && { aboutCompany: body.aboutCompany?.trim() || null }),
         // Lead management fields
         ...(body.source !== undefined && { source: body.source }),
         ...(body.extractedDate !== undefined && { extractedDate: body.extractedDate ? new Date(body.extractedDate) : null }),

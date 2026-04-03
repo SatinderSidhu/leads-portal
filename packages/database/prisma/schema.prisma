@@ -116,6 +116,7 @@ model Lead {
   industry       String?
   companySize    String?      @map("company_size")
   companyWebsite String?      @map("company_website")
+  aboutCompany   String?      @map("about_company") @db.Text
 
   // Lead management fields
   extractedDate      DateTime?  @map("extracted_date")

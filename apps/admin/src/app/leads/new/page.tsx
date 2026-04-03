@@ -58,6 +58,7 @@ export default function NewLeadPage() {
     industry: "",
     companySize: "",
     companyWebsite: "",
+    aboutCompany: "",
     // Lead management
     source: "MANUAL",
     stage: "NEW",
@@ -185,6 +186,10 @@ export default function NewLeadPage() {
                 <label htmlFor="companyWebsite" className={labelClass}>Company Website</label>
                 <input id="companyWebsite" type="url" value={form.companyWebsite} onChange={(e) => updateField("companyWebsite", e.target.value)} className={inputClass} placeholder="https://acme.com" />
               </div>
+            </div>
+            <div>
+              <label htmlFor="aboutCompany" className={labelClass}>About Company</label>
+              <textarea id="aboutCompany" value={form.aboutCompany} onChange={(e) => updateField("aboutCompany", e.target.value)} rows={3} className={inputClass + " resize-none"} placeholder="What does this company do? Their industry focus, products, services..." />
             </div>
           </div>
         </div>

@@ -97,6 +97,7 @@ export async function POST(req: Request) {
       industry: body.industry?.trim() || null,
       companySize: body.companySize?.trim() || null,
       companyWebsite: body.companyWebsite?.trim() || null,
+      aboutCompany: body.aboutCompany?.trim() || null,
       // Lead management fields
       extractedDate: body.extractedDate ? new Date(body.extractedDate) : null,
       lastContactedDate: body.lastContactedDate ? new Date(body.lastContactedDate) : null,
