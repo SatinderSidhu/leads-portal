@@ -1772,103 +1772,102 @@ export default function LeadDetailPage() {
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 mb-4 text-sm">
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Customer Name
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Customer Name</p>
+                      <p className="text-gray-900 dark:text-white font-medium">{lead.customerName}</p>
+                    </div>
+                    {/* Row 1: Customer Email, Phone */}
+                    <div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Customer Email</p>
+                      <p className="text-gray-900 dark:text-white">{lead.customerEmail || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Phone</p>
+                      <p className="text-gray-900 dark:text-white">{lead.phone || "—"}</p>
+                    </div>
+
+                    {/* Row 2: Job Title, Company Name, Location */}
+                    <div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Job Title</p>
+                      <p className="text-gray-900 dark:text-white">{lead.jobTitle || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Company Name</p>
+                      <p className="text-gray-900 dark:text-white">{lead.companyName || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Location</p>
+                      <p className="text-gray-900 dark:text-white">{lead.location || "—"}</p>
+                    </div>
+
+                    {/* Row 3: Industry, Company Size, Company Website */}
+                    <div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Industry</p>
+                      <p className="text-gray-900 dark:text-white">{lead.industry || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Company Size</p>
+                      <p className="text-gray-900 dark:text-white">{lead.companySize || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Company Website</p>
+                      <p className="text-gray-900 dark:text-white">
+                        {lead.companyWebsite ? (
+                          <a href={lead.companyWebsite} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline truncate block">{lead.companyWebsite}</a>
+                        ) : "—"}
                       </p>
-                      <p className="text-gray-900 dark:text-white font-medium">
-                        {lead.customerName}
+                    </div>
+
+                    {/* Row 4: Source, Stage, Lead Score */}
+                    <div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Source</p>
+                      <p className="text-gray-900 dark:text-white">
+                        {lead.source ? (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${lead.source === "AGENT" ? "bg-cyan-100 text-cyan-800" : lead.source === "BARK" ? "bg-orange-100 text-orange-800" : "bg-gray-100 text-gray-800"}`}>
+                            {lead.source === "AGENT" ? "Agent" : lead.source === "BARK" ? "Bark" : "Manual"}
+                          </span>
+                        ) : "—"}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Customer Email
-                      </p>
-                      <p className="text-gray-900 dark:text-white font-medium">
-                        {lead.customerEmail}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Source
-                      </p>
-                      <p className="text-gray-900 dark:text-white font-medium">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${lead.source === "AGENT" ? "bg-cyan-100 text-cyan-800" : lead.source === "BARK" ? "bg-orange-100 text-orange-800" : "bg-gray-100 text-gray-800"}`}
-                        >
-                          {lead.source === "AGENT" ? "Agent" : lead.source === "BARK" ? "Bark" : "Manual"}
-                        </span>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Stage</p>
+                      <p className="text-gray-900 dark:text-white">
+                        {lead.stage ? (
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${STAGE_COLORS[lead.stage] || "bg-gray-100 text-gray-800"}`}>
+                            {STAGE_LABELS[lead.stage] || lead.stage}
+                          </span>
+                        ) : "—"}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Stage
-                      </p>
-                      <p className="text-gray-900 dark:text-white font-medium">
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STAGE_COLORS[lead.stage] || "bg-gray-100 text-gray-800"}`}
-                        >
-                          {STAGE_LABELS[lead.stage] || lead.stage}
-                        </span>
-                      </p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Lead Score</p>
+                      <p className="text-gray-900 dark:text-white">{lead.leadScore != null ? lead.leadScore : "—"}</p>
                     </div>
-                    {lead.phone && (
-                      <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Phone
-                        </p>
-                        <p className="text-gray-900 dark:text-white font-medium">
-                          {lead.phone}
-                        </p>
-                      </div>
-                    )}
-                    {lead.city && (
-                      <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          City
-                        </p>
-                        <p className="text-gray-900 dark:text-white font-medium">
-                          {lead.city}
-                        </p>
-                      </div>
-                    )}
-                    {lead.zip && (
-                      <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Zip Code
-                        </p>
-                        <p className="text-gray-900 dark:text-white font-medium">
-                          {lead.zip}
-                        </p>
-                      </div>
-                    )}
-                    {lead.dateCreated && (
-                      <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                          Date Created
-                        </p>
-                        <p className="text-gray-900 dark:text-white font-medium">
-                          {new Date(lead.dateCreated).toLocaleDateString()}
-                        </p>
-                      </div>
-                    )}
+
+                    {/* Row 5: City, Zip Code, Date Created */}
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Created
-                      </p>
-                      <p className="text-gray-900 dark:text-white font-medium">
-                        {new Date(lead.createdAt).toLocaleDateString()}
-                      </p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">City</p>
+                      <p className="text-gray-900 dark:text-white">{lead.city || "—"}</p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        Welcome Email
-                      </p>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Zip Code</p>
+                      <p className="text-gray-900 dark:text-white">{lead.zip || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Date Created</p>
+                      <p className="text-gray-900 dark:text-white">{lead.dateCreated ? new Date(lead.dateCreated).toLocaleDateString() : "—"}</p>
+                    </div>
+
+                    {/* Row 6: Created, Welcome Email, Last Contacted */}
+                    <div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Created</p>
+                      <p className="text-gray-900 dark:text-white">{new Date(lead.createdAt).toLocaleDateString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Welcome Email</p>
                       <div className="flex items-center gap-2">
-                        <p className="text-gray-900 dark:text-white font-medium">
-                          {lead.emailSent ? "Sent" : "Not sent"}
-                        </p>
+                        <p className="text-gray-900 dark:text-white">{lead.emailSent ? "Sent" : "Not sent"}</p>
                         {!lead.doNotContact && (
                           <button
                             onClick={handleSendWelcomeEmail}
@@ -1880,88 +1879,56 @@ export default function LeadDetailPage() {
                         )}
                       </div>
                     </div>
-                    {lead.jobTitle && (
-                      <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Job Title</p>
-                        <p className="text-gray-900 dark:text-white font-medium">{lead.jobTitle}</p>
-                      </div>
-                    )}
-                    {lead.companyName && (
-                      <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Company Name</p>
-                        <p className="text-gray-900 dark:text-white font-medium">{lead.companyName}</p>
-                      </div>
-                    )}
-                    {lead.location && (
-                      <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Location</p>
-                        <p className="text-gray-900 dark:text-white font-medium">{lead.location}</p>
-                      </div>
-                    )}
-                    {lead.industry && (
-                      <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Industry</p>
-                        <p className="text-gray-900 dark:text-white font-medium">{lead.industry}</p>
-                      </div>
-                    )}
-                    {lead.companySize && (
-                      <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Company Size</p>
-                        <p className="text-gray-900 dark:text-white font-medium">{lead.companySize}</p>
-                      </div>
-                    )}
-                    {lead.companyWebsite && (
-                      <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Company Website</p>
-                        <p className="text-gray-900 dark:text-white font-medium">
-                          <a href={lead.companyWebsite} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
-                            {lead.companyWebsite}
-                          </a>
-                        </p>
-                      </div>
-                    )}
-                    {lead.aboutCompany && (
-                      <div className="col-span-2">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">About Company</p>
-                        <p className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap">{lead.aboutCompany}</p>
-                      </div>
-                    )}
-                    {(lead.naicsSectorCode || lead.naicsSubsectorCode) && (
-                      <div className="col-span-2">
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Industry Classification (NAICS)</p>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          {lead.naicsSectorCode && (
-                            <span className="text-sm bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 px-2.5 py-1 rounded-lg">
-                              {lead.naicsSectorCode} — {naicsSectors.find((s) => s.code === lead.naicsSectorCode)?.name || lead.naicsSectorCode}
-                            </span>
-                          )}
-                          {lead.naicsSubsectorCode && (
-                            <span className="text-sm bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300 px-2.5 py-1 rounded-lg">
-                              {lead.naicsSubsectorCode} — {naicsSectors.flatMap((s) => s.subsectors).find((sub) => sub.code === lead.naicsSubsectorCode)?.name || lead.naicsSubsectorCode}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                    {lead.leadScore != null && (
-                      <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Lead Score</p>
-                        <p className="text-gray-900 dark:text-white font-medium">{lead.leadScore}</p>
-                      </div>
-                    )}
-                    {lead.lastContactedDate && (
-                      <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Last Contacted</p>
-                        <p className="text-gray-900 dark:text-white font-medium">{new Date(lead.lastContactedDate).toLocaleDateString()}</p>
-                      </div>
-                    )}
-                    {lead.extractedDate && (
-                      <div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">Extracted Date</p>
-                        <p className="text-gray-900 dark:text-white font-medium">{new Date(lead.extractedDate).toLocaleDateString()}</p>
-                      </div>
-                    )}
+                    <div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Last Contacted</p>
+                      <p className="text-gray-900 dark:text-white">{lead.lastContactedDate ? new Date(lead.lastContactedDate).toLocaleDateString() : "—"}</p>
+                    </div>
+
+                    {/* Row 7: Extracted Date, Lead Source, LinkedIn URL */}
+                    <div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Extracted Date</p>
+                      <p className="text-gray-900 dark:text-white">{lead.extractedDate ? new Date(lead.extractedDate).toLocaleDateString() : "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Lead Source</p>
+                      <p className="text-gray-900 dark:text-white">{lead.source || "—"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">LinkedIn URL</p>
+                      <p className="text-gray-900 dark:text-white">
+                        {lead.linkedinUrl ? (
+                          <a href={lead.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline truncate block">LinkedIn</a>
+                        ) : "—"}
+                      </p>
+                    </div>
                   </div>
+
+                  {/* About Company */}
+                  {lead.aboutCompany && (
+                    <div className="mb-4">
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">About Company</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{lead.aboutCompany}</p>
+                    </div>
+                  )}
+
+                  {/* NAICS Classification */}
+                  {(lead.naicsSectorCode || lead.naicsSubsectorCode) && (
+                    <div className="mb-4">
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">Industry Classification (NAICS)</p>
+                      <div className="flex flex-wrap gap-2">
+                        {lead.naicsSectorCode && (
+                          <span className="text-xs bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 px-2.5 py-1 rounded-lg">
+                            {lead.naicsSectorCode} — {naicsSectors.find((s) => s.code === lead.naicsSectorCode)?.name || lead.naicsSectorCode}
+                          </span>
+                        )}
+                        {lead.naicsSubsectorCode && (
+                          <span className="text-xs bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300 px-2.5 py-1 rounded-lg">
+                            {lead.naicsSubsectorCode} — {naicsSectors.flatMap((s) => s.subsectors).find((sub) => sub.code === lead.naicsSubsectorCode)?.name || lead.naicsSubsectorCode}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Outreach Tracking */}
                   {(lead.connectionRequestSent || lead.connectionAccepted || lead.initialMessageSent || lead.meetingBooked || lead.responseReceived) && (
@@ -1972,42 +1939,6 @@ export default function LeadDetailPage() {
                       {lead.meetingBooked && <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300">Meeting Booked</span>}
                       {lead.responseReceived && <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">Response Received</span>}
                       {lead.meetingDate && <span className="px-2.5 py-1 rounded-full text-xs font-medium bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300">Meeting: {new Date(lead.meetingDate).toLocaleDateString()}</span>}
-                    </div>
-                  )}
-
-                  {/* Social Links */}
-                  {(lead.linkedinUrl || lead.facebookUrl || lead.twitterUrl) && (
-                    <div className="flex flex-wrap gap-3 mb-4">
-                      {lead.linkedinUrl && (
-                        <a
-                          href={lead.linkedinUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition"
-                        >
-                          LinkedIn
-                        </a>
-                      )}
-                      {lead.facebookUrl && (
-                        <a
-                          href={lead.facebookUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 rounded-lg text-xs font-medium hover:bg-blue-100 dark:hover:bg-blue-900/40 transition"
-                        >
-                          Facebook
-                        </a>
-                      )}
-                      {lead.twitterUrl && (
-                        <a
-                          href={lead.twitterUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-medium hover:bg-gray-100 dark:hover:bg-gray-600 transition"
-                        >
-                          Twitter
-                        </a>
-                      )}
                     </div>
                   )}
 
