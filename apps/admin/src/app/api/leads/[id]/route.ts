@@ -88,6 +88,8 @@ export async function PUT(
         ...(body.companySize !== undefined && { companySize: body.companySize?.trim() || null }),
         ...(body.companyWebsite !== undefined && { companyWebsite: body.companyWebsite?.trim() || null }),
         ...(body.aboutCompany !== undefined && { aboutCompany: body.aboutCompany?.trim() || null }),
+        ...(body.naicsSectorCode !== undefined && { naicsSectorCode: body.naicsSectorCode || null }),
+        ...(body.naicsSubsectorCode !== undefined && { naicsSubsectorCode: body.naicsSubsectorCode || null }),
         // Lead management fields
         ...(body.source !== undefined && { source: body.source }),
         ...(body.extractedDate !== undefined && { extractedDate: body.extractedDate ? new Date(body.extractedDate) : null }),

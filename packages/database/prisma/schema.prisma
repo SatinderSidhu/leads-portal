@@ -117,6 +117,8 @@ model Lead {
   companySize    String?      @map("company_size")
   companyWebsite String?      @map("company_website")
   aboutCompany   String?      @map("about_company") @db.Text
+  naicsSectorCode    String?  @map("naics_sector_code")
+  naicsSubsectorCode String?  @map("naics_subsector_code")
 
   // Lead management fields
   extractedDate      DateTime?  @map("extracted_date")
@@ -536,6 +538,25 @@ model PortfolioProject {
   updatedAt       DateTime @updatedAt @map("updated_at")
 
   @@map("portfolio_projects")
+}
+
+model NaicsSector {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  subsectors  NaicsSubsector[]
+
+  @@map("naics_sectors")
+}
+
+model NaicsSubsector {
+  id          String      @id @default(uuid())
+  code        String      @unique
+  name        String
+  sectorId    String      @map("sector_id")
+  sector      NaicsSector @relation(fields: [sectorId], references: [id], onDelete: Cascade)
+
+  @@map("naics_subsectors")
 }
 
 model KnowledgeArticle {

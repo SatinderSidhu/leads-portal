@@ -209,6 +209,8 @@ interface Lead {
   companySize: string | null;
   companyWebsite: string | null;
   aboutCompany: string | null;
+  naicsSectorCode: string | null;
+  naicsSubsectorCode: string | null;
   extractedDate: string | null;
   lastContactedDate: string | null;
   leadScore: number | null;
@@ -307,6 +309,9 @@ export default function LeadDetailPage() {
   const [editCompanySize, setEditCompanySize] = useState("");
   const [editCompanyWebsite, setEditCompanyWebsite] = useState("");
   const [editAboutCompany, setEditAboutCompany] = useState("");
+  const [editNaicsSector, setEditNaicsSector] = useState("");
+  const [editNaicsSubsector, setEditNaicsSubsector] = useState("");
+  const [naicsSectors, setNaicsSectors] = useState<{ id: string; code: string; name: string; subsectors: { id: string; code: string; name: string }[] }[]>([]);
   const [editSource, setEditSource] = useState("");
   const [editSaving, setEditSaving] = useState(false);
 
@@ -439,6 +444,14 @@ export default function LeadDetailPage() {
       .then((data) => {
         if (Array.isArray(data)) setAdminUsers(data);
       })
+      .catch(() => {});
+  }, []);
+
+  // Load NAICS codes
+  useEffect(() => {
+    fetch("/api/naics")
+      .then((res) => res.json())
+      .then((data) => { if (Array.isArray(data)) setNaicsSectors(data); })
       .catch(() => {});
   }, []);
 
@@ -802,6 +815,8 @@ export default function LeadDetailPage() {
     setEditCompanySize(lead.companySize || "");
     setEditCompanyWebsite(lead.companyWebsite || "");
     setEditAboutCompany(lead.aboutCompany || "");
+    setEditNaicsSector(lead.naicsSectorCode || "");
+    setEditNaicsSubsector(lead.naicsSubsectorCode || "");
     setEditSource(lead.source || "MANUAL");
     setEditing(true);
   }
@@ -837,6 +852,8 @@ export default function LeadDetailPage() {
           companySize: editCompanySize.trim() || null,
           companyWebsite: editCompanyWebsite.trim() || null,
           aboutCompany: editAboutCompany.trim() || null,
+          naicsSectorCode: editNaicsSector || null,
+          naicsSubsectorCode: editNaicsSubsector || null,
           source: editSource,
         }),
       });
@@ -1613,6 +1630,41 @@ export default function LeadDetailPage() {
                     />
                   </div>
 
+                  {/* NAICS Classification */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Industry Sector (NAICS)
+                      </label>
+                      <select
+                        value={editNaicsSector}
+                        onChange={(e) => { setEditNaicsSector(e.target.value); setEditNaicsSubsector(""); }}
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                      >
+                        <option value="">Select sector...</option>
+                        {naicsSectors.map((s) => (
+                          <option key={s.code} value={s.code}>{s.code} — {s.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Subsector (NAICS)
+                      </label>
+                      <select
+                        value={editNaicsSubsector}
+                        onChange={(e) => setEditNaicsSubsector(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                        disabled={!editNaicsSector}
+                      >
+                        <option value="">Select subsector...</option>
+                        {naicsSectors.find((s) => s.code === editNaicsSector)?.subsectors.map((sub) => (
+                          <option key={sub.code} value={sub.code}>{sub.code} — {sub.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
                   {/* Lead Source */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
@@ -1872,6 +1924,23 @@ export default function LeadDetailPage() {
                       <div className="col-span-2">
                         <p className="text-sm text-gray-500 dark:text-gray-400">About Company</p>
                         <p className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-wrap">{lead.aboutCompany}</p>
+                      </div>
+                    )}
+                    {(lead.naicsSectorCode || lead.naicsSubsectorCode) && (
+                      <div className="col-span-2">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Industry Classification (NAICS)</p>
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {lead.naicsSectorCode && (
+                            <span className="text-sm bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 px-2.5 py-1 rounded-lg">
+                              {lead.naicsSectorCode} — {naicsSectors.find((s) => s.code === lead.naicsSectorCode)?.name || lead.naicsSectorCode}
+                            </span>
+                          )}
+                          {lead.naicsSubsectorCode && (
+                            <span className="text-sm bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300 px-2.5 py-1 rounded-lg">
+                              {lead.naicsSubsectorCode} — {naicsSectors.flatMap((s) => s.subsectors).find((sub) => sub.code === lead.naicsSubsectorCode)?.name || lead.naicsSubsectorCode}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     )}
                     {lead.leadScore != null && (
