@@ -2792,6 +2792,122 @@ export default function LeadDetailPage() {
               </div>
             )}
 
+            {/* Next Steps Section */}
+            <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                Next Steps
+              </h2>
+
+              {/* Existing Steps */}
+              {nextSteps.length > 0 && (
+                <div className="space-y-2 mb-4">
+                  {nextSteps.map((step) => (
+                    <div
+                      key={step.id}
+                      className={`flex items-start gap-3 p-3 rounded-lg border transition ${
+                        step.completed
+                          ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+                          : step.dueDate && new Date(step.dueDate) < new Date() ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800" : "bg-gray-50 dark:bg-gray-700 border-gray-100 dark:border-gray-600"
+                      }`}
+                    >
+                      <button
+                        onClick={() => handleToggleNextStep(step.id, !step.completed)}
+                        className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition ${
+                          step.completed
+                            ? "bg-green-500 border-green-500 text-white"
+                            : "border-gray-300 dark:border-gray-500 hover:border-[#01358d]"
+                        }`}
+                      >
+                        {step.completed && (
+                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                        )}
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm ${step.completed ? "line-through text-gray-400 dark:text-gray-500" : "text-gray-700 dark:text-gray-300"}`}>
+                          {step.content}
+                        </p>
+                        <div className="flex items-center gap-3 mt-1">
+                          {step.dueDate && (
+                            <span className={`text-xs ${
+                              step.completed ? "text-gray-400" : new Date(step.dueDate) < new Date() ? "text-red-600 dark:text-red-400 font-medium" : "text-gray-500 dark:text-gray-400"
+                            }`}>
+                              Due: {new Date(step.dueDate).toLocaleDateString()}
+                            </span>
+                          )}
+                          <span className="text-xs text-gray-400">
+                            {step.createdBy && `${step.createdBy} — `}{new Date(step.createdAt).toLocaleDateString()}
+                          </span>
+                          {step.completed && step.completedAt && (
+                            <span className="text-xs text-green-600 dark:text-green-400">
+                              Completed {new Date(step.completedAt).toLocaleDateString()}
+                            </span>
+                          )}
+                          {step.assignedTo && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              Assigned to: <select
+                                value={step.assignedToId || ""}
+                                onChange={(e) => handleReassignTask(step.id, e.target.value)}
+                                className="text-xs bg-transparent border-none text-[#01358d] dark:text-blue-400 font-medium cursor-pointer p-0"
+                              >
+                                {adminUsers.filter(u => u.active).map((u) => (
+                                  <option key={u.id} value={u.id}>{u.name}</option>
+                                ))}
+                              </select>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteNextStep(step.id)}
+                        className="text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 transition flex-shrink-0"
+                        title="Delete"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add Next Step */}
+              <div className="flex gap-3 items-end">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={nextStepContent}
+                    onChange={(e) => setNextStepContent(e.target.value)}
+                    placeholder="Add a next step..."
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm"
+                    onKeyDown={(e) => { if (e.key === "Enter" && nextStepContent.trim()) handleAddNextStep(); }}
+                  />
+                </div>
+                <input
+                  type="date"
+                  value={nextStepDueDate}
+                  onChange={(e) => setNextStepDueDate(e.target.value)}
+                  className="px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm w-40"
+                  title="Due date (optional)"
+                />
+                <select
+                  value={nextStepAssignee}
+                  onChange={(e) => setNextStepAssignee(e.target.value)}
+                  className="px-2 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 w-36"
+                  title="Assign to"
+                >
+                  {adminUsers.filter(u => u.active).map((u) => (
+                    <option key={u.id} value={u.id}>{u.name}{u.id === currentAdminId ? " (me)" : ""}</option>
+                  ))}
+                </select>
+                <button
+                  onClick={handleAddNextStep}
+                  disabled={!nextStepContent.trim() || nextStepAdding}
+                  className="bg-[#01358d] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#012a70] disabled:opacity-50 disabled:cursor-not-allowed transition whitespace-nowrap"
+                >
+                  {nextStepAdding ? "Adding..." : "Add Step"}
+                </button>
+              </div>
+            </div>
+
             {/* Status Update */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
@@ -3041,124 +3157,8 @@ export default function LeadDetailPage() {
               </div>
             </div>
 
-            {/* Next Steps Section */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-                Next Steps
-              </h2>
-
-              {/* Existing Steps */}
-              {nextSteps.length > 0 && (
-                <div className="space-y-2 mb-4">
-                  {nextSteps.map((step) => (
-                    <div
-                      key={step.id}
-                      className={`flex items-start gap-3 p-3 rounded-lg border transition ${
-                        step.completed
-                          ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
-                          : step.dueDate && new Date(step.dueDate) < new Date() ? "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800" : "bg-gray-50 dark:bg-gray-700 border-gray-100 dark:border-gray-600"
-                      }`}
-                    >
-                      <button
-                        onClick={() => handleToggleNextStep(step.id, !step.completed)}
-                        className={`mt-0.5 flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition ${
-                          step.completed
-                            ? "bg-green-500 border-green-500 text-white"
-                            : "border-gray-300 dark:border-gray-500 hover:border-[#01358d]"
-                        }`}
-                      >
-                        {step.completed && (
-                          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                        )}
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-sm ${step.completed ? "line-through text-gray-400 dark:text-gray-500" : "text-gray-700 dark:text-gray-300"}`}>
-                          {step.content}
-                        </p>
-                        <div className="flex items-center gap-3 mt-1">
-                          {step.dueDate && (
-                            <span className={`text-xs ${
-                              step.completed ? "text-gray-400" : new Date(step.dueDate) < new Date() ? "text-red-600 dark:text-red-400 font-medium" : "text-gray-500 dark:text-gray-400"
-                            }`}>
-                              Due: {new Date(step.dueDate).toLocaleDateString()}
-                            </span>
-                          )}
-                          <span className="text-xs text-gray-400">
-                            {step.createdBy && `${step.createdBy} — `}{new Date(step.createdAt).toLocaleDateString()}
-                          </span>
-                          {step.completed && step.completedAt && (
-                            <span className="text-xs text-green-600 dark:text-green-400">
-                              Completed {new Date(step.completedAt).toLocaleDateString()}
-                            </span>
-                          )}
-                          {step.assignedTo && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                              Assigned to: <select
-                                value={step.assignedToId || ""}
-                                onChange={(e) => handleReassignTask(step.id, e.target.value)}
-                                className="text-xs bg-transparent border-none text-[#01358d] dark:text-blue-400 font-medium cursor-pointer p-0"
-                              >
-                                {adminUsers.filter(u => u.active).map((u) => (
-                                  <option key={u.id} value={u.id}>{u.name}</option>
-                                ))}
-                              </select>
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => handleDeleteNextStep(step.id)}
-                        className="text-gray-300 hover:text-red-500 dark:text-gray-600 dark:hover:text-red-400 transition flex-shrink-0"
-                        title="Delete"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Add Next Step */}
-              <div className="flex gap-3 items-end">
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    value={nextStepContent}
-                    onChange={(e) => setNextStepContent(e.target.value)}
-                    placeholder="Add a next step..."
-                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm"
-                    onKeyDown={(e) => { if (e.key === "Enter" && nextStepContent.trim()) handleAddNextStep(); }}
-                  />
-                </div>
-                <input
-                  type="date"
-                  value={nextStepDueDate}
-                  onChange={(e) => setNextStepDueDate(e.target.value)}
-                  className="px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm w-40"
-                  title="Due date (optional)"
-                />
-                <select
-                  value={nextStepAssignee}
-                  onChange={(e) => setNextStepAssignee(e.target.value)}
-                  className="px-2 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 w-36"
-                  title="Assign to"
-                >
-                  {adminUsers.filter(u => u.active).map((u) => (
-                    <option key={u.id} value={u.id}>{u.name}{u.id === currentAdminId ? " (me)" : ""}</option>
-                  ))}
-                </select>
-                <button
-                  onClick={handleAddNextStep}
-                  disabled={!nextStepContent.trim() || nextStepAdding}
-                  className="bg-[#01358d] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#012a70] disabled:opacity-50 disabled:cursor-not-allowed transition whitespace-nowrap"
-                >
-                  {nextStepAdding ? "Adding..." : "Add Step"}
-                </button>
-              </div>
-            </div>
-
             {/* Audit Log */}
-            <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
               <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
                 Audit Log
               </h2>
