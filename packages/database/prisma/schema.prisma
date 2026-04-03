@@ -140,6 +140,7 @@ model Lead {
   statusHistory StatusHistory[]
   nda           Nda?
   sentEmails      SentEmail[]
+  emailDrafts     EmailDraft[]
   receivedEmails  ReceivedEmail[]
   files           LeadFile[]
   scopeOfWorks    ScopeOfWork[]
@@ -275,6 +276,21 @@ model EmailFlow {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("email_flows")
+}
+
+model EmailDraft {
+  id        String   @id @default(uuid())
+  leadId    String   @map("lead_id")
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  subject   String   @default("")
+  body      String   @db.Text @default("")
+  cc        String?  @db.Text
+  bcc       String?  @db.Text
+  createdBy String?  @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("email_drafts")
 }
 
 model SentEmail {

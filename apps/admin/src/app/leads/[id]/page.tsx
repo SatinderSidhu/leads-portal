@@ -322,6 +322,10 @@ export default function LeadDetailPage() {
   const [composeBody, setComposeBody] = useState("");
   const [composeTemplateId, setComposeTemplateId] = useState("");
   const [composeSending, setComposeSending] = useState(false);
+  // Draft state
+  const [drafts, setDrafts] = useState<{ id: string; subject: string; body: string; cc: string | null; bcc: string | null; createdBy: string | null; updatedAt: string }[]>([]);
+  const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
+  const [draftSaving, setDraftSaving] = useState(false);
   const [templates, setTemplates] = useState<EmailTemplateItem[]>([]);
 
   const [includeSignature, setIncludeSignature] = useState(false);
@@ -483,6 +487,20 @@ export default function LeadDetailPage() {
   useEffect(() => {
     fetchNextSteps();
   }, [fetchNextSteps]);
+
+  // Load Drafts
+  const fetchDrafts = useCallback(async () => {
+    if (!params.id) return;
+    const res = await fetch(`/api/leads/${params.id}/drafts`);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) setDrafts(data);
+    }
+  }, [params.id]);
+
+  useEffect(() => {
+    fetchDrafts();
+  }, [fetchDrafts]);
 
   // Load Audit Logs
   const fetchAuditLogs = useCallback(async () => {
@@ -1051,6 +1069,7 @@ export default function LeadDetailPage() {
     setReplyMode(false);
     setReplyToEmailId(null);
     setReplyToType(null);
+    setActiveDraftId(null);
   }
 
   function handleReply(item: { id: string; type: string; subject: string; date: string; fromName: string | null; fromEmail: string | null; body: string | null; bodyText: string | null }) {
@@ -1119,6 +1138,54 @@ export default function LeadDetailPage() {
     } finally {
       setComposeSending(false);
     }
+  }
+
+  async function handleSaveDraft() {
+    if (!lead) return;
+    setDraftSaving(true);
+    try {
+      if (activeDraftId) {
+        // Update existing draft
+        await fetch(`/api/leads/${lead.id}/drafts`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ draftId: activeDraftId, subject: composeSubject, body: composeBody, cc: composeCc, bcc: composeBcc }),
+        });
+      } else {
+        // Create new draft
+        const res = await fetch(`/api/leads/${lead.id}/drafts`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ subject: composeSubject, body: composeBody, cc: composeCc, bcc: composeBcc }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setActiveDraftId(data.id);
+        }
+      }
+      fetchDrafts();
+    } catch {
+      alert("Failed to save draft");
+    } finally {
+      setDraftSaving(false);
+    }
+  }
+
+  function handleLoadDraft(draft: typeof drafts[0]) {
+    setComposeSubject(draft.subject);
+    setComposeBody(draft.body);
+    setComposeCc(draft.cc || "");
+    setComposeBcc(draft.bcc || "");
+    setActiveDraftId(draft.id);
+    setComposeOpen(true);
+    if (draft.cc || draft.bcc) setShowCcBcc(true);
+  }
+
+  async function handleDeleteDraft(draftId: string) {
+    if (!lead) return;
+    await fetch(`/api/leads/${lead.id}/drafts?draftId=${draftId}`, { method: "DELETE" });
+    if (activeDraftId === draftId) setActiveDraftId(null);
+    fetchDrafts();
   }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -1980,6 +2047,25 @@ export default function LeadDetailPage() {
                 )}
               </div>
 
+              {/* Drafts */}
+              {!composeOpen && drafts.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Drafts ({drafts.length})</p>
+                  {drafts.map((draft) => (
+                    <div key={draft.id} className="flex items-center justify-between p-2.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                      <div className="min-w-0 flex-1 cursor-pointer" onClick={() => handleLoadDraft(draft)}>
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{draft.subject || "(no subject)"}</p>
+                        <p className="text-xs text-gray-500">{draft.createdBy} — {new Date(draft.updatedAt).toLocaleString()}</p>
+                      </div>
+                      <div className="flex gap-1.5 flex-shrink-0 ml-2">
+                        <button onClick={() => handleLoadDraft(draft)} className="text-xs text-amber-700 dark:text-amber-300 hover:underline">Edit</button>
+                        <button onClick={() => handleDeleteDraft(draft.id)} className="text-xs text-red-500 hover:underline">Delete</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {composeOpen && (
                 <div className="space-y-4">
                   {/* Reply mode banner */}
@@ -2165,6 +2251,13 @@ export default function LeadDetailPage() {
                   )}
 
                   <div className="flex gap-3">
+                    <button
+                      onClick={handleSaveDraft}
+                      disabled={draftSaving || (!composeSubject.trim() && !composeBody.trim())}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition"
+                    >
+                      {draftSaving ? "Saving..." : activeDraftId ? "Update Draft" : "Save Draft"}
+                    </button>
                     <button
                       onClick={handleSendEmail}
                       disabled={!composeSubject.trim() || !composeBody.trim() || composeSending}
