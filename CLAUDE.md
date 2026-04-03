@@ -97,6 +97,8 @@ leads-portal/
 | ZohoConfig | zoho_config | Zoho CRM OAuth credentials, tokens, data center, org ID, enabled flag |
 | CustomerVisit | customer_visits | Tracks customer portal page views (leadId, visitorEmail, page, timestamp) |
 | NotificationPreference | notification_preferences | Per-admin notification toggles (9 event types) + optional notification email |
+| PortfolioService | portfolio_services | Services offered by KITLabs (name, description, pitch scripts, documents, URLs) |
+| PortfolioProject | portfolio_projects | Completed projects (title, description, category, domain, technologies, client, demo, scripts, docs) |
 | Content | content | Social media content posts |
 | CustomerUser | customer_users | Customer portal users (email, name, password, leadIds) |
 
@@ -143,6 +145,11 @@ leads-portal/
 | `/zoho-settings/import` | Import leads from Zoho CRM that don't exist in Portal |
 | `/zoho-settings/export` | Export Portal leads to Zoho CRM that aren't synced yet |
 | `/notification-settings` | Per-admin notification preferences (9 event types, optional notification email) |
+| `/portfolio` | Portfolio main page — services and projects tabs with card grid |
+| `/portfolio/services/new` | Create new service (name, description, scripts, URLs, documents) |
+| `/portfolio/services/[id]` | Service detail — pitch scripts, URLs, documents, linked projects |
+| `/portfolio/projects/new` | Create/edit project (supports ?editId= and ?serviceId= params) |
+| `/portfolio/projects/[id]` | Project detail — info, client, technologies, demo video, documents, pitch scripts |
 | `/api-docs` | Swagger UI |
 
 ## Admin API Routes
@@ -198,6 +205,11 @@ leads-portal/
 - `GET /api/zoho/export-leads` — List Portal leads not yet in Zoho (for export)
 - `POST /api/zoho/export-leads` — Export a Portal lead to Zoho (creates in Zoho + links)
 - `GET/PUT /api/notifications/preferences` — Get/update admin notification preferences
+- `GET/POST /api/portfolio/services` — List/create portfolio services
+- `GET/PUT/DELETE /api/portfolio/services/[id]` — Service CRUD with linked projects
+- `GET/POST /api/portfolio/projects` — List/create portfolio projects (filter by ?serviceId=)
+- `GET/PUT/DELETE /api/portfolio/projects/[id]` — Project CRUD
+- `GET /api/dashboard` — Dashboard stats (total leads, my leads, new today/week, engagement, needs attention, my tasks, pipeline distribution)
 - `GET /api/track/[id]` — Email open tracking pixel (also triggers customer_response notification)
 - `POST /api/webhooks/ses-inbound` — SES inbound email webhook
 
@@ -546,12 +558,39 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - On mobile/tablet: single column with all sections stacked
 - Full-width layout (no max-width constraint) with AdminShell padding
 
+## Portfolio System
+- **PortfolioService**: KITLabs services with name, description, email/phone/meeting pitch scripts, documents (JSON array of {name, url}), URLs (JSON array of {label, url})
+- **PortfolioProject**: Completed projects linked to a service, with title, description, category, domain, technologies (JSON array), client info, demo video URL, documents, pitch scripts, completion date
+- Service detail page: tabbed pitch scripts with Copy button, clickable URLs with copy icon, document links, linked projects grid
+- Project detail page: 2-column layout (info+client on left, scripts on right), technology tags, demo video, documents
+- Edit project via `?editId=` query param; pre-link to service via `?serviceId=`
+- Portfolio list page with Services/Projects tabs and card grid
+
+## Dashboard
+- **GET /api/dashboard**: aggregates stats from leads, emails, visits, notes, audit logs, tasks
+- Personalized greeting with time-of-day ("Good morning, {name}!")
+- Stat cards: Total Leads, My Leads, New Today, This Week, Active Pipeline, My Tasks, Needs Attention
+- Customer engagement (24h): Emails Opened, Portal Visits, Comments, Replies
+- **My Tasks**: pending tasks assigned to current admin, overdue highlighted
+- **Needs Attention**: leads with recent customer activity (email opens, portal visits, comments, NDA/SOW signed)
+- **Pipeline Overview**: horizontal bar chart by lead status
+- Recent Activity feed with "View All Activity" link
+
+## Task Assignment
+- `assignedToId` FK on NextStep model (to AdminUser)
+- Tasks default to current admin but can be assigned to any active admin
+- Assignment dropdown in "Add Step" form and inline reassign on each task
+- Email notification sent to assignee when task is created or reassigned
+- Tasks show in "My Tasks" section on dashboard (pending, overdue highlighted)
+- Audit logged: "Task Created", "Task Reassigned", "Task Completed", "Task Deleted"
+
 ## Admin Portal Navigation
-- **Persistent sidebar** (fixed left, 224px wide) with logo, New Lead button, grouped nav links, theme toggle, logout
+- **Collapsible sidebar**: expanded (w-56), collapsed (w-16 icons only), hover-expand when collapsed
+- Collapse state persisted to localStorage, toggle button with directional arrows
 - **Sticky breadcrumb bar** at top showing current page path (auto-generated from URL)
 - **AdminShell** layout wrapper in root layout — wraps all pages except /login
 - Pages no longer have individual headers/nav — sidebar handles all navigation
-- Nav groups: Leads (Activity Feed, Leads), Templates (Email, SOW, Flows, Content), Settings (Branding, Zoho, Notifications), Users (Admin Users, Profile)
+- Nav groups: Dashboard/Leads/Activity/Portfolio, Templates (Email, SOW, Flows, Content), Settings (Branding, Zoho, Notifications), Users (Admin Users, Profile)
 
 ## Important Patterns
 - All admin API routes use `getAdminSession()` for auth (returns null if not logged in)
