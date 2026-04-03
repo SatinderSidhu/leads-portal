@@ -7,6 +7,7 @@ const ROUTE_LABELS: Record<string, string> = {
   dashboard: "Leads",
   activity: "Activity Feed",
   portfolio: "Portfolio",
+  knowledge: "Knowledge Base",
   services: "Services",
   projects: "Projects",
   leads: "Leads",

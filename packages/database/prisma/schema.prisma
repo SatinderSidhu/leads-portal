@@ -507,6 +507,22 @@ model PortfolioProject {
   @@map("portfolio_projects")
 }
 
+model KnowledgeArticle {
+  id          String   @id @default(uuid())
+  title       String
+  slug        String   @unique
+  content     String   @db.Text
+  category    String
+  tags        Json     @default("[]")
+  sortOrder   Int      @default(0) @map("sort_order")
+  published   Boolean  @default(true)
+  createdBy   String?  @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("knowledge_articles")
+}
+
 model CustomerVisit {
   id        String   @id @default(uuid())
   leadId    String   @map("lead_id")
