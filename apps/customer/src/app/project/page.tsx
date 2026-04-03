@@ -127,7 +127,7 @@ export default async function ProjectPage({
       <VisitTracker leadId={lead.id} page={activeTab} />
       {/* Nav */}
       <nav className="bg-white/10 backdrop-blur-sm border-b border-white/20 dark:bg-black/20 dark:border-white/10">
-        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <img src="/kitlabs-logo.jpg" alt="KITLabs" className="h-8 object-contain" />
             {session && (
@@ -152,17 +152,29 @@ export default async function ProjectPage({
       </nav>
 
       {/* Welcome + Status Banner */}
-      <div className="max-w-4xl mx-auto px-6 pt-8 pb-4">
-        <h2 className="text-3xl font-bold text-white mb-1">
-          Welcome, {lead.customerName}!
-        </h2>
-        <p className="text-white/70">
-          Current status: <span className="text-white font-medium">{STATUS_LABELS[lead.status] || lead.status}</span>
-        </p>
+      <div className="max-w-6xl mx-auto px-6 pt-8 pb-6">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <h2 className="text-3xl font-bold text-white mb-2">
+              Welcome, {lead.customerName}!
+            </h2>
+            <p className="text-white/80 text-lg leading-relaxed max-w-2xl">
+              This is your dedicated project portal — your single place to track progress, review documents, and collaborate with the KITLabs team on <span className="text-white font-semibold">{lead.projectName}</span>.
+            </p>
+          </div>
+          <div className="flex-shrink-0">
+            <div className="bg-white/15 backdrop-blur-sm rounded-xl px-5 py-3 text-center">
+              <p className="text-white/60 text-xs uppercase tracking-wider mb-1">Project Status</p>
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-white/20 text-white">
+                {STATUS_LABELS[lead.status] || lead.status}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Tab Navigation */}
-      <div className="max-w-4xl mx-auto px-6">
+      <div className="max-w-6xl mx-auto px-6">
         <div className="flex gap-1 bg-white/10 rounded-t-xl p-1">
           {TABS.map((t) => {
             const isDisabled = (t.key === "sow" && !hasSow) || (t.key === "app-flow" && !hasAppFlow) || (t.key === "nda" && !hasNda) || (t.key === "appointments" && !hasAppointments);
@@ -186,7 +198,7 @@ export default async function ProjectPage({
       </div>
 
       {/* Tab Content */}
-      <div className="max-w-4xl mx-auto px-6 pb-16">
+      <div className="max-w-6xl mx-auto px-6 pb-16">
         <div className="bg-white/95 backdrop-blur-sm rounded-b-2xl rounded-tr-2xl shadow-2xl dark:bg-gray-900/95">
           {activeTab === "overview" && (
             <div className="p-8 md:p-10">
@@ -405,11 +417,61 @@ export default async function ProjectPage({
         </div>
       </div>
 
+      {/* KITLabs Resources */}
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 md:p-8">
+          <div className="text-center mb-6">
+            <h3 className="text-xl font-bold text-white mb-1">Explore KITLabs</h3>
+            <p className="text-white/60 text-sm">Discover our work, tools, and resources</p>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            <a href="https://kitlabs.us/portfolio" target="_blank" rel="noopener noreferrer" className="bg-white/10 hover:bg-white/20 rounded-xl p-4 text-center transition group">
+              <div className="text-2xl mb-2">🎨</div>
+              <p className="text-white font-medium text-sm group-hover:text-white">Our Portfolio</p>
+              <p className="text-white/50 text-xs mt-0.5">See our recent work</p>
+            </a>
+            <a href="https://kitlabs.us/app-cost-estimator" target="_blank" rel="noopener noreferrer" className="bg-white/10 hover:bg-white/20 rounded-xl p-4 text-center transition group">
+              <div className="text-2xl mb-2">💰</div>
+              <p className="text-white font-medium text-sm">Cost Estimator</p>
+              <p className="text-white/50 text-xs mt-0.5">Estimate app costs</p>
+            </a>
+            <a href="https://kitlabs.us/app-builder" target="_blank" rel="noopener noreferrer" className="bg-white/10 hover:bg-white/20 rounded-xl p-4 text-center transition group">
+              <div className="text-2xl mb-2">🛠</div>
+              <p className="text-white font-medium text-sm">App Builder</p>
+              <p className="text-white/50 text-xs mt-0.5">Build your app idea</p>
+            </a>
+            <a href="https://kitlabs.us/my-digital-card" target="_blank" rel="noopener noreferrer" className="bg-white/10 hover:bg-white/20 rounded-xl p-4 text-center transition group">
+              <div className="text-2xl mb-2">📇</div>
+              <p className="text-white font-medium text-sm">Digital Card</p>
+              <p className="text-white/50 text-xs mt-0.5">Your digital business card</p>
+            </a>
+            <a href="https://kitlabs.us/support" target="_blank" rel="noopener noreferrer" className="bg-white/10 hover:bg-white/20 rounded-xl p-4 text-center transition group">
+              <div className="text-2xl mb-2">🤝</div>
+              <p className="text-white font-medium text-sm">Support Portal</p>
+              <p className="text-white/50 text-xs mt-0.5">Get help anytime</p>
+            </a>
+          </div>
+          <div className="flex flex-wrap justify-center gap-4 mt-6 pt-4 border-t border-white/10">
+            <a href="https://kitlabs.us/services" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white text-xs transition">Our Services</a>
+            <a href="https://kitlabs.us/industries" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white text-xs transition">Industries</a>
+            <a href="https://kitlabs.us/about-kitlabs" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white text-xs transition">About KITLabs</a>
+            <a href="https://kitlabs.us/contact-us" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white text-xs transition">Contact Us</a>
+            <a href="https://kitlabs.us/book-us" target="_blank" rel="noopener noreferrer" className="text-white/60 hover:text-white text-xs transition">Book a Meeting</a>
+          </div>
+        </div>
+      </div>
+
       {/* Footer */}
-      <div className="max-w-4xl mx-auto px-6 pb-8">
-        <p className="text-center text-white/60 text-sm">
-          If you have any questions, reach out to us and we&apos;ll be happy to help.
-        </p>
+      <div className="max-w-6xl mx-auto px-6 pb-8">
+        <div className="text-center">
+          <img src="/kitlabs-logo.jpg" alt="KITLabs" className="h-10 mx-auto mb-3 opacity-70" />
+          <p className="text-white/50 text-sm">
+            KITLabs Inc — Mobile &amp; Web Platform
+          </p>
+          <p className="text-white/30 text-xs mt-1">
+            &copy; {new Date().getFullYear()} KITLabs Inc. All rights reserved.
+          </p>
+        </div>
       </div>
 
       {/* Chat Widget */}
