@@ -4,6 +4,7 @@ import SowSection from "../../components/SowSection";
 import AppFlowSection from "../../components/AppFlowSection";
 import ProjectFeedback from "../../components/ProjectFeedback";
 import VisitTracker from "../../components/VisitTracker";
+import ChatWidget from "../../components/ChatWidget";
 import { getCustomerSession } from "../../lib/session";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -410,6 +411,14 @@ export default async function ProjectPage({
           If you have any questions, reach out to us and we&apos;ll be happy to help.
         </p>
       </div>
+
+      {/* Chat Widget */}
+      <ChatWidget
+        leadId={lead.id}
+        isLoggedIn={isLoggedIn}
+        customerName={lead.customerName}
+        returnTo={returnTo}
+      />
     </div>
   );
 }

@@ -326,6 +326,12 @@ export default function LeadDetailPage() {
   const [drafts, setDrafts] = useState<{ id: string; subject: string; body: string; cc: string | null; bcc: string | null; createdBy: string | null; updatedAt: string }[]>([]);
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
   const [draftSaving, setDraftSaving] = useState(false);
+
+  // Messages state
+  const [messages, setMessages] = useState<{ id: string; content: string; senderName: string; senderType: string; createdAt: string }[]>([]);
+  const [messageInput, setMessageInput] = useState("");
+  const [messageSending, setMessageSending] = useState(false);
+
   const [templates, setTemplates] = useState<EmailTemplateItem[]>([]);
 
   const [includeSignature, setIncludeSignature] = useState(false);
@@ -501,6 +507,22 @@ export default function LeadDetailPage() {
   useEffect(() => {
     fetchDrafts();
   }, [fetchDrafts]);
+
+  // Load Messages
+  const fetchMessages = useCallback(async () => {
+    if (!params.id) return;
+    const res = await fetch(`/api/leads/${params.id}/messages`);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) setMessages(data);
+    }
+  }, [params.id]);
+
+  useEffect(() => {
+    fetchMessages();
+    const interval = setInterval(fetchMessages, 30000);
+    return () => clearInterval(interval);
+  }, [fetchMessages]);
 
   // Load Audit Logs
   const fetchAuditLogs = useCallback(async () => {
@@ -1186,6 +1208,27 @@ export default function LeadDetailPage() {
     await fetch(`/api/leads/${lead.id}/drafts?draftId=${draftId}`, { method: "DELETE" });
     if (activeDraftId === draftId) setActiveDraftId(null);
     fetchDrafts();
+  }
+
+  async function handleSendMessage() {
+    if (!lead || !messageInput.trim()) return;
+    setMessageSending(true);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/messages`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: messageInput.trim() }),
+      });
+      if (res.ok) {
+        setMessageInput("");
+        fetchMessages();
+        fetchAuditLogs();
+      }
+    } catch {
+      alert("Failed to send message");
+    } finally {
+      setMessageSending(false);
+    }
   }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -2377,6 +2420,59 @@ export default function LeadDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* Messages */}
+            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  Messages ({messages.length})
+                </h2>
+                <span className="text-xs text-gray-400">Customer chat</span>
+              </div>
+
+              {/* Message thread */}
+              <div className="space-y-3 max-h-80 overflow-y-auto mb-4">
+                {messages.length === 0 ? (
+                  <p className="text-gray-400 text-sm text-center py-4">No messages yet. Send a message to start a conversation with the customer.</p>
+                ) : messages.map((msg) => (
+                  <div
+                    key={msg.id}
+                    className={`flex ${msg.senderType === "admin" ? "justify-end" : "justify-start"}`}
+                  >
+                    <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
+                      msg.senderType === "admin"
+                        ? "bg-[#01358d] text-white rounded-br-md"
+                        : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-md"
+                    }`}>
+                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                      <p className={`text-[10px] mt-1 ${msg.senderType === "admin" ? "text-white/60" : "text-gray-400"}`}>
+                        {msg.senderName} &middot; {new Date(msg.createdAt).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Reply input */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={messageInput}
+                  onChange={(e) => setMessageInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
+                  placeholder={lead.doNotContact ? "Cannot send — Do Not Contact enabled" : "Type a message to the customer..."}
+                  disabled={lead.doNotContact}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-full text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 outline-none focus:ring-2 focus:ring-[#01358d] disabled:opacity-50"
+                />
+                <button
+                  onClick={handleSendMessage}
+                  disabled={!messageInput.trim() || messageSending || lead.doNotContact}
+                  className="w-10 h-10 bg-[#01358d] text-white rounded-full flex items-center justify-center hover:bg-[#012a70] disabled:opacity-50 transition flex-shrink-0"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                </button>
+              </div>
+            </div>
 
             {/* Email Conversation Thread */}
             {(() => {

@@ -141,6 +141,7 @@ model Lead {
   nda           Nda?
   sentEmails      SentEmail[]
   emailDrafts     EmailDraft[]
+  messages        Message[]
   receivedEmails  ReceivedEmail[]
   files           LeadFile[]
   scopeOfWorks    ScopeOfWork[]
@@ -276,6 +277,19 @@ model EmailFlow {
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   @@map("email_flows")
+}
+
+model Message {
+  id         String   @id @default(uuid())
+  leadId     String   @map("lead_id")
+  lead       Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  content    String   @db.Text
+  senderName String   @map("sender_name")
+  senderType String   @default("customer") @map("sender_type")
+  readAt     DateTime? @map("read_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  @@map("messages")
 }
 
 model EmailDraft {
