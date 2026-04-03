@@ -276,9 +276,10 @@ export default function LeadDetailPage() {
   const [noteContent, setNoteContent] = useState("");
   const [noteAdding, setNoteAdding] = useState(false);
   // Next steps state
-  const [nextSteps, setNextSteps] = useState<{ id: string; content: string; dueDate: string | null; completed: boolean; completedAt: string | null; createdBy: string | null; createdAt: string }[]>([]);
+  const [nextSteps, setNextSteps] = useState<{ id: string; content: string; dueDate: string | null; completed: boolean; completedAt: string | null; createdBy: string | null; createdAt: string; assignedToId: string | null; assignedTo: { id: string; name: string } | null }[]>([]);
   const [nextStepContent, setNextStepContent] = useState("");
   const [nextStepDueDate, setNextStepDueDate] = useState("");
+  const [nextStepAssignee, setNextStepAssignee] = useState<string>("");
   const [nextStepAdding, setNextStepAdding] = useState(false);
   // Audit log state
   const [auditLogs, setAuditLogs] = useState<{ id: string; action: string; detail: string | null; actor: string | null; createdAt: string }[]>([]);
@@ -414,6 +415,7 @@ export default function LeadDetailPage() {
       .then((data) => {
         if (data.emailSignature) setAdminSignature(data.emailSignature);
         if (data.id) setCurrentAdminId(data.id);
+        if (data.id) setNextStepAssignee(data.id || "");
         if (data.name) setCurrentAdminName(data.name);
       });
   }, []);
@@ -917,11 +919,12 @@ export default function LeadDetailPage() {
       const res = await fetch(`/api/leads/${lead.id}/next-steps`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: nextStepContent.trim(), dueDate: nextStepDueDate || null }),
+        body: JSON.stringify({ content: nextStepContent.trim(), dueDate: nextStepDueDate || null, assignedToId: nextStepAssignee || undefined }),
       });
       if (res.ok) {
         setNextStepContent("");
         setNextStepDueDate("");
+        setNextStepAssignee(currentAdminId || "");
         fetchNextSteps();
         fetchAuditLogs();
       }
@@ -950,6 +953,20 @@ export default function LeadDetailPage() {
     if (!confirm("Delete this next step?")) return;
     try {
       await fetch(`/api/leads/${lead!.id}/next-steps?stepId=${stepId}`, { method: "DELETE" });
+      fetchNextSteps();
+      fetchAuditLogs();
+    } catch {
+      // silently fail
+    }
+  }
+
+  async function handleReassignTask(stepId: string, newAssigneeId: string) {
+    try {
+      await fetch(`/api/leads/${lead!.id}/next-steps`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stepId, assignedToId: newAssigneeId }),
+      });
       fetchNextSteps();
       fetchAuditLogs();
     } catch {
@@ -3074,6 +3091,19 @@ export default function LeadDetailPage() {
                               Completed {new Date(step.completedAt).toLocaleDateString()}
                             </span>
                           )}
+                          {step.assignedTo && (
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              Assigned to: <select
+                                value={step.assignedToId || ""}
+                                onChange={(e) => handleReassignTask(step.id, e.target.value)}
+                                className="text-xs bg-transparent border-none text-[#01358d] dark:text-blue-400 font-medium cursor-pointer p-0"
+                              >
+                                {adminUsers.filter(u => u.active).map((u) => (
+                                  <option key={u.id} value={u.id}>{u.name}</option>
+                                ))}
+                              </select>
+                            </span>
+                          )}
                         </div>
                       </div>
                       <button
@@ -3107,6 +3137,16 @@ export default function LeadDetailPage() {
                   className="px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm w-40"
                   title="Due date (optional)"
                 />
+                <select
+                  value={nextStepAssignee}
+                  onChange={(e) => setNextStepAssignee(e.target.value)}
+                  className="px-2 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 w-36"
+                  title="Assign to"
+                >
+                  {adminUsers.filter(u => u.active).map((u) => (
+                    <option key={u.id} value={u.id}>{u.name}{u.id === currentAdminId ? " (me)" : ""}</option>
+                  ))}
+                </select>
                 <button
                   onClick={handleAddNextStep}
                   disabled={!nextStepContent.trim() || nextStepAdding}

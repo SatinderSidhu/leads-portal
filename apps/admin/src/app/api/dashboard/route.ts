@@ -83,6 +83,26 @@ export async function GET() {
     }),
   ]);
 
+  // My pending tasks (assigned to current admin, not completed)
+  const myPendingTasks = await prisma.nextStep.findMany({
+    where: {
+      assignedToId: session.id,
+      completed: false,
+    },
+    include: {
+      lead: {
+        select: {
+          id: true,
+          projectName: true,
+          customerName: true,
+          status: true,
+        },
+      },
+    },
+    orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
+    take: 20,
+  });
+
   // Deduplicate attention leads (group by leadId, keep latest activity)
   const attentionMap = new Map<string, {
     leadId: string;
@@ -141,8 +161,20 @@ export async function GET() {
       recentCustomerComments,
       recentReceivedEmails,
       needsAttentionCount: needsAttention.length,
+      myPendingTasksCount: myPendingTasks.length,
     },
     needsAttention,
+    myTasks: myPendingTasks.map((t) => ({
+      id: t.id,
+      content: t.content,
+      dueDate: t.dueDate?.toISOString() || null,
+      createdBy: t.createdBy,
+      createdAt: t.createdAt.toISOString(),
+      leadId: t.lead.id,
+      projectName: t.lead.projectName,
+      customerName: t.lead.customerName,
+      leadStatus: t.lead.status,
+    })),
     statusDistribution,
   });
 }

@@ -40,6 +40,7 @@ interface DashboardStats {
   recentCustomerComments: number;
   recentReceivedEmails: number;
   needsAttentionCount: number;
+  myPendingTasksCount: number;
 }
 
 interface AttentionLead {
@@ -53,6 +54,18 @@ interface AttentionLead {
   lastActor: string | null;
   lastActivityAt: string;
   activityCount: number;
+}
+
+interface MyTask {
+  id: string;
+  content: string;
+  dueDate: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  leadId: string;
+  projectName: string;
+  customerName: string;
+  leadStatus: string;
 }
 
 interface ActivityItem {
@@ -88,6 +101,7 @@ export default function DashboardPage() {
   const [adminName, setAdminName] = useState("");
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [needsAttention, setNeedsAttention] = useState<AttentionLead[]>([]);
+  const [myTasks, setMyTasks] = useState<MyTask[]>([]);
   const [statusDistribution, setStatusDistribution] = useState<Record<string, number>>({});
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [activityLoading, setActivityLoading] = useState(true);
@@ -103,6 +117,7 @@ export default function DashboardPage() {
           setAdminName(data.admin?.name || "");
           setStats(data.stats);
           setNeedsAttention(data.needsAttention || []);
+          setMyTasks(data.myTasks || []);
           setStatusDistribution(data.statusDistribution || {});
         }
       })
@@ -138,12 +153,13 @@ export default function DashboardPage() {
 
       {/* Stats Grid */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3">
           <StatCard label="Total Leads" value={stats.totalLeads} color="text-gray-900 dark:text-white" onClick={() => router.push("/dashboard?assignedTo=all")} />
           <StatCard label="My Leads" value={stats.myLeads} color="text-[#01358d]" onClick={() => router.push("/dashboard")} />
           <StatCard label="New Today" value={stats.newLeadsToday} color="text-green-600" highlight={stats.newLeadsToday > 0} />
           <StatCard label="This Week" value={stats.newLeadsThisWeek} color="text-blue-600" />
           <StatCard label="Active Pipeline" value={stats.activeLeads} color="text-amber-600" />
+          <StatCard label="My Tasks" value={stats.myPendingTasksCount} color="text-purple-600" highlight={stats.myPendingTasksCount > 0} />
           <StatCard label="Needs Attention" value={stats.needsAttentionCount} color="text-red-600" highlight={stats.needsAttentionCount > 0} />
         </div>
       )}
@@ -182,7 +198,51 @@ export default function DashboardPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        {/* My Tasks */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">My Tasks</h2>
+            <span className="text-xs text-gray-400">{myTasks.length} pending</span>
+          </div>
+          {myTasks.length === 0 ? (
+            <p className="text-gray-400 text-sm py-6 text-center">No pending tasks assigned to you.</p>
+          ) : (
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {myTasks.map((task) => {
+                const isOverdue = task.dueDate && new Date(task.dueDate) < new Date();
+                return (
+                  <div
+                    key={task.id}
+                    onClick={() => router.push(`/leads/${task.leadId}`)}
+                    className={`p-3 rounded-lg border cursor-pointer transition hover:shadow-sm ${
+                      isOverdue
+                        ? "border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20"
+                        : "border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50"
+                    }`}
+                  >
+                    <p className="text-sm text-gray-900 dark:text-white font-medium">{task.content}</p>
+                    <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                      <span className="text-xs text-blue-600 font-medium">{task.projectName}</span>
+                      <span className="text-xs text-gray-400">{task.customerName}</span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1">
+                      {task.dueDate && (
+                        <span className={`text-xs ${isOverdue ? "text-red-600 font-semibold" : "text-gray-500"}`}>
+                          Due: {new Date(task.dueDate).toLocaleDateString()}
+                        </span>
+                      )}
+                      {task.createdBy && (
+                        <span className="text-xs text-gray-400">by {task.createdBy}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         {/* Needs Attention */}
         <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-5">
           <div className="flex items-center justify-between mb-4">

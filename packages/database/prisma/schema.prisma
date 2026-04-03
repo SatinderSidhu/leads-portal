@@ -75,6 +75,7 @@ model AdminUser {
   updatedAt      DateTime @updatedAt @map("updated_at")
 
   assignedLeads  Lead[]       @relation("AssignedLeads")
+  assignedTasks  NextStep[]   @relation("AssignedTasks")
   watchedLeads   LeadWatcher[]
   notificationPreference NotificationPreference?
 
@@ -449,15 +450,17 @@ model AuditLog {
 }
 
 model NextStep {
-  id          String    @id @default(uuid())
-  leadId      String    @map("lead_id")
-  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  content     String    @db.Text
-  dueDate     DateTime? @map("due_date")
-  completed   Boolean   @default(false)
-  completedAt DateTime? @map("completed_at")
-  createdBy   String?   @map("created_by")
-  createdAt   DateTime  @default(now()) @map("created_at")
+  id            String     @id @default(uuid())
+  leadId        String     @map("lead_id")
+  lead          Lead       @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  content       String     @db.Text
+  dueDate       DateTime?  @map("due_date")
+  completed     Boolean    @default(false)
+  completedAt   DateTime?  @map("completed_at")
+  createdBy     String?    @map("created_by")
+  assignedToId  String?    @map("assigned_to_id")
+  assignedTo    AdminUser? @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdAt     DateTime   @default(now()) @map("created_at")
 
   @@map("next_steps")
 }
