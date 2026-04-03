@@ -465,6 +465,48 @@ model NextStep {
   @@map("next_steps")
 }
 
+model PortfolioService {
+  id              String   @id @default(uuid())
+  name            String
+  description     String   @db.Text
+  emailScript     String?  @map("email_script") @db.Text
+  phoneScript     String?  @map("phone_script") @db.Text
+  meetingScript   String?  @map("meeting_script") @db.Text
+  documents       Json     @default("[]")
+  urls            Json     @default("[]")
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdBy       String?  @map("created_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  projects        PortfolioProject[]
+
+  @@map("portfolio_services")
+}
+
+model PortfolioProject {
+  id              String   @id @default(uuid())
+  title           String
+  description     String   @db.Text
+  serviceId       String?  @map("service_id")
+  service         PortfolioService? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  category        String?
+  domain          String?
+  technologies    Json     @default("[]")
+  customerName    String?  @map("customer_name")
+  customerDetail  String?  @map("customer_detail") @db.Text
+  demoVideoUrl    String?  @map("demo_video_url")
+  documents       Json     @default("[]")
+  emailScript     String?  @map("email_script") @db.Text
+  phoneScript     String?  @map("phone_script") @db.Text
+  meetingScript   String?  @map("meeting_script") @db.Text
+  completedAt     DateTime? @map("completed_at")
+  createdBy       String?  @map("created_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("portfolio_projects")
+}
+
 model CustomerVisit {
   id        String   @id @default(uuid())
   leadId    String   @map("lead_id")
