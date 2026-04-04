@@ -340,6 +340,13 @@ export default function LeadDetailPage() {
   const [prevMsgCount, setPrevMsgCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Section comments state
+  const [sowCommentsList, setSowCommentsList] = useState<Record<string, { id: string; content: string; authorName: string; authorType: string; createdAt: string }[]>>({});
+  const [appFlowCommentsList, setAppFlowCommentsList] = useState<Record<string, { id: string; content: string; authorName: string; authorType: string; createdAt: string }[]>>({});
+  const [commentReply, setCommentReply] = useState<{ type: string; id: string; text: string } | null>(null);
+  const [replyingSowComment, setReplyingSowComment] = useState(false);
+  const [replyingFlowComment, setReplyingFlowComment] = useState(false);
+
   const [templates, setTemplates] = useState<EmailTemplateItem[]>([]);
 
   const [includeSignature, setIncludeSignature] = useState(false);
@@ -566,6 +573,32 @@ export default function LeadDetailPage() {
   useEffect(() => {
     fetchAuditLogs();
   }, [fetchAuditLogs]);
+
+  // Load SOW comments when sows change
+  useEffect(() => {
+    if (!lead) return;
+    for (const sow of sows) {
+      fetch(`/api/leads/${lead.id}/sow/${sow.id}/comments`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) setSowCommentsList((prev) => ({ ...prev, [sow.id]: data }));
+        })
+        .catch(() => {});
+    }
+  }, [lead?.id, sows.length]);
+
+  // Load App Flow comments when flows change
+  useEffect(() => {
+    if (!lead) return;
+    for (const flow of appFlows) {
+      fetch(`/api/leads/${lead.id}/app-flows/${flow.id}/comments`)
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data)) setAppFlowCommentsList((prev) => ({ ...prev, [flow.id]: data }));
+        })
+        .catch(() => {});
+    }
+  }, [lead?.id, appFlows.length]);
 
   // Load SOWs
   const fetchSows = useCallback(async () => {
@@ -1262,6 +1295,44 @@ export default function LeadDetailPage() {
     } finally {
       setMessageSending(false);
     }
+  }
+
+  async function handleReplySowComment(sowId: string) {
+    if (!lead || !commentReply?.text.trim()) return;
+    setReplyingSowComment(true);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/sow/${sowId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: commentReply.text.trim() }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSowCommentsList((prev) => ({ ...prev, [sowId]: [...(prev[sowId] || []), data] }));
+        setCommentReply(null);
+        fetchAuditLogs();
+      }
+    } catch { alert("Failed to reply"); }
+    finally { setReplyingSowComment(false); }
+  }
+
+  async function handleReplyFlowComment(flowId: string) {
+    if (!lead || !commentReply?.text.trim()) return;
+    setReplyingFlowComment(true);
+    try {
+      const res = await fetch(`/api/leads/${lead.id}/app-flows/${flowId}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: commentReply.text.trim() }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAppFlowCommentsList((prev) => ({ ...prev, [flowId]: [...(prev[flowId] || []), data] }));
+        setCommentReply(null);
+        fetchAuditLogs();
+      }
+    } catch { alert("Failed to reply"); }
+    finally { setReplyingFlowComment(false); }
   }
 
   async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -2855,6 +2926,39 @@ export default function LeadDetailPage() {
                   ))}
                 </div>
               )}
+              {/* SOW Comments */}
+              {sows.length > 0 && (
+                <div className="mt-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">SOW Comments</p>
+                  {sows.map((sow) => {
+                    const comments = sowCommentsList[sow.id] || [];
+                    if (comments.length === 0) return null;
+                    return (
+                      <div key={sow.id} className="mb-3">
+                        <p className="text-xs text-gray-400 mb-1">v{sow.version}</p>
+                        <div className="space-y-2">
+                          {comments.map((c) => (
+                            <div key={c.id} className={`p-2.5 rounded-lg text-sm ${c.authorType === "admin" ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 ml-6" : "bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600 mr-6"}`}>
+                              <p className="text-gray-700 dark:text-gray-300 text-xs">{c.content}</p>
+                              <p className="text-[10px] text-gray-400 mt-1">{c.authorName} ({c.authorType}) — {new Date(c.createdAt).toLocaleString()}</p>
+                            </div>
+                          ))}
+                        </div>
+                        {/* Reply */}
+                        {commentReply?.type === "sow" && commentReply.id === sow.id ? (
+                          <div className="flex gap-2 mt-2">
+                            <input value={commentReply.text} onChange={(e) => setCommentReply({ ...commentReply, text: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") handleReplySowComment(sow.id); }} placeholder="Reply..." className="flex-1 px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs text-gray-900 dark:text-white bg-white dark:bg-gray-700 outline-none" />
+                            <button onClick={() => handleReplySowComment(sow.id)} disabled={replyingSowComment} className="text-xs bg-[#01358d] text-white px-3 py-1.5 rounded-lg disabled:opacity-50">Reply</button>
+                            <button onClick={() => setCommentReply(null)} className="text-xs text-gray-400">Cancel</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setCommentReply({ type: "sow", id: sow.id, text: "" })} className="text-[10px] text-[#01358d] dark:text-blue-400 mt-1 hover:underline">Reply to comments</button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* App Flows Section */}
@@ -2940,6 +3044,39 @@ export default function LeadDetailPage() {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* App Flow Comments */}
+              {appFlows.length > 0 && (
+                <div className="mt-4 border-t border-gray-100 dark:border-gray-700 pt-4">
+                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">App Flow Comments</p>
+                  {appFlows.map((flow) => {
+                    const comments = appFlowCommentsList[flow.id] || [];
+                    if (comments.length === 0) return null;
+                    return (
+                      <div key={flow.id} className="mb-3">
+                        <p className="text-xs text-gray-400 mb-1">{flow.name}</p>
+                        <div className="space-y-2">
+                          {comments.map((c) => (
+                            <div key={c.id} className={`p-2.5 rounded-lg text-sm ${c.authorType === "admin" ? "bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 ml-6" : "bg-gray-50 dark:bg-gray-700 border border-gray-100 dark:border-gray-600 mr-6"}`}>
+                              <p className="text-gray-700 dark:text-gray-300 text-xs">{c.content}</p>
+                              <p className="text-[10px] text-gray-400 mt-1">{c.authorName} ({c.authorType}) — {new Date(c.createdAt).toLocaleString()}</p>
+                            </div>
+                          ))}
+                        </div>
+                        {commentReply?.type === "flow" && commentReply.id === flow.id ? (
+                          <div className="flex gap-2 mt-2">
+                            <input value={commentReply.text} onChange={(e) => setCommentReply({ ...commentReply, text: e.target.value })} onKeyDown={(e) => { if (e.key === "Enter") handleReplyFlowComment(flow.id); }} placeholder="Reply..." className="flex-1 px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs text-gray-900 dark:text-white bg-white dark:bg-gray-700 outline-none" />
+                            <button onClick={() => handleReplyFlowComment(flow.id)} disabled={replyingFlowComment} className="text-xs bg-[#01358d] text-white px-3 py-1.5 rounded-lg disabled:opacity-50">Reply</button>
+                            <button onClick={() => setCommentReply(null)} className="text-xs text-gray-400">Cancel</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setCommentReply({ type: "flow", id: flow.id, text: "" })} className="text-[10px] text-[#01358d] dark:text-blue-400 mt-1 hover:underline">Reply to comments</button>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
