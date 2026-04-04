@@ -5,6 +5,7 @@ import AppFlowSection from "../../components/AppFlowSection";
 import ProjectFeedback from "../../components/ProjectFeedback";
 import VisitTracker from "../../components/VisitTracker";
 import ChatWidget from "../../components/ChatWidget";
+import { ThemeToggle } from "../../components/ThemeToggle";
 import { getCustomerSession } from "../../lib/session";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -127,24 +128,25 @@ export default async function ProjectPage({
       <VisitTracker leadId={lead.id} page={activeTab} />
       {/* Nav */}
       <nav className="bg-white/10 backdrop-blur-sm border-b border-white/20 dark:bg-black/20 dark:border-white/10">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img src="/kitlabs-logo.jpg" alt="KITLabs" className="h-8 object-contain" />
+        <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img src="/kitlabs-logo.jpg" alt="KITLabs" className="h-7 object-contain" />
             {session && (
-              <a href="/" className="text-white/70 hover:text-white text-sm transition">&larr; My Projects</a>
+              <a href="/" className="text-white/60 hover:text-white text-xs transition">&larr; My Projects</a>
             )}
-            <h1 className="text-lg font-bold text-white">{lead.projectName}</h1>
+            <h1 className="text-sm font-semibold text-white">{lead.projectName}</h1>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
             {session ? (
               <>
-                <span className="text-sm text-white/80">{session.name}</span>
-                <a href="/api/auth?logout=1" className="text-sm text-white/70 hover:text-white transition">Logout</a>
+                <span className="text-xs text-white/70">{session.name}</span>
+                <a href="/api/auth?logout=1" className="text-xs text-white/60 hover:text-white transition">Logout</a>
               </>
             ) : (
-              <div className="flex items-center gap-3">
-                <a href={`/login?returnTo=${returnTo}`} className="text-sm text-white/80 hover:text-white transition">Sign In</a>
-                <a href={`/register?leadId=${lead.id}&returnTo=${returnTo}`} className="text-sm bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-lg transition">Create Account</a>
+              <div className="flex items-center gap-2">
+                <a href={`/login?returnTo=${returnTo}`} className="text-xs text-white/70 hover:text-white transition">Sign In</a>
+                <a href={`/register?leadId=${lead.id}&returnTo=${returnTo}`} className="text-xs bg-white/20 hover:bg-white/30 text-white px-2.5 py-1 rounded-lg transition">Create Account</a>
               </div>
             )}
           </div>
@@ -152,20 +154,20 @@ export default async function ProjectPage({
       </nav>
 
       {/* Welcome + Status Banner */}
-      <div className="max-w-6xl mx-auto px-6 pt-8 pb-6">
-        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+      <div className="max-w-6xl mx-auto px-6 pt-6 pb-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
           <div>
-            <h2 className="text-3xl font-bold text-white mb-2">
-              Welcome, {lead.customerName}!
+            <h2 className="text-xl font-semibold text-white mb-1">
+              Welcome, {lead.customerName}
             </h2>
-            <p className="text-white/80 text-lg leading-relaxed max-w-2xl">
-              This is your dedicated project portal — your single place to track progress, review documents, and collaborate with the KITLabs team on <span className="text-white font-semibold">{lead.projectName}</span>.
+            <p className="text-white/70 text-sm leading-relaxed max-w-xl">
+              Your project portal — track progress, review documents, and collaborate with the KITLabs team on <span className="text-white font-medium">{lead.projectName}</span>.
             </p>
           </div>
           <div className="flex-shrink-0">
-            <div className="bg-white/15 backdrop-blur-sm rounded-xl px-5 py-3 text-center">
-              <p className="text-white/60 text-xs uppercase tracking-wider mb-1">Project Status</p>
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-white/20 text-white">
+            <div className="bg-white/10 backdrop-blur-sm rounded-lg px-4 py-2 text-center">
+              <p className="text-white/50 text-[10px] uppercase tracking-wider mb-0.5">Status</p>
+              <span className="text-xs font-medium text-white">
                 {STATUS_LABELS[lead.status] || lead.status}
               </span>
             </div>
@@ -183,7 +185,7 @@ export default async function ProjectPage({
               <a
                 key={t.key}
                 href={`/project?id=${lead.id}&tab=${t.key}${v ? `&v=${v}` : ""}`}
-                className={`px-4 py-2.5 rounded-lg text-sm font-medium transition ${
+                className={`px-3 py-2 rounded-lg text-xs font-medium transition ${
                   activeTab === t.key
                     ? "bg-white text-gray-900 shadow-sm dark:bg-gray-800 dark:text-white"
                     : "text-white/80 hover:text-white hover:bg-white/10"
@@ -198,54 +200,51 @@ export default async function ProjectPage({
       </div>
 
       {/* Tab Content */}
-      <div className="max-w-6xl mx-auto px-6 pb-16">
+      <div className="max-w-6xl mx-auto px-6 pb-10">
         <div className="bg-white/95 backdrop-blur-sm rounded-b-2xl rounded-tr-2xl shadow-2xl dark:bg-gray-900/95">
           {activeTab === "overview" && (
-            <div className="p-8 md:p-10">
+            <div className="p-6 md:p-8">
               {/* Project Info */}
-              <div className="mb-6">
-                <p className="text-sm font-medium text-[#01358d] dark:text-blue-400 uppercase tracking-wider mb-1">Your Project</p>
-                <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{lead.projectName}</h3>
-              </div>
-
-              {/* Current Status Badge */}
-              <div className="mb-6">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2">Current Status</p>
-                <span className="inline-flex items-center px-4 py-2 rounded-full text-sm font-semibold bg-[#01358d]/10 text-[#01358d] dark:bg-blue-500/20 dark:text-blue-300">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <p className="text-[10px] font-medium text-[#01358d] dark:text-blue-400 uppercase tracking-wider mb-0.5">Your Project</p>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{lead.projectName}</h3>
+                </div>
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-[#01358d]/10 text-[#01358d] dark:bg-blue-500/20 dark:text-blue-300">
                   {STATUS_LABELS[lead.status] || lead.status}
                 </span>
               </div>
 
               {/* Description */}
-              <div className="border-t border-gray-100 dark:border-gray-700 pt-6">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Project Description</p>
-                <p className="text-gray-700 dark:text-gray-300 text-lg leading-relaxed whitespace-pre-wrap">{lead.projectDescription}</p>
+              <div className="border-t border-gray-100 dark:border-gray-700 pt-5">
+                <p className="text-[10px] font-medium text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2">Project Description</p>
+                <p className="text-gray-700 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{lead.projectDescription}</p>
               </div>
 
               {/* Contact Info */}
-              <div className="border-t border-gray-100 dark:border-gray-700 pt-6 mt-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="border-t border-gray-100 dark:border-gray-700 pt-4 mt-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   <div>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Contact Name</p>
-                    <p className="text-gray-900 dark:text-white font-medium">{lead.customerName}</p>
+                    <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-0.5">Contact Name</p>
+                    <p className="text-sm text-gray-900 dark:text-white">{lead.customerName}</p>
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">Email</p>
-                    <p className="text-gray-900 dark:text-white font-medium">{lead.customerEmail}</p>
+                    <p className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-0.5">Email</p>
+                    <p className="text-sm text-gray-900 dark:text-white">{lead.customerEmail}</p>
                   </div>
                 </div>
               </div>
 
               {/* Quick Links to SOW/App Flow/NDA */}
               {(hasSow || hasAppFlow || hasNda) && (
-                <div className="border-t border-gray-100 dark:border-gray-700 pt-6 mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="border-t border-gray-100 dark:border-gray-700 pt-4 mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
                   {hasSow && (
                     <a
                       href={`/project?id=${lead.id}&tab=sow`}
-                      className="bg-cyan-50 border border-cyan-200 rounded-xl p-4 hover:shadow-md transition block dark:bg-cyan-900/20 dark:border-cyan-800"
+                      className="bg-cyan-50 border border-cyan-200 rounded-lg p-3 hover:shadow-sm transition block dark:bg-cyan-900/20 dark:border-cyan-800"
                     >
-                      <p className="text-sm font-semibold text-cyan-800 dark:text-cyan-300">Scope of Work</p>
-                      <p className="text-xs text-cyan-600 dark:text-cyan-400">{lead.scopeOfWorks.length} version(s) available</p>
+                      <p className="text-xs font-semibold text-cyan-800 dark:text-cyan-300">Scope of Work</p>
+                      <p className="text-[10px] text-cyan-600 dark:text-cyan-400">{lead.scopeOfWorks.length} version(s)</p>
                     </a>
                   )}
                   {hasAppFlow && (
@@ -318,7 +317,7 @@ export default async function ProjectPage({
           )}
 
           {activeTab === "sow" && hasSow && (
-            <div className="p-8 md:p-10">
+            <div className="p-5 md:p-6">
               <SowSection
                 leadId={lead.id}
                 projectName={lead.projectName}
@@ -351,7 +350,7 @@ export default async function ProjectPage({
           )}
 
           {activeTab === "app-flow" && hasAppFlow && (
-            <div className="p-8 md:p-10">
+            <div className="p-5 md:p-6">
               <AppFlowSection
                 leadId={lead.id}
                 isLoggedIn={isLoggedIn}
@@ -379,7 +378,7 @@ export default async function ProjectPage({
           )}
 
           {activeTab === "nda" && hasNda && lead.nda && (
-            <div className="p-8 md:p-10">
+            <div className="p-5 md:p-6">
               <NdaSection
                 leadId={lead.id}
                 projectName={lead.projectName}
@@ -396,7 +395,7 @@ export default async function ProjectPage({
           )}
 
           {activeTab === "appointments" && (
-            <div className="p-8 md:p-10">
+            <div className="p-5 md:p-6">
               <div className="mb-6">
                 <p className="text-sm font-medium text-[#01358d] dark:text-blue-400 uppercase tracking-wider mb-1">Schedule a Meeting</p>
                 <h3 className="text-2xl font-bold text-gray-900 dark:text-white">Book an Appointment</h3>
@@ -418,37 +417,37 @@ export default async function ProjectPage({
       </div>
 
       {/* KITLabs Resources */}
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <div className="bg-white/10 backdrop-blur-sm rounded-2xl p-6 md:p-8">
-          <div className="text-center mb-6">
-            <h3 className="text-xl font-bold text-white mb-1">Explore KITLabs</h3>
-            <p className="text-white/60 text-sm">Discover our work, tools, and resources</p>
+      <div className="max-w-6xl mx-auto px-6 py-6">
+        <div className="bg-white/10 backdrop-blur-sm rounded-xl p-5 md:p-6">
+          <div className="text-center mb-4">
+            <h3 className="text-sm font-semibold text-white mb-0.5">Explore KITLabs</h3>
+            <p className="text-white/50 text-xs">Discover our work, tools, and resources</p>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            <a href="https://kitlabs.us/portfolio" target="_blank" rel="noopener noreferrer" className="bg-white/10 hover:bg-white/20 rounded-xl p-4 text-center transition group">
-              <div className="text-2xl mb-2">🎨</div>
-              <p className="text-white font-medium text-sm group-hover:text-white">Our Portfolio</p>
-              <p className="text-white/50 text-xs mt-0.5">See our recent work</p>
+            <a href="https://kitlabs.us/portfolio" target="_blank" rel="noopener noreferrer" className="bg-white/10 hover:bg-white/20 rounded-lg p-3 text-center transition group">
+              <div className="text-lg mb-1">🎨</div>
+              <p className="text-white font-medium text-xs">Portfolio</p>
+              <p className="text-white/40 text-[10px] mt-0.5">Our work</p>
             </a>
-            <a href="https://kitlabs.us/app-cost-estimator" target="_blank" rel="noopener noreferrer" className="bg-white/10 hover:bg-white/20 rounded-xl p-4 text-center transition group">
-              <div className="text-2xl mb-2">💰</div>
-              <p className="text-white font-medium text-sm">Cost Estimator</p>
-              <p className="text-white/50 text-xs mt-0.5">Estimate app costs</p>
+            <a href="https://kitlabs.us/app-cost-estimator" target="_blank" rel="noopener noreferrer" className="bg-white/10 hover:bg-white/20 rounded-lg p-3 text-center transition group">
+              <div className="text-lg mb-1">💰</div>
+              <p className="text-white font-medium text-xs">Cost Estimator</p>
+              <p className="text-white/40 text-[10px] mt-0.5">Get estimates</p>
             </a>
-            <a href="https://kitlabs.us/app-builder" target="_blank" rel="noopener noreferrer" className="bg-white/10 hover:bg-white/20 rounded-xl p-4 text-center transition group">
-              <div className="text-2xl mb-2">🛠</div>
-              <p className="text-white font-medium text-sm">App Builder</p>
-              <p className="text-white/50 text-xs mt-0.5">Build your app idea</p>
+            <a href="https://kitlabs.us/app-builder" target="_blank" rel="noopener noreferrer" className="bg-white/10 hover:bg-white/20 rounded-lg p-3 text-center transition group">
+              <div className="text-lg mb-1">🛠</div>
+              <p className="text-white font-medium text-xs">App Builder</p>
+              <p className="text-white/40 text-[10px] mt-0.5">Build your app</p>
             </a>
-            <a href="https://kitlabs.us/my-digital-card" target="_blank" rel="noopener noreferrer" className="bg-white/10 hover:bg-white/20 rounded-xl p-4 text-center transition group">
-              <div className="text-2xl mb-2">📇</div>
-              <p className="text-white font-medium text-sm">Digital Card</p>
-              <p className="text-white/50 text-xs mt-0.5">Your digital business card</p>
+            <a href="https://kitlabs.us/my-digital-card" target="_blank" rel="noopener noreferrer" className="bg-white/10 hover:bg-white/20 rounded-lg p-3 text-center transition group">
+              <div className="text-lg mb-1">📇</div>
+              <p className="text-white font-medium text-xs">Digital Card</p>
+              <p className="text-white/40 text-[10px] mt-0.5">Business card</p>
             </a>
-            <a href="https://kitlabs.us/support" target="_blank" rel="noopener noreferrer" className="bg-white/10 hover:bg-white/20 rounded-xl p-4 text-center transition group">
-              <div className="text-2xl mb-2">🤝</div>
-              <p className="text-white font-medium text-sm">Support Portal</p>
-              <p className="text-white/50 text-xs mt-0.5">Get help anytime</p>
+            <a href="https://kitlabs.us/support" target="_blank" rel="noopener noreferrer" className="bg-white/10 hover:bg-white/20 rounded-lg p-3 text-center transition group">
+              <div className="text-lg mb-1">🤝</div>
+              <p className="text-white font-medium text-xs">Support</p>
+              <p className="text-white/40 text-[10px] mt-0.5">Get help</p>
             </a>
           </div>
           <div className="flex flex-wrap justify-center gap-4 mt-6 pt-4 border-t border-white/10">

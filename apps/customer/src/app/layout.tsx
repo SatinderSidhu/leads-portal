@@ -46,7 +46,6 @@ export default function RootLayout({
       >
         <ThemeProvider>
           {children}
-          <ThemeToggle variant="floating" />
         </ThemeProvider>
       </body>
     </html>
