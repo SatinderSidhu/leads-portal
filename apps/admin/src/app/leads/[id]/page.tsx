@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 
@@ -336,6 +336,9 @@ export default function LeadDetailPage() {
   const [messages, setMessages] = useState<{ id: string; content: string; senderName: string; senderType: string; createdAt: string }[]>([]);
   const [messageInput, setMessageInput] = useState("");
   const [messageSending, setMessageSending] = useState(false);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [prevMsgCount, setPrevMsgCount] = useState(0);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [templates, setTemplates] = useState<EmailTemplateItem[]>([]);
 
@@ -533,9 +536,22 @@ export default function LeadDetailPage() {
 
   useEffect(() => {
     fetchMessages();
-    const interval = setInterval(fetchMessages, 5000); // Fast poll for live chat
+    const interval = setInterval(fetchMessages, chatOpen ? 3000 : 10000);
     return () => clearInterval(interval);
-  }, [fetchMessages]);
+  }, [fetchMessages, chatOpen]);
+
+  // Sound + scroll on new customer message
+  useEffect(() => {
+    if (messages.length > prevMsgCount && prevMsgCount > 0) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg?.senderType === "customer") {
+        try { new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1iZGBkcHV7goaIh4WDgH57enh4eXx+gIOGiIqKiYiGhIJ/fXt6ent8f4KFiIqLi4qJh4WCf317enl6fH+ChoiKi4uKiYeFgn99e3p5enx/goaIiouLiomHhYJ/fXt6eXp8f4KGiIqLi4qJh4WCf317enl6fH+ChoiKi4uKiYeFgn99e3p5enx/goaIiouLiomHhYJ/fQ==").play(); } catch {}
+        if (!chatOpen) setChatOpen(true);
+      }
+    }
+    setPrevMsgCount(messages.length);
+    if (chatOpen) messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Load Audit Logs
   const fetchAuditLogs = useCallback(async () => {
@@ -2421,58 +2437,7 @@ export default function LeadDetailPage() {
               </div>
             )}
 
-            {/* Messages */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Messages ({messages.length})
-                </h2>
-                <span className="text-xs text-gray-400">Customer chat</span>
-              </div>
-
-              {/* Message thread */}
-              <div className="space-y-3 max-h-80 overflow-y-auto mb-4">
-                {messages.length === 0 ? (
-                  <p className="text-gray-400 text-sm text-center py-4">No messages yet. Send a message to start a conversation with the customer.</p>
-                ) : messages.map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex ${msg.senderType === "admin" ? "justify-end" : "justify-start"}`}
-                  >
-                    <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
-                      msg.senderType === "admin"
-                        ? "bg-[#01358d] text-white rounded-br-md"
-                        : "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-bl-md"
-                    }`}>
-                      <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
-                      <p className={`text-[10px] mt-1 ${msg.senderType === "admin" ? "text-white/60" : "text-gray-400"}`}>
-                        {msg.senderName} &middot; {new Date(msg.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Reply input */}
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  value={messageInput}
-                  onChange={(e) => setMessageInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
-                  placeholder={lead.doNotContact ? "Cannot send — Do Not Contact enabled" : "Type a message to the customer..."}
-                  disabled={lead.doNotContact}
-                  className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-full text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 outline-none focus:ring-2 focus:ring-[#01358d] disabled:opacity-50"
-                />
-                <button
-                  onClick={handleSendMessage}
-                  disabled={!messageInput.trim() || messageSending || lead.doNotContact}
-                  className="w-10 h-10 bg-[#01358d] text-white rounded-full flex items-center justify-center hover:bg-[#012a70] disabled:opacity-50 transition flex-shrink-0"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                </button>
-              </div>
-            </div>
+            {/* Messages handled by floating chat widget below */}
 
             {/* Email Conversation Thread */}
             {(() => {
@@ -3398,6 +3363,82 @@ export default function LeadDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Floating Chat Widget */}
+      <button
+        onClick={() => setChatOpen(!chatOpen)}
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-[#01358d] text-white rounded-full shadow-lg hover:bg-[#012a70] transition flex items-center justify-center"
+      >
+        {chatOpen ? (
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        )}
+        {!chatOpen && messages.filter((m) => m.senderType === "customer" && !(m as Record<string, unknown>).readAt).length > 0 && (
+          <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+            {messages.filter((m) => m.senderType === "customer" && !(m as Record<string, unknown>).readAt).length}
+          </span>
+        )}
+      </button>
+
+      {chatOpen && (
+        <div className="fixed bottom-24 right-6 z-50 w-80 sm:w-96 bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden" style={{ maxHeight: "500px" }}>
+          {/* Header */}
+          <div className="bg-[#01358d] text-white px-4 py-3 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold">Chat with {lead.customerName}</p>
+              <p className="text-[10px] text-white/70">{lead.projectName}</p>
+            </div>
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ minHeight: "250px" }}>
+            {messages.length === 0 && (
+              <div className="text-center text-gray-400 text-sm py-8">
+                <p>No messages yet.</p>
+                <p className="text-xs mt-1">Start a conversation with the customer.</p>
+              </div>
+            )}
+            {messages.map((msg) => (
+              <div key={msg.id} className={`flex ${msg.senderType === "admin" ? "justify-end" : "justify-start"}`}>
+                <div className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 ${
+                  msg.senderType === "admin"
+                    ? "bg-[#01358d] text-white rounded-br-md"
+                    : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-md"
+                }`}>
+                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                  <p className={`text-[10px] mt-1 ${msg.senderType === "admin" ? "text-white/60" : "text-gray-400"}`}>
+                    {msg.senderName} &middot; {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                  </p>
+                </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input */}
+          <div className="border-t border-gray-200 dark:border-gray-700 p-3">
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={messageInput}
+                onChange={(e) => setMessageInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSendMessage(); } }}
+                placeholder={lead.doNotContact ? "Do Not Contact enabled" : "Type a message..."}
+                disabled={lead.doNotContact}
+                className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-full text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-800 outline-none focus:ring-2 focus:ring-[#01358d] disabled:opacity-50"
+              />
+              <button
+                onClick={handleSendMessage}
+                disabled={!messageInput.trim() || messageSending || lead.doNotContact}
+                className="w-9 h-9 bg-[#01358d] text-white rounded-full flex items-center justify-center hover:bg-[#012a70] disabled:opacity-50 transition flex-shrink-0"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
