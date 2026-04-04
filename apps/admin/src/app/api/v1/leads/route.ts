@@ -129,6 +129,7 @@ export async function POST(req: Request) {
         companyName: (body.companyName as string)?.trim() || null,
         location: (body.location as string)?.trim() || null,
         linkedinUrl: (body.linkedinUrl as string)?.trim() || null,
+        apolloUrl: (body.apolloUrl as string)?.trim() || null,
         // Company intelligence fields
         industry: (body.industry as string)?.trim() || null,
         companySize: (body.companySize as string)?.trim() || null,

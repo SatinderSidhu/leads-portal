@@ -73,6 +73,7 @@ export async function PUT(
         ...(body.projectDescription !== undefined && { projectDescription: body.projectDescription.trim() }),
         ...(body.stage !== undefined && { stage: body.stage }),
         ...(body.linkedinUrl !== undefined && { linkedinUrl: body.linkedinUrl?.trim() || null }),
+        ...(body.apolloUrl !== undefined && { apolloUrl: body.apolloUrl?.trim() || null }),
         ...(body.facebookUrl !== undefined && { facebookUrl: body.facebookUrl?.trim() || null }),
         ...(body.twitterUrl !== undefined && { twitterUrl: body.twitterUrl?.trim() || null }),
         ...(body.phone !== undefined && { phone: body.phone?.trim() || null }),

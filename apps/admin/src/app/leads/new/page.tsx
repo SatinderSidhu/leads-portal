@@ -54,6 +54,7 @@ export default function NewLeadPage() {
     companyName: "",
     location: "",
     linkedinUrl: "",
+    apolloUrl: "",
     // Company intelligence
     industry: "",
     companySize: "",
@@ -150,10 +151,14 @@ export default function NewLeadPage() {
                 <input id="phone" type="tel" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} className={inputClass} placeholder="e.g. +1 (416) 555-0123" />
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label htmlFor="linkedinUrl" className={labelClass}>LinkedIn URL</label>
                 <input id="linkedinUrl" type="url" value={form.linkedinUrl} onChange={(e) => updateField("linkedinUrl", e.target.value)} className={inputClass} placeholder="https://linkedin.com/in/..." />
+              </div>
+              <div>
+                <label htmlFor="apolloUrl" className={labelClass}>Apollo URL</label>
+                <input id="apolloUrl" type="url" value={form.apolloUrl} onChange={(e) => updateField("apolloUrl", e.target.value)} className={inputClass} placeholder="https://app.apollo.io/..." />
               </div>
               <div>
                 <label htmlFor="location" className={labelClass}>Location</label>

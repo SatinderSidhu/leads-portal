@@ -104,6 +104,7 @@ model Lead {
 
   stage          LeadStage    @default(COLD)
   linkedinUrl    String?      @map("linkedin_url")
+  apolloUrl      String?      @map("apollo_url")
   facebookUrl    String?      @map("facebook_url")
   twitterUrl     String?      @map("twitter_url")
 

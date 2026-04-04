@@ -189,6 +189,7 @@ interface Lead {
   status: string;
   stage: string;
   linkedinUrl: string | null;
+  apolloUrl: string | null;
   facebookUrl: string | null;
   twitterUrl: string | null;
   phone: string | null;
@@ -296,6 +297,7 @@ export default function LeadDetailPage() {
   const [editProjectDescription, setEditProjectDescription] = useState("");
   const [editStage, setEditStage] = useState("COLD");
   const [editLinkedin, setEditLinkedin] = useState("");
+  const [editApollo, setEditApollo] = useState("");
   const [editFacebook, setEditFacebook] = useState("");
   const [editTwitter, setEditTwitter] = useState("");
   const [editPhone, setEditPhone] = useState("");
@@ -851,6 +853,7 @@ export default function LeadDetailPage() {
     setEditProjectDescription(lead.projectDescription);
     setEditStage(lead.stage || "COLD");
     setEditLinkedin(lead.linkedinUrl || "");
+    setEditApollo(lead.apolloUrl || "");
     setEditFacebook(lead.facebookUrl || "");
     setEditTwitter(lead.twitterUrl || "");
     setEditPhone(lead.phone || "");
@@ -888,6 +891,7 @@ export default function LeadDetailPage() {
           projectDescription: editProjectDescription.trim(),
           stage: editStage,
           linkedinUrl: editLinkedin.trim() || null,
+          apolloUrl: editApollo.trim() || null,
           facebookUrl: editFacebook.trim() || null,
           twitterUrl: editTwitter.trim() || null,
           phone: editPhone.trim() || null,
@@ -1794,6 +1798,18 @@ export default function LeadDetailPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Apollo URL
+                      </label>
+                      <input
+                        type="url"
+                        value={editApollo}
+                        onChange={(e) => setEditApollo(e.target.value)}
+                        placeholder="https://app.apollo.io/..."
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                         Facebook URL
                       </label>
                       <input
@@ -1985,6 +2001,14 @@ export default function LeadDetailPage() {
                       <p className="text-gray-900 dark:text-white">
                         {lead.linkedinUrl ? (
                           <a href={lead.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline truncate block">LinkedIn</a>
+                        ) : "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">Apollo URL</p>
+                      <p className="text-gray-900 dark:text-white">
+                        {lead.apolloUrl ? (
+                          <a href={lead.apolloUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline truncate block">Apollo</a>
                         ) : "—"}
                       </p>
                     </div>

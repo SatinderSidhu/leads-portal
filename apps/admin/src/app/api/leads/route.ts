@@ -93,6 +93,7 @@ export async function POST(req: Request) {
       companyName: body.companyName?.trim() || null,
       location: body.location?.trim() || null,
       linkedinUrl: body.linkedinUrl?.trim() || null,
+      apolloUrl: body.apolloUrl?.trim() || null,
       // Company intelligence fields
       industry: body.industry?.trim() || null,
       companySize: body.companySize?.trim() || null,
