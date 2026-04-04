@@ -103,6 +103,20 @@ export async function GET() {
     take: 20,
   });
 
+  // Unread messages count
+  const unreadMessages = await prisma.message.count({
+    where: {
+      senderType: "customer",
+      readAt: null,
+      lead: {
+        OR: [
+          { assignedToId: session.id },
+          { watchers: { some: { adminId: session.id } } },
+        ],
+      },
+    },
+  });
+
   // Deduplicate attention leads (group by leadId, keep latest activity)
   const attentionMap = new Map<string, {
     leadId: string;
@@ -161,6 +175,7 @@ export async function GET() {
       recentCustomerComments,
       recentReceivedEmails,
       needsAttentionCount: needsAttention.length,
+      unreadMessages,
       myPendingTasksCount: myPendingTasks.length,
     },
     needsAttention,

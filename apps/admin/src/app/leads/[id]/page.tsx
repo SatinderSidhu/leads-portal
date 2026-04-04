@@ -533,7 +533,7 @@ export default function LeadDetailPage() {
 
   useEffect(() => {
     fetchMessages();
-    const interval = setInterval(fetchMessages, 30000);
+    const interval = setInterval(fetchMessages, 5000); // Fast poll for live chat
     return () => clearInterval(interval);
   }, [fetchMessages]);
 

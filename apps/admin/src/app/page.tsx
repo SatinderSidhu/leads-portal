@@ -41,6 +41,7 @@ interface DashboardStats {
   recentReceivedEmails: number;
   needsAttentionCount: number;
   myPendingTasksCount: number;
+  unreadMessages: number;
 }
 
 interface AttentionLead {
@@ -160,6 +161,7 @@ export default function DashboardPage() {
           <StatCard label="This Week" value={stats.newLeadsThisWeek} color="text-blue-600" />
           <StatCard label="Active Pipeline" value={stats.activeLeads} color="text-amber-600" />
           <StatCard label="My Tasks" value={stats.myPendingTasksCount} color="text-purple-600" highlight={stats.myPendingTasksCount > 0} />
+          <StatCard label="Unread Chats" value={stats.unreadMessages || 0} color="text-pink-600" highlight={(stats.unreadMessages || 0) > 0} onClick={() => router.push("/messages")} />
           <StatCard label="Needs Attention" value={stats.needsAttentionCount} color="text-red-600" highlight={stats.needsAttentionCount > 0} />
         </div>
       )}

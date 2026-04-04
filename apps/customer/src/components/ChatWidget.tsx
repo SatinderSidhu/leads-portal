@@ -24,7 +24,16 @@ export default function ChatWidget({ leadId, isLoggedIn, customerName, returnTo 
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [prevMessageCount, setPrevMessageCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-open chat after 10 seconds
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!open && isLoggedIn) setOpen(true);
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchMessages = useCallback(async () => {
     if (!isLoggedIn) return;
@@ -43,10 +52,21 @@ export default function ChatWidget({ leadId, isLoggedIn, customerName, returnTo 
 
   useEffect(() => {
     fetchMessages();
-    // Poll every 30 seconds
-    const interval = setInterval(fetchMessages, 30000);
+    // Poll every 5 seconds when open, 15 seconds when closed (live chat feel)
+    const interval = setInterval(fetchMessages, open ? 5000 : 15000);
     return () => clearInterval(interval);
-  }, [fetchMessages]);
+  }, [fetchMessages, open]);
+
+  // Play sound on new admin message
+  useEffect(() => {
+    if (messages.length > prevMessageCount && prevMessageCount > 0) {
+      const lastMsg = messages[messages.length - 1];
+      if (lastMsg?.senderType === "admin") {
+        try { new Audio("data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1iZGBkcHV7goaIh4WDgH57enh4eXx+gIOGiIqKiYiGhIJ/fXt6ent8f4KFiIqLi4qJh4WCf317enl6fH+ChoiKi4uKiYeFgn99e3p5enx/goaIiouLiomHhYJ/fXt6eXp8f4KGiIqLi4qJh4WCf317enl6fH+ChoiKi4uKiYeFgn99e3p5enx/goaIiouLiomHhYJ/fQ==").play(); } catch {}
+      }
+    }
+    setPrevMessageCount(messages.length);
+  }, [messages.length]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (open) {
