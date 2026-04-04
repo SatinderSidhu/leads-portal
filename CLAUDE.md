@@ -99,6 +99,11 @@ leads-portal/
 | NotificationPreference | notification_preferences | Per-admin notification toggles (9 event types) + optional notification email |
 | PortfolioService | portfolio_services | Services offered by KITLabs (name, description, pitch scripts, documents, URLs) |
 | PortfolioProject | portfolio_projects | Completed projects (title, description, category, domain, technologies, client, demo, scripts, docs) |
+| Message | messages | Secure messaging between admin and customer (content, senderName, senderType, readAt) |
+| EmailDraft | email_drafts | Saved email drafts per lead (subject, body, cc, bcc) |
+| NaicsSector | naics_sectors | NAICS 2022 industry sector codes (20 sectors) |
+| NaicsSubsector | naics_subsectors | NAICS 2022 subsector codes (96 subsectors, linked to sectors) |
+| KnowledgeArticle | knowledge_articles | Knowledge base articles (title, slug, content, category, tags, published) |
 | Content | content | Social media content posts |
 | CustomerUser | customer_users | Customer portal users (email, name, password, leadIds) |
 
@@ -150,6 +155,10 @@ leads-portal/
 | `/portfolio/services/[id]` | Service detail — pitch scripts, URLs, documents, linked projects |
 | `/portfolio/projects/new` | Create/edit project (supports ?editId= and ?serviceId= params) |
 | `/portfolio/projects/[id]` | Project detail — info, client, technologies, demo video, documents, pitch scripts |
+| `/knowledge` | Knowledge base — searchable articles grouped by category, seed default articles |
+| `/knowledge/[slug]` | Article detail with Markdown rendering, shareable URL, copy link button |
+| `/knowledge/new` | Create/edit article with Markdown editor, category selector, slug auto-gen |
+| `/naics-codes` | NAICS industry code browser — searchable, expandable sector/subsector accordion |
 | `/api-docs` | Swagger UI |
 
 ## Admin API Routes
@@ -209,6 +218,13 @@ leads-portal/
 - `GET/PUT/DELETE /api/portfolio/services/[id]` — Service CRUD with linked projects
 - `GET/POST /api/portfolio/projects` — List/create portfolio projects (filter by ?serviceId=)
 - `GET/PUT/DELETE /api/portfolio/projects/[id]` — Project CRUD
+- `GET/POST /api/leads/[id]/messages` — Secure messaging with customer (list/send, marks as read)
+- `GET/POST/PUT/DELETE /api/leads/[id]/drafts` — Email draft management per lead
+- `GET /api/naics` — List all NAICS sectors with subsectors
+- `POST /api/naics/seed` — Seed NAICS 2022 codes (20 sectors, 96 subsectors)
+- `GET/POST /api/knowledge` — Knowledge base articles (search, category filter)
+- `GET/PUT/DELETE /api/knowledge/[id]` — Article CRUD (supports slug lookup)
+- `POST /api/knowledge/seed` — Seed 12 default feature articles
 - `GET /api/dashboard` — Dashboard stats (total leads, my leads, new today/week, engagement, needs attention, my tasks, pipeline distribution)
 - `GET /api/track/[id]` — Email open tracking pixel (also triggers customer_response notification)
 - `POST /api/webhooks/ses-inbound` — SES inbound email webhook
@@ -268,6 +284,7 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 - `GET /api/app-flows?leadId=X` — Fetch shared app flows with comments
 - `POST /api/app-flows/[flowId]/comments` — Add comment to app flow
 - `GET/POST /api/notes?leadId=X` — Customer comments/feedback on project overview
+- `GET/POST /api/messages?leadId=X` — Customer secure messaging (list/send, marks admin messages as read)
 - `POST /api/track-visit` — Track customer portal visit (rate-limited 30min per lead/email, notifies watchers)
 - `GET /api/branding` — Public branding config for document rendering (reads from shared DB)
 
@@ -309,6 +326,7 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 | AppFlowSection | `apps/customer/src/components/AppFlowSection.tsx` | Read-only flow viewer with comments, full-screen, PNG/PDF download |
 | ProjectFeedback | `apps/customer/src/components/ProjectFeedback.tsx` | Customer comment box on project overview tab, notifies admin watchers |
 | VisitTracker | `apps/customer/src/components/VisitTracker.tsx` | Invisible component that tracks customer portal visits on page load |
+| ChatWidget | `apps/customer/src/components/ChatWidget.tsx` | Floating chat bubble (bottom-right) for customer-admin secure messaging |
 
 ## Development
 
@@ -590,7 +608,48 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - **Sticky breadcrumb bar** at top showing current page path (auto-generated from URL)
 - **AdminShell** layout wrapper in root layout — wraps all pages except /login
 - Pages no longer have individual headers/nav — sidebar handles all navigation
-- Nav groups: Dashboard/Leads/Activity/Portfolio, Templates (Email, SOW, Flows, Content), Settings (Branding, Zoho, Notifications), Users (Admin Users, Profile)
+- Nav groups: Dashboard/Leads/Activity/Portfolio, Templates (Email, SOW, Flows, Content), NAICS Codes, Knowledge Base, Settings (Branding, Zoho, Notifications), Users (Admin Users, Profile)
+
+## Secure Messaging
+- **Message** model: leadId, content, senderName, senderType (admin/customer), readAt for read receipts
+- **Customer portal**: ChatWidget floating bubble (bottom-right), opens chat panel, requires sign-in
+- **Admin portal**: Messages section on lead detail page with chat-style bubbles and reply input
+- Both sides poll every 30 seconds for new messages
+- Unread count badge on customer chat bubble
+- Do Not Contact blocks admin replies
+- Email notifications: customer message → admin watchers; admin reply → customer
+- Audit logged: "Customer Message Received", "Message Sent to Customer"
+
+## Email Drafts
+- **EmailDraft** model: leadId, subject, body, cc, bcc, createdBy, timestamps
+- Save Draft / Update Draft button next to Send in compose form
+- Drafts list shown as amber cards below Compose Email button
+- Click draft to load into compose form, multiple drafts per lead
+- CRUD API: `GET/POST/PUT/DELETE /api/leads/[id]/drafts`
+
+## NAICS Industry Classification
+- **NaicsSector** (20 sectors) + **NaicsSubsector** (96 subsectors) models from NAICS 2022
+- naics-data.json extracted from Excel reference file, seeded via `POST /api/naics/seed`
+- Lead fields: `naicsSectorCode`, `naicsSubsectorCode` — cascading dropdowns in edit mode
+- View mode: indigo/teal badges showing sector and subsector names
+- Management page at `/naics-codes` with searchable accordion browser
+- Lead also has `aboutCompany` text field for company description
+
+## Knowledge Base
+- **KnowledgeArticle** model: title, slug (unique, shareable URL), content (Markdown), category, tags
+- 12 default articles seeded via `POST /api/knowledge/seed` covering all features
+- Categories: Getting Started, Lead Management, Email System, SOW & Documents, Integrations, Settings, Collaboration, Sales Tools
+- Article detail with client-side Markdown rendering (headers, bold, italic, code, tables, lists)
+- "Share Link" button copies slug-based URL (e.g., `/knowledge/creating-lead`)
+- Full-text search across title and content, category pill filters
+- Create/edit articles with Markdown editor
+
+## Customer Portal Design
+- **Wider layout**: max-w-6xl (1152px) instead of max-w-4xl (896px)
+- **Welcome message**: personalized with project name, warm description of portal purpose
+- **Status badge**: frosted glass card showing current project status
+- **KITLabs Resources section**: 5 product cards (Portfolio, Cost Estimator, App Builder, Digital Card, Support Portal) + quick links (Services, Industries, About, Contact, Book Meeting)
+- **Footer**: KITLabs logo, company name, dynamic copyright year
 
 ## Important Patterns
 - All admin API routes use `getAdminSession()` for auth (returns null if not logged in)
