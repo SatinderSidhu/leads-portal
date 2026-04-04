@@ -345,6 +345,198 @@ Projects are completed work that serves as social proof. Each project has:
 1. Review the **Meeting Script** for structure
 2. Open the pitch deck from **Documents**
 3. Prepare 1-2 **Project** case studies to reference` },
+
+  // Live Chat
+  { category: "Collaboration", sortOrder: 2, title: "Live Chat with Customers", slug: "live-chat", content: `# Live Chat with Customers
+
+The Live Chat feature enables real-time messaging between admin and customers directly within the portal.
+
+## Admin Side
+- **Floating chat widget** (bottom-right) on every lead detail page
+- Click the blue chat bubble to open the conversation
+- Messages poll every **3 seconds** when open for near real-time feel
+- **Sound notification** plays when a new customer message arrives
+- Unread messages auto-open the chat widget
+
+## Messages Page (/messages)
+- Access via **"Live Chat"** in the sidebar
+- **Unread tab**: All unread customer messages with red NEW badges
+- **All Conversations tab**: Grouped by lead with unread count
+- Click any conversation to go directly to the lead
+
+## Notification Badge
+The **Live Chat** item in the sidebar shows a red badge with unread count, updating every 15 seconds.
+
+## Customer Side
+- Floating chat bubble on the customer portal (bottom-right)
+- **Auto-opens after 10 seconds** when customer is signed in
+- Sound notification when admin replies
+- Requires sign-in to send messages
+
+## Email Notifications
+- Customer message → admin watchers get email notification
+- Admin reply → customer gets email with "View & Reply" button
+
+## Do Not Contact
+If a lead has Do Not Contact enabled, the admin reply input is disabled.` },
+
+  // Email Drafts
+  { category: "Email System", sortOrder: 2, title: "Email Drafts", slug: "email-drafts", content: `# Email Drafts
+
+Save email drafts to compose later without sending.
+
+## Saving a Draft
+1. Open the lead detail page
+2. Click **"Compose Email"**
+3. Write your subject and body
+4. Click **"Save Draft"** instead of Send
+
+## Managing Drafts
+- Drafts appear as **amber cards** below the Compose Email button
+- Click **"Edit"** to load a draft back into the compose form
+- Click **"Delete"** to discard a draft
+- You can save **multiple drafts** per lead
+
+## Sending a Draft
+1. Click "Edit" on a draft
+2. The subject, body, CC, and BCC are restored
+3. Make any final changes
+4. Click **"Send"** to send it
+
+When editing a saved draft, the button changes to **"Update Draft"**.` },
+
+  // NAICS
+  { category: "Lead Management", sortOrder: 4, title: "NAICS Industry Classification", slug: "naics-classification", content: `# NAICS Industry Classification
+
+Classify leads by industry using the North American Industry Classification System (NAICS 2022).
+
+## On Lead Detail (Edit Mode)
+1. Click **"Edit"** on the lead
+2. Find the **"Industry Sector (NAICS)"** dropdown
+3. Select a 2-digit sector (e.g., "52 — Finance and Insurance")
+4. The **Subsector** dropdown filters to show only subsectors under that sector
+5. Select a 3-digit subsector (e.g., "522 — Credit Intermediation")
+6. Click **"Save Changes"**
+
+## Viewing Classification
+In view mode, NAICS codes appear as colored badges:
+- **Indigo** badge for the sector
+- **Teal** badge for the subsector
+
+## NAICS Codes Management (/naics-codes)
+- Browse all 20 sectors and 96 subsectors
+- Expandable accordion — click a sector to see its subsectors
+- Search by code or name
+- First-time setup: click **"Load NAICS Codes"** to seed the database` },
+
+  // Comments & Replies
+  { category: "Collaboration", sortOrder: 3, title: "SOW & App Flow Comments", slug: "sow-appflow-comments", content: `# SOW & App Flow Comments
+
+Customers can leave comments on SOW documents and App Flow diagrams. Admins can reply directly from the lead detail page.
+
+## Viewing Customer Comments
+On the lead detail page:
+- **SOW section**: Comments are grouped by SOW version
+- **App Flow section**: Comments are grouped by flow name
+- Customer comments appear left-aligned (gray)
+- Admin replies appear right-aligned (blue)
+
+## Replying to Comments
+1. Find the comments under the SOW or App Flow section
+2. Click **"Reply to comments"**
+3. Type your reply in the input field
+4. Press Enter or click **"Reply"**
+
+## Email Notifications
+When you reply, the customer receives an email with your response and a link back to the portal.
+
+## Customer Side
+Customers see all comments (theirs and admin replies) in the SOW and App Flow tabs on their portal.` },
+
+  // Do Not Contact
+  { category: "Lead Management", sortOrder: 5, title: "Do Not Contact", slug: "do-not-contact", content: `# Do Not Contact
+
+The Do Not Contact flag prevents all outbound communication to a customer.
+
+## How It Works
+When a lead status is changed to **Lost**, **No Response**, **On Hold**, or **Cancelled**, the Do Not Contact flag is **automatically enabled**.
+
+## What Gets Blocked
+- Compose Email button is disabled
+- Welcome email Send/Resend is hidden
+- NDA send returns an error
+- SOW share returns an error
+- App Flow share returns an error
+- "Notify Customer" checkbox is disabled
+- Live Chat reply input is disabled
+
+## Re-enabling Communication
+1. Find the red **"Do Not Contact"** banner on the lead detail page
+2. Click **"Disable"**
+3. Communication is now re-enabled
+
+## Audit Trail
+Both enabling and disabling Do Not Contact is logged in the audit trail.` },
+
+  // Knowledge Base
+  { category: "Getting Started", sortOrder: 3, title: "Using the Knowledge Base", slug: "using-knowledge-base", content: `# Using the Knowledge Base
+
+You're reading it! The Knowledge Base is your go-to resource for learning how to use every feature in Leads Portal.
+
+## Finding Articles
+- **Search**: Type in the search bar to find articles by title or content
+- **Categories**: Click category pills to filter (Getting Started, Lead Management, etc.)
+- **Browse**: Articles are grouped by category in a card grid
+
+## Sharing Articles
+Every article has a unique URL based on its slug (e.g., /knowledge/creating-lead). Click **"Share Link"** to copy the URL and share with other admins.
+
+## Creating Articles
+1. Click **"+ New Article"** on the Knowledge Base page
+2. Enter a title (slug auto-generates)
+3. Select a category
+4. Write content using **Markdown**
+5. Click **"Publish Article"**
+
+## Markdown Support
+- \`# Heading 1\`, \`## Heading 2\`, \`### Heading 3\`
+- \`**bold**\`, \`*italic*\`, \`\\\`code\\\`\`
+- \`- list items\` and \`1. numbered lists\`
+- \`| tables | with | pipes |\`
+
+## First-Time Setup
+If the Knowledge Base is empty, click **"Load Default Articles"** to populate 15+ articles covering all features.` },
+
+  // API Integration
+  { category: "Integrations", sortOrder: 2, title: "External API (v1)", slug: "external-api", content: `# External API (v1)
+
+The external API allows automation tools (like push_to_crm.py, Apollo scripts) to create and list leads programmatically.
+
+## Authentication
+All requests require a Bearer token:
+\`\`\`
+Authorization: Bearer YOUR_API_TOKEN
+\`\`\`
+
+## Create a Lead (POST /api/v1/leads)
+Send a JSON body with at minimum: projectName, customerName, customerEmail, projectDescription.
+
+### All Available Fields
+- **Required**: projectName, customerName, customerEmail, projectDescription
+- **Contact**: phone, linkedinUrl, apolloUrl, jobTitle, companyName, location
+- **Company**: industry, companySize, companyWebsite, aboutCompany
+- **Classification**: leadSource (11 values), leadStatus (12 values)
+- **Tracking**: extractedDate, lastContactedDate, leadScore (1-100)
+- **Outreach**: connectionRequestSent, connectionAccepted, initialMessageSent, meetingBooked, meetingDate, responseReceived
+
+### Lead Sources
+MANUAL, AGENT, BARK, LINKEDIN_SALES_NAV, APOLLO, LINKEDIN_COMPANY_PAGE, REFERRAL, WEBSITE, COLD_OUTREACH, EVENT, OTHER
+
+## List Leads (GET /api/v1/leads)
+Supports filters: status, stage, source, industry, assignedTo, search. Paginated with page + limit params.
+
+## API Docs
+Visit **/api-docs** in the admin portal for interactive Swagger documentation.` },
 ];
 
 export async function POST() {
