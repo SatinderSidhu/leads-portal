@@ -158,6 +158,7 @@ leads-portal/
 | `/knowledge` | Knowledge base — searchable articles grouped by category, seed default articles |
 | `/knowledge/[slug]` | Article detail with Markdown rendering, shareable URL, copy link button |
 | `/knowledge/new` | Create/edit article with Markdown editor, category selector, slug auto-gen |
+| `/messages` | Live Chat inbox — unread messages tab + all conversations tab, click to navigate to lead |
 | `/naics-codes` | NAICS industry code browser — searchable, expandable sector/subsector accordion |
 | `/api-docs` | Swagger UI |
 
@@ -610,15 +611,20 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - Pages no longer have individual headers/nav — sidebar handles all navigation
 - Nav groups: Dashboard/Leads/Activity/Portfolio, Templates (Email, SOW, Flows, Content), NAICS Codes, Knowledge Base, Settings (Branding, Zoho, Notifications), Users (Admin Users, Profile)
 
-## Secure Messaging
+## Live Chat / Secure Messaging
 - **Message** model: leadId, content, senderName, senderType (admin/customer), readAt for read receipts
-- **Customer portal**: ChatWidget floating bubble (bottom-right), opens chat panel, requires sign-in
-- **Admin portal**: Messages section on lead detail page with chat-style bubbles and reply input
-- Both sides poll every 30 seconds for new messages
-- Unread count badge on customer chat bubble
+- **Customer portal**: ChatWidget floating bubble (bottom-right), auto-opens after 10s, requires sign-in
+  - Adaptive polling: 5s when chat is open, 15s when closed
+  - Sound notification when new admin message arrives
+- **Admin portal**:
+  - Messages section on lead detail page with 5s polling (live chat feel)
+  - **"Live Chat"** nav item in sidebar with real-time unread count badge (polls 15s)
+  - **Dedicated /messages page**: Unread tab (all unread with NEW badges) + All Conversations tab (grouped by lead)
+  - **"Unread Chats"** stat card on dashboard (clickable → /messages)
 - Do Not Contact blocks admin replies
 - Email notifications: customer message → admin watchers; admin reply → customer
 - Audit logged: "Customer Message Received", "Message Sent to Customer"
+- "Notifications" renamed to "Communications" in sidebar
 
 ## Email Drafts
 - **EmailDraft** model: leadId, subject, body, cc, bcc, createdBy, timestamps
