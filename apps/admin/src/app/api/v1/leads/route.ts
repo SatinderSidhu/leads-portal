@@ -1,6 +1,7 @@
 import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { validateToken, unauthorized } from "../../../../lib/api-auth";
+import { resolveNaicsCodes } from "../../../../lib/naics-resolver";
 
 const VALID_SOURCES = [
   "MANUAL", "AGENT", "BARK",
@@ -108,6 +109,13 @@ export async function POST(req: Request) {
   }
 
   try {
+    // Auto-resolve NAICS codes from direct codes or industry text
+    const naics = resolveNaicsCodes({
+      naicsSectorCode: body.naicsSectorCode as string | undefined,
+      naicsSubsectorCode: body.naicsSubsectorCode as string | undefined,
+      industry: body.industry as string | undefined,
+    });
+
     const lead = await prisma.lead.create({
       data: {
         projectName: (body.projectName as string).trim(),
@@ -135,6 +143,8 @@ export async function POST(req: Request) {
         companySize: (body.companySize as string)?.trim() || null,
         companyWebsite: (body.companyWebsite as string)?.trim() || null,
         aboutCompany: (body.aboutCompany as string)?.trim() || null,
+        naicsSectorCode: naics.naicsSectorCode,
+        naicsSubsectorCode: naics.naicsSubsectorCode,
         // Lead management fields
         extractedDate: body.extractedDate
           ? new Date(body.extractedDate as string)

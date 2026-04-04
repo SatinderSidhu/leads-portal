@@ -39,6 +39,7 @@ export default function NewLeadPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [zohoEnabled, setZohoEnabled] = useState(false);
+  const [naicsSectors, setNaicsSectors] = useState<{ code: string; name: string; subsectors: { code: string; name: string }[] }[]>([]);
   const [createInZoho, setCreateInZoho] = useState(false);
   const [form, setForm] = useState({
     projectName: "",
@@ -59,6 +60,8 @@ export default function NewLeadPage() {
     industry: "",
     companySize: "",
     companyWebsite: "",
+    naicsSectorCode: "",
+    naicsSubsectorCode: "",
     aboutCompany: "",
     // Lead management
     source: "MANUAL",
@@ -76,6 +79,10 @@ export default function NewLeadPage() {
         }
       })
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/naics").then((r) => r.json()).then((d) => { if (Array.isArray(d)) setNaicsSectors(d); }).catch(() => {});
   }, []);
 
   function updateField(field: string, value: string) {
@@ -195,6 +202,22 @@ export default function NewLeadPage() {
             <div>
               <label htmlFor="aboutCompany" className={labelClass}>About Company</label>
               <textarea id="aboutCompany" value={form.aboutCompany} onChange={(e) => updateField("aboutCompany", e.target.value)} rows={3} className={inputClass + " resize-none"} placeholder="What does this company do? Their industry focus, products, services..." />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label htmlFor="naicsSectorCode" className={labelClass}>Industry Sector (NAICS)</label>
+                <select id="naicsSectorCode" value={form.naicsSectorCode} onChange={(e) => { updateField("naicsSectorCode", e.target.value); updateField("naicsSubsectorCode", ""); }} className={inputClass}>
+                  <option value="">Auto-detect from industry</option>
+                  {naicsSectors.map((s) => <option key={s.code} value={s.code}>{s.code} — {s.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="naicsSubsectorCode" className={labelClass}>Subsector (NAICS)</label>
+                <select id="naicsSubsectorCode" value={form.naicsSubsectorCode} onChange={(e) => updateField("naicsSubsectorCode", e.target.value)} className={inputClass} disabled={!form.naicsSectorCode}>
+                  <option value="">Auto-detect from industry</option>
+                  {naicsSectors.find((s) => s.code === form.naicsSectorCode)?.subsectors.map((sub) => <option key={sub.code} value={sub.code}>{sub.code} — {sub.name}</option>)}
+                </select>
+              </div>
             </div>
           </div>
         </div>

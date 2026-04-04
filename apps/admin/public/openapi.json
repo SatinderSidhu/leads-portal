@@ -92,6 +92,8 @@
           "aboutCompany": { "type": "string", "description": "Description of what the company does" },
           "linkedinUrl": { "type": "string", "description": "LinkedIn profile URL" },
           "apolloUrl": { "type": "string", "description": "Apollo.io profile URL" },
+          "naicsSectorCode": { "type": "string", "description": "2-digit NAICS sector code (e.g. '54'). If omitted, auto-resolved from industry text." },
+          "naicsSubsectorCode": { "type": "string", "description": "3-digit NAICS subsector code (e.g. '541'). If omitted, auto-resolved from industry text." },
           "extractedDate": { "type": "string", "format": "date-time", "description": "When the lead was first captured. Auto-defaults to current time if not provided." },
           "lastContactedDate": { "type": "string", "format": "date-time", "description": "Date of most recent outreach" },
           "leadScore": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Lead quality score (1-100)" },

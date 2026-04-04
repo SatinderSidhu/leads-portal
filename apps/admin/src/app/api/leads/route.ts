@@ -4,6 +4,7 @@ import { sendWelcomeEmail } from "../../../lib/email";
 import { getAdminSession } from "../../../lib/session";
 import { sendNotification } from "../../../lib/notify";
 import { logAudit } from "../../../lib/audit";
+import { resolveNaicsCodes } from "../../../lib/naics-resolver";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -75,6 +76,13 @@ export async function POST(req: Request) {
   const session = await getAdminSession();
   const adminName = session?.name || "Unknown";
 
+  // Auto-resolve NAICS codes
+  const naics = resolveNaicsCodes({
+    naicsSectorCode: body.naicsSectorCode,
+    naicsSubsectorCode: body.naicsSubsectorCode,
+    industry: body.industry,
+  });
+
   const lead = await prisma.lead.create({
     data: {
       projectName: body.projectName,
@@ -99,6 +107,8 @@ export async function POST(req: Request) {
       companySize: body.companySize?.trim() || null,
       companyWebsite: body.companyWebsite?.trim() || null,
       aboutCompany: body.aboutCompany?.trim() || null,
+      naicsSectorCode: body.naicsSectorCode || naics.naicsSectorCode,
+      naicsSubsectorCode: body.naicsSubsectorCode || naics.naicsSubsectorCode,
       // Lead management fields
       extractedDate: body.extractedDate ? new Date(body.extractedDate) : null,
       lastContactedDate: body.lastContactedDate ? new Date(body.lastContactedDate) : null,
