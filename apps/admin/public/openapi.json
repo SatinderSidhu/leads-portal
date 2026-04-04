@@ -2,10 +2,11 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Leads Portal API",
-    "version": "1.0.0",
-    "description": "External API for managing leads and content in the Leads Portal system. All endpoints require Bearer token authentication.",
+    "version": "4.0.0",
+    "description": "External API for managing leads and content in the KITLabs Leads Portal. All endpoints require Bearer token authentication via the Authorization header.",
     "contact": {
-      "name": "KITLabs Inc"
+      "name": "KITLabs Inc",
+      "url": "https://kitlabs.us"
     }
   },
   "servers": [
@@ -39,9 +40,33 @@
           "city": { "type": "string", "nullable": true },
           "zip": { "type": "string", "nullable": true },
           "dateCreated": { "type": "string", "format": "date-time", "nullable": true },
-          "source": { "type": "string", "enum": ["MANUAL", "AGENT", "BARK"] },
-          "status": { "type": "string", "enum": ["NEW", "DESIGN_READY", "DESIGN_APPROVED", "BUILD_IN_PROGRESS", "BUILD_READY_FOR_REVIEW", "BUILD_SUBMITTED", "GO_LIVE"] },
-          "createdAt": { "type": "string", "format": "date-time" }
+          "source": { "type": "string" },
+          "status": { "type": "string" },
+          "stage": { "type": "string" },
+          "jobTitle": { "type": "string", "nullable": true },
+          "companyName": { "type": "string", "nullable": true },
+          "location": { "type": "string", "nullable": true },
+          "industry": { "type": "string", "nullable": true },
+          "companySize": { "type": "string", "nullable": true },
+          "companyWebsite": { "type": "string", "nullable": true },
+          "aboutCompany": { "type": "string", "nullable": true },
+          "linkedinUrl": { "type": "string", "nullable": true },
+          "apolloUrl": { "type": "string", "nullable": true },
+          "naicsSectorCode": { "type": "string", "nullable": true },
+          "naicsSubsectorCode": { "type": "string", "nullable": true },
+          "extractedDate": { "type": "string", "format": "date-time", "nullable": true },
+          "lastContactedDate": { "type": "string", "format": "date-time", "nullable": true },
+          "leadScore": { "type": "integer", "nullable": true },
+          "connectionRequestSent": { "type": "boolean" },
+          "connectionAccepted": { "type": "boolean" },
+          "initialMessageSent": { "type": "boolean" },
+          "meetingBooked": { "type": "boolean" },
+          "meetingDate": { "type": "string", "format": "date-time", "nullable": true },
+          "responseReceived": { "type": "boolean" },
+          "doNotContact": { "type": "boolean" },
+          "zohoLeadId": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
         }
       },
       "LeadCreate": {
@@ -49,14 +74,50 @@
         "required": ["projectName", "customerName", "customerEmail", "projectDescription"],
         "properties": {
           "projectName": { "type": "string", "description": "Name of the project or opportunity" },
-          "customerName": { "type": "string", "description": "Full name of the customer" },
+          "customerName": { "type": "string", "description": "Full name of the customer/lead" },
           "customerEmail": { "type": "string", "format": "email", "description": "Customer's email address" },
           "projectDescription": { "type": "string", "description": "Detailed project description" },
-          "phone": { "type": "string", "description": "Customer's phone number" },
-          "city": { "type": "string", "description": "City of the lead/customer" },
-          "zip": { "type": "string", "description": "Zip/postal code of the lead/customer" },
-          "dateCreated": { "type": "string", "format": "date", "description": "Custom date created for the lead (ISO 8601 format, e.g. 2025-01-15)" },
-          "source": { "type": "string", "enum": ["MANUAL", "AGENT", "BARK"], "description": "Lead source. Defaults to AGENT if not provided" }
+          "phone": { "type": "string", "description": "Phone number" },
+          "city": { "type": "string", "description": "City" },
+          "zip": { "type": "string", "description": "Zip/postal code" },
+          "dateCreated": { "type": "string", "format": "date", "description": "Date lead was captured (ISO 8601, e.g. 2026-04-01)" },
+          "leadSource": { "type": "string", "enum": ["MANUAL", "AGENT", "BARK", "LINKEDIN_SALES_NAV", "APOLLO", "LINKEDIN_COMPANY_PAGE", "REFERRAL", "WEBSITE", "COLD_OUTREACH", "EVENT", "OTHER"], "description": "Where the lead came from. Maps to source field." },
+          "leadStatus": { "type": "string", "enum": ["COLD", "WARM", "HOT", "ACTIVE", "CLOSED", "NEW", "CONTACTED", "RESPONDED", "MEETING_BOOKED", "QUALIFIED", "DISQUALIFIED", "NURTURE"], "description": "Sales pipeline stage. Maps to stage field." },
+          "jobTitle": { "type": "string", "description": "Role/title (e.g. CTO, VP Engineering)" },
+          "companyName": { "type": "string", "description": "Company name" },
+          "location": { "type": "string", "description": "City/State/Region (e.g. San Francisco, CA)" },
+          "industry": { "type": "string", "description": "Industry vertical (e.g. Software Development)" },
+          "companySize": { "type": "string", "description": "Employee range (e.g. 51-200)" },
+          "companyWebsite": { "type": "string", "description": "Company website URL" },
+          "aboutCompany": { "type": "string", "description": "Description of what the company does" },
+          "linkedinUrl": { "type": "string", "description": "LinkedIn profile URL" },
+          "apolloUrl": { "type": "string", "description": "Apollo.io profile URL" },
+          "extractedDate": { "type": "string", "format": "date-time", "description": "When the lead was first captured. Auto-defaults to current time if not provided." },
+          "lastContactedDate": { "type": "string", "format": "date-time", "description": "Date of most recent outreach" },
+          "leadScore": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Lead quality score (1-100)" },
+          "connectionRequestSent": { "type": "boolean", "default": false, "description": "Whether LinkedIn connection request was sent" },
+          "connectionAccepted": { "type": "boolean", "default": false, "description": "Whether the lead accepted the connection" },
+          "initialMessageSent": { "type": "boolean", "default": false, "description": "Whether first outreach message was sent" },
+          "meetingBooked": { "type": "boolean", "default": false, "description": "Whether the lead booked a meeting" },
+          "meetingDate": { "type": "string", "format": "date-time", "description": "Scheduled meeting date/time" },
+          "responseReceived": { "type": "boolean", "default": false, "description": "Whether any reply was received" },
+          "notes": { "type": "string", "description": "Free-text notes (deprecated — use the notes API instead)" },
+          "assignedTo": { "type": "string", "description": "Admin username to assign to (for filtering)" }
+        }
+      },
+      "LeadList": {
+        "type": "object",
+        "properties": {
+          "leads": { "type": "array", "items": { "$ref": "#/components/schemas/Lead" } },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "page": { "type": "integer" },
+              "limit": { "type": "integer" },
+              "total": { "type": "integer" },
+              "totalPages": { "type": "integer" }
+            }
+          }
         }
       },
       "Content": {
@@ -66,41 +127,10 @@
           "title": { "type": "string" },
           "body": { "type": "string" },
           "mediaUrl": { "type": "string", "nullable": true },
-          "mediaFile": { "type": "string", "nullable": true },
           "tags": { "type": "array", "items": { "type": "string" } },
-          "platforms": { "type": "array", "items": { "type": "string", "enum": ["LINKEDIN", "FACEBOOK", "TIKTOK", "INSTAGRAM"] } },
+          "platforms": { "type": "array", "items": { "type": "string" } },
           "status": { "type": "string", "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"] },
-          "createdAt": { "type": "string", "format": "date-time" },
-          "updatedAt": { "type": "string", "format": "date-time" }
-        }
-      },
-      "ContentCreate": {
-        "type": "object",
-        "required": ["title", "body"],
-        "properties": {
-          "title": { "type": "string", "description": "Content title" },
-          "body": { "type": "string", "description": "Post content text" },
-          "mediaUrl": { "type": "string", "description": "URL to external media" },
-          "tags": { "type": "array", "items": { "type": "string" }, "description": "Array of tag strings" },
-          "platforms": { "type": "array", "items": { "type": "string", "enum": ["LINKEDIN", "FACEBOOK", "TIKTOK", "INSTAGRAM"] }, "description": "Target platforms" },
-          "status": { "type": "string", "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"], "default": "DRAFT" }
-        }
-      },
-      "ContentUpdate": {
-        "type": "object",
-        "properties": {
-          "title": { "type": "string" },
-          "body": { "type": "string" },
-          "mediaUrl": { "type": "string" },
-          "tags": { "type": "array", "items": { "type": "string" } },
-          "platforms": { "type": "array", "items": { "type": "string", "enum": ["LINKEDIN", "FACEBOOK", "TIKTOK", "INSTAGRAM"] } },
-          "status": { "type": "string", "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"] }
-        }
-      },
-      "UploadResponse": {
-        "type": "object",
-        "properties": {
-          "filePath": { "type": "string", "description": "Path to the uploaded file (e.g., /uploads/filename.jpg)" }
+          "createdAt": { "type": "string", "format": "date-time" }
         }
       },
       "Error": {
@@ -115,25 +145,61 @@
   "security": [{ "bearerAuth": [] }],
   "paths": {
     "/api/v1/leads": {
+      "get": {
+        "tags": ["Leads"],
+        "summary": "List leads",
+        "description": "Returns paginated list of leads with optional filters. Supports search across name, email, company, job title.",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Page number" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 }, "description": "Items per page" },
+          { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search across name, email, company, job title" },
+          { "name": "status", "in": "query", "schema": { "type": "string" }, "description": "Filter by lead status (e.g. NEW, SOW_READY)" },
+          { "name": "stage", "in": "query", "schema": { "type": "string" }, "description": "Filter by sales stage (e.g. CONTACTED, QUALIFIED)" },
+          { "name": "source", "in": "query", "schema": { "type": "string" }, "description": "Filter by lead source (e.g. APOLLO, LINKEDIN_SALES_NAV)" },
+          { "name": "industry", "in": "query", "schema": { "type": "string" }, "description": "Filter by industry (partial match)" },
+          { "name": "assignedTo", "in": "query", "schema": { "type": "string" }, "description": "Filter by assigned admin name (partial match)" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated lead list",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LeadList" } } }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      },
       "post": {
         "tags": ["Leads"],
         "summary": "Create a new lead",
-        "description": "Creates a new lead. Source defaults to AGENT if not provided. No email is sent to the customer.",
+        "description": "Creates a new lead with all supported fields. All new fields are optional and default to null/false. Enum fields (leadSource, leadStatus) are validated — unknown values return 400. extractedDate defaults to current timestamp if not provided.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": { "$ref": "#/components/schemas/LeadCreate" },
               "example": {
-                "projectName": "Mobile Banking App",
+                "projectName": "Acme Corp - CTO Opportunity",
                 "customerName": "Jane Smith",
-                "customerEmail": "jane@example.com",
-                "projectDescription": "A mobile banking app with account management and payment features.",
-                "phone": "+1 (416) 555-0123",
-                "city": "Toronto",
-                "zip": "M5V 2T6",
-                "dateCreated": "2025-01-15",
-                "source": "MANUAL"
+                "customerEmail": "jane@acme.com",
+                "projectDescription": "Lead from Apollo.io. Interested in mobile app development.",
+                "phone": "+1-555-0123",
+                "linkedinUrl": "https://linkedin.com/in/janesmith",
+                "apolloUrl": "https://app.apollo.io/#/people/jane-smith",
+                "jobTitle": "CTO",
+                "companyName": "Acme Corp",
+                "location": "San Francisco, CA",
+                "industry": "Software Development",
+                "companySize": "51-200",
+                "companyWebsite": "https://acme.com",
+                "aboutCompany": "Acme Corp builds enterprise SaaS tools for project management.",
+                "leadSource": "APOLLO",
+                "leadStatus": "NEW",
+                "extractedDate": "2026-04-04T14:30:00Z",
+                "leadScore": 75,
+                "connectionRequestSent": true,
+                "connectionAccepted": false,
+                "initialMessageSent": true,
+                "meetingBooked": false,
+                "responseReceived": false
               }
             }
           }
@@ -144,7 +210,7 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Lead" } } }
           },
           "400": {
-            "description": "Validation error",
+            "description": "Validation error (missing required fields or invalid enum values)",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
           },
           "401": { "description": "Unauthorized" }
@@ -155,7 +221,6 @@
       "get": {
         "tags": ["Content"],
         "summary": "List all content",
-        "description": "Returns all content items sorted by creation date (newest first).",
         "responses": {
           "200": {
             "description": "Content list",
@@ -167,107 +232,20 @@
       "post": {
         "tags": ["Content"],
         "summary": "Create new content",
-        "description": "Creates a new content item. Defaults to DRAFT status.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
-              "schema": { "$ref": "#/components/schemas/ContentCreate" },
-              "example": {
-                "title": "Exciting Product Launch",
-                "body": "We're thrilled to announce the launch of our new platform...",
-                "tags": ["launch", "product", "announcement"],
-                "platforms": ["LINKEDIN", "FACEBOOK"],
-                "status": "DRAFT"
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Content created successfully",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Content" } } }
-          },
-          "400": {
-            "description": "Validation error",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
-          },
-          "401": { "description": "Unauthorized" }
-        }
-      }
-    },
-    "/api/v1/content/{id}": {
-      "get": {
-        "tags": ["Content"],
-        "summary": "Get content by ID",
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
-        ],
-        "responses": {
-          "200": {
-            "description": "Content found",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Content" } } }
-          },
-          "401": { "description": "Unauthorized" },
-          "404": { "description": "Content not found" }
-        }
-      },
-      "put": {
-        "tags": ["Content"],
-        "summary": "Update content",
-        "description": "Updates an existing content item. Only include fields you want to change.",
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": { "$ref": "#/components/schemas/ContentUpdate" },
-              "example": {
-                "title": "Updated Title",
-                "status": "PUBLISHED"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Content updated",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Content" } } }
-          },
-          "400": { "description": "Validation error" },
-          "401": { "description": "Unauthorized" },
-          "404": { "description": "Content not found" }
-        }
-      },
-      "delete": {
-        "tags": ["Content"],
-        "summary": "Delete content",
-        "parameters": [
-          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
-        ],
-        "responses": {
-          "200": { "description": "Content deleted" },
-          "401": { "description": "Unauthorized" },
-          "404": { "description": "Content not found" }
-        }
-      }
-    },
-    "/api/v1/content/upload": {
-      "post": {
-        "tags": ["Content"],
-        "summary": "Upload media file",
-        "description": "Uploads an image or video file. Allowed types: JPEG, PNG, GIF, WebP, MP4, WebM. Max size: 50MB.",
-        "requestBody": {
-          "required": true,
-          "content": {
-            "multipart/form-data": {
               "schema": {
                 "type": "object",
-                "required": ["file"],
+                "required": ["title", "body"],
                 "properties": {
-                  "file": { "type": "string", "format": "binary", "description": "The media file to upload" }
+                  "title": { "type": "string" },
+                  "body": { "type": "string" },
+                  "mediaUrl": { "type": "string" },
+                  "tags": { "type": "array", "items": { "type": "string" } },
+                  "platforms": { "type": "array", "items": { "type": "string", "enum": ["LINKEDIN", "FACEBOOK", "TIKTOK", "INSTAGRAM"] } },
+                  "status": { "type": "string", "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"], "default": "DRAFT" }
                 }
               }
             }
@@ -275,10 +253,36 @@
         },
         "responses": {
           "201": {
-            "description": "File uploaded successfully",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/UploadResponse" } } }
+            "description": "Content created",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Content" } } }
           },
-          "400": { "description": "Invalid file type or size" },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/content/upload": {
+      "post": {
+        "tags": ["Content"],
+        "summary": "Upload media file",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "File uploaded",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "filePath": { "type": "string" } } } } }
+          },
           "401": { "description": "Unauthorized" }
         }
       }

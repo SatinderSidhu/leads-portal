@@ -202,6 +202,8 @@ leads-portal/
 - `POST /api/leads/[id]/app-flows/[flowId]/share` — Share app flow with customer
 - `GET/POST /api/leads/[id]/app-flows/[flowId]/comments` — App flow comments
 - `POST /api/leads/[id]/app-flows/generate` — AI app flow generation (SSE streaming)
+- `GET/POST /api/leads/[id]/sow/[sowId]/comments` — SOW comments (list + admin reply with email to customer)
+- `GET/POST /api/leads/[id]/app-flows/[flowId]/comments` — App Flow comments (list + admin reply with email)
 - `GET/PUT /api/zoho/config` — Get/update Zoho CRM credentials and settings
 - `POST /api/zoho/config` — Authorize (exchange grant token) or test connection
 - `GET /api/zoho/status` — Quick check if Zoho integration is enabled
@@ -515,7 +517,7 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - **Visit Tracking**: `VisitTracker` component fires `POST /api/track-visit` on project page load; rate-limited to 1 notification per lead per 30 minutes; notifies watchers + assigned admin
 
 ## Expanded Lead Fields
-- **Core contact**: jobTitle, companyName, location (broader than city)
+- **Core contact**: jobTitle, companyName, location (broader than city), apolloUrl
 - **Company intelligence**: industry, companySize, companyWebsite
 - **Lead management**: extractedDate (auto-set by API), lastContactedDate, leadScore (1-100)
 - **Outreach tracking**: connectionRequestSent, connectionAccepted, initialMessageSent, meetingBooked, meetingDate, responseReceived
@@ -626,6 +628,14 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - Audit logged: "Customer Message Received", "Message Sent to Customer"
 - "Notifications" renamed to "Communications" in sidebar
 
+## Section Comments & Replies
+- **SOW Comments**: Customer comments per SOW version, displayed on admin lead detail under SOW section
+- **App Flow Comments**: Customer comments per flow, displayed on admin lead detail under App Flows section
+- **Admin reply**: Inline reply input on each section, creates comment with `authorType: "admin"`
+- **Email notification**: Admin reply sends email to customer with link to the specific SOW version or App Flow
+- **Styling**: Customer comments left-aligned (gray), admin replies right-aligned (blue)
+- **Audit logged**: "SOW Comment Reply", "App Flow Comment Reply"
+
 ## Email Drafts
 - **EmailDraft** model: leadId, subject, body, cc, bcc, createdBy, timestamps
 - Save Draft / Update Draft button next to Send in compose form
@@ -667,7 +677,7 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - Nginx `client_max_body_size` set to 50M for file uploads
 - Dark mode supported via ThemeProvider + ThemeToggle
 - RichTextEditor uses `lastContentRef` to prevent infinite update loops when syncing external content
-- Swagger/OpenAPI spec at `public/openapi.json`, UI at `/api-docs`
+- Swagger/OpenAPI spec at `public/openapi.json` v4.0, UI at `/api-docs` — covers all Lead fields (30+), LeadCreate (25+), enums, GET with filters
 - Leads API supports pagination (`page`, `limit`), search, and filters (`status`, `stage`, `source`)
 - SOW uploads saved to `public/uploads/sow/` with auto-incrementing version numbers
 - Customer portal uses `ADMIN_PORTAL_URL` env var for cross-domain file access (SOW documents)
