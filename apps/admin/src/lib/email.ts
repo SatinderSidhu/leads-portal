@@ -18,6 +18,15 @@ interface Lead {
 }
 
 /**
+ * Generate the unsubscribe footer HTML for customer-facing emails.
+ */
+export function getUnsubscribeFooter(customerEmail: string, leadId: string): string {
+  const customerPortalUrl = process.env.CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us";
+  const unsubUrl = `${customerPortalUrl}/unsubscribe?email=${encodeURIComponent(customerEmail)}&leadId=${encodeURIComponent(leadId)}`;
+  return `<div style="text-align: center; padding-top: 20px; margin-top: 20px; border-top: 1px solid #eee;"><p style="color: #999; font-size: 11px; margin: 0;">If you no longer wish to receive these emails, you can <a href="${unsubUrl}" style="color: #999; text-decoration: underline;">unsubscribe here</a>.</p></div>`;
+}
+
+/**
  * Build the "From" header using the admin's name + the SMTP sender address.
  * Gmail SMTP forces the authenticated account as sender, but the display name
  * is shown to the recipient — e.g. "Satinder Sidhu <leads@kitlabs.us>".
@@ -88,16 +97,18 @@ export async function sendWelcomeEmail(lead: Lead, admin?: AdminInfo): Promise<{
     </div>
   `;
 
+  const htmlWithUnsub = html + getUnsubscribeFooter(lead.customerEmail, lead.id);
+
   const info = await transporter.sendMail({
     from: getFromAddress(admin?.name),
     replyTo: getReplyToAddress(lead.id, admin?.name),
     to: lead.customerEmail,
     subject,
-    html,
+    html: htmlWithUnsub,
   });
 
   console.log(`[Email] Welcome email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
-  return { subject, html };
+  return { subject, html: htmlWithUnsub };
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -124,12 +135,7 @@ export async function sendStatusUpdateEmail(
   console.log(`[Email] Sending status update to ${lead.customerEmail} — "${fromStatus}" → "${toStatus}"...`);
   const start = Date.now();
 
-  const info = await transporter.sendMail({
-    from: getFromAddress(admin?.name),
-    replyTo: getReplyToAddress(lead.id, admin?.name),
-    to: lead.customerEmail,
-    subject: `${lead.projectName} — Status Update: ${statusLabel}`,
-    html: `
+  const statusHtml = `
       <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
         <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
           <h1 style="color: white; margin: 0; font-size: 24px;">Project Status Update</h1>
@@ -162,7 +168,14 @@ export async function sendStatusUpdateEmail(
           If you have any questions, simply reply to this email.
         </p>
       </div>
-    `,
+    ` + getUnsubscribeFooter(lead.customerEmail, lead.id);
+
+  const info = await transporter.sendMail({
+    from: getFromAddress(admin?.name),
+    replyTo: getReplyToAddress(lead.id, admin?.name),
+    to: lead.customerEmail,
+    subject: `${lead.projectName} — Status Update: ${statusLabel}`,
+    html: statusHtml,
   });
 
   console.log(`[Email] Status email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
@@ -208,16 +221,18 @@ export async function sendNdaReadyEmail(lead: Lead, admin?: AdminInfo): Promise<
     </div>
   `;
 
+  const ndaHtmlWithUnsub = html + getUnsubscribeFooter(lead.customerEmail, lead.id);
+
   const info = await transporter.sendMail({
     from: getFromAddress(admin?.name),
     replyTo: getReplyToAddress(lead.id, admin?.name),
     to: lead.customerEmail,
     subject,
-    html,
+    html: ndaHtmlWithUnsub,
   });
 
   console.log(`[Email] NDA ready email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
-  return { subject, html };
+  return { subject, html: ndaHtmlWithUnsub };
 }
 
 interface AdminUser {
@@ -335,16 +350,18 @@ export async function sendSowReadyEmail(
       </div>
     `;
 
+  const sowHtmlWithUnsub = html + getUnsubscribeFooter(lead.customerEmail, leadId);
+
   const info = await transporter.sendMail({
     from: getFromAddress(admin?.name),
     replyTo: getReplyToAddress(leadId, admin?.name),
     to: lead.customerEmail,
     subject,
-    html,
+    html: sowHtmlWithUnsub,
   });
 
   console.log(`[Email] SOW ready email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
-  return { subject, html };
+  return { subject, html: sowHtmlWithUnsub };
 }
 
 export async function sendLeadAssignedEmail(
@@ -441,14 +458,16 @@ export async function sendAppFlowReadyEmail(
       </div>
     `;
 
+  const flowHtmlWithUnsub = html + getUnsubscribeFooter(lead.customerEmail, leadId);
+
   const info = await transporter.sendMail({
     from: getFromAddress(admin?.name),
     replyTo: getReplyToAddress(leadId, admin?.name),
     to: lead.customerEmail,
     subject,
-    html,
+    html: flowHtmlWithUnsub,
   });
 
   console.log(`[Email] App flow ready email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
-  return { subject, html };
+  return { subject, html: flowHtmlWithUnsub };
 }

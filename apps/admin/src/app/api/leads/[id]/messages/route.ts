@@ -53,7 +53,7 @@ export async function POST(
 
   // Send email notification to customer (non-blocking)
   try {
-    const { transporter, getFromAddress } = await import("../../../../../lib/email");
+    const { transporter, getFromAddress, getUnsubscribeFooter } = await import("../../../../../lib/email");
     const portalUrl = `${process.env.CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us"}/project?id=${id}`;
     await transporter.sendMail({
       from: getFromAddress(session.name),
@@ -77,7 +77,7 @@ export async function POST(
             </div>
           </div>
         </div>
-      `,
+      ` + getUnsubscribeFooter(lead.customerEmail, id),
     });
   } catch (e) {
     console.error("[Message] Failed to notify customer:", e);

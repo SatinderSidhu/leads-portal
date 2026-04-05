@@ -57,6 +57,7 @@ export async function POST(req: NextRequest) {
   try {
     const portalUrl = `${process.env.CUSTOMER_PORTAL_URL || "http://localhost:3001"}?id=${leadId}`;
     await sendNdaSignedEmail({
+      leadId,
       customerName: nda.lead.customerName,
       customerEmail: nda.lead.customerEmail,
       projectName: nda.lead.projectName,

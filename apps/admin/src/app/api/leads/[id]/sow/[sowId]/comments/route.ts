@@ -51,7 +51,7 @@ export async function POST(
       select: { customerEmail: true, customerName: true, projectName: true },
     });
     if (lead) {
-      const { transporter, getFromAddress } = await import("../../../../../../../lib/email");
+      const { transporter, getFromAddress, getUnsubscribeFooter } = await import("../../../../../../../lib/email");
       const portalUrl = `${process.env.CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us"}/project?id=${id}&tab=sow&v=${sow.version}`;
       await transporter.sendMail({
         from: getFromAddress(session.name),
@@ -73,7 +73,7 @@ export async function POST(
               </div>
             </div>
           </div>
-        `,
+        ` + getUnsubscribeFooter(lead.customerEmail, id),
       });
     }
   } catch (e) {

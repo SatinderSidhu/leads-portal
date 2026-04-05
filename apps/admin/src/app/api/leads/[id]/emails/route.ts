@@ -1,7 +1,7 @@
 import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { getAdminSession } from "../../../../../lib/session";
-import { transporter, getFromAddress, getReplyToAddress } from "../../../../../lib/email";
+import { transporter, getFromAddress, getReplyToAddress, getUnsubscribeFooter } from "../../../../../lib/email";
 import { sendNotification } from "../../../../../lib/notify";
 import { logAudit } from "../../../../../lib/audit";
 
@@ -181,7 +181,8 @@ export async function POST(
 
   // Inject tracking pixel
   const trackingUrl = `${baseUrl}/api/track/${sentEmail.id}`;
-  const bodyWithPixel = `${finalBody}<img src="${trackingUrl}" width="1" height="1" style="display:none" alt="" />`;
+  const unsubFooter = getUnsubscribeFooter(lead.customerEmail, id);
+  const bodyWithPixel = `${finalBody}${unsubFooter}<img src="${trackingUrl}" width="1" height="1" style="display:none" alt="" />`;
 
   try {
     await transporter.sendMail({

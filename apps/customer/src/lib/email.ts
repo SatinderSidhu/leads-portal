@@ -11,7 +11,17 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+/**
+ * Generate the unsubscribe footer HTML for customer-facing emails.
+ */
+export function getUnsubscribeFooter(customerEmail: string, leadId: string): string {
+  const customerPortalUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us";
+  const unsubUrl = `${customerPortalUrl}/unsubscribe?email=${encodeURIComponent(customerEmail)}&leadId=${encodeURIComponent(leadId)}`;
+  return `<div style="text-align: center; padding-top: 20px; margin-top: 20px; border-top: 1px solid #eee;"><p style="color: #999; font-size: 11px; margin: 0;">If you no longer wish to receive these emails, you can <a href="${unsubUrl}" style="color: #999; text-decoration: underline;">unsubscribe here</a>.</p></div>`;
+}
+
 interface NdaSignedParams {
+  leadId: string;
   customerName: string;
   customerEmail: string;
   projectName: string;
@@ -23,6 +33,7 @@ interface NdaSignedParams {
 
 export async function sendNdaSignedEmail(params: NdaSignedParams) {
   const {
+    leadId,
     customerName,
     customerEmail,
     projectName,
@@ -83,7 +94,7 @@ export async function sendNdaSignedEmail(params: NdaSignedParams) {
           If you have any questions, simply reply to this email.
         </p>
       </div>
-    `,
+    ` + getUnsubscribeFooter(customerEmail, leadId),
   });
 
   // Email to admin
@@ -204,7 +215,7 @@ export async function sendSowSignedNotification(
           </div>
         </div>
       </div>
-    `,
+    ` + getUnsubscribeFooter(lead.customerEmail, lead.id),
   });
 
   // Email to admin
