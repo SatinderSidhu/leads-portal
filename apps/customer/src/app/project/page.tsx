@@ -173,6 +173,7 @@ export default async function ProjectPage({
         },
         orderBy: { createdAt: "desc" },
       },
+      assignedTo: { select: { name: true, email: true, profilePicture: true } },
     },
   });
 
@@ -461,30 +462,45 @@ export default async function ProjectPage({
                 </div>
               )}
 
-              {/* Contact Info */}
+              {/* Your Representative */}
               <div className={`bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm ${!lead.projectDescription ? "lg:col-span-3" : ""}`}>
-                <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Your Contact</p>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">Name</p>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white">{lead.customerName}</p>
+                <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4">Your Representative</p>
+                {lead.assignedTo ? (
+                  <div className="flex flex-col items-center text-center">
+                    {lead.assignedTo.profilePicture ? (
+                      <img
+                        src={`${adminBaseUrl}${lead.assignedTo.profilePicture}`}
+                        alt={lead.assignedTo.name}
+                        className="w-16 h-16 rounded-2xl object-cover mb-3"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#01358d] to-[#2870a8] flex items-center justify-center mb-3">
+                        <span className="text-xl font-bold text-white">
+                          {lead.assignedTo.name.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+                    <h4 className="text-base font-semibold text-gray-900 dark:text-white">{lead.assignedTo.name}</h4>
+                    <p className="text-xs text-[#01358d] dark:text-blue-400 font-medium mt-0.5">Project Representative</p>
+                    <a href={`mailto:${lead.assignedTo.email}`} className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#01358d] dark:hover:text-blue-400 transition mt-1 break-all">
+                      {lead.assignedTo.email}
+                    </a>
                   </div>
-                  <div>
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">Email</p>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 break-all">{lead.customerEmail}</p>
-                  </div>
-                  {lead.phone && (
-                    <div>
-                      <p className="text-[10px] text-gray-400 uppercase tracking-wider">Phone</p>
-                      <p className="text-sm text-gray-700 dark:text-gray-300">{lead.phone}</p>
+                ) : (
+                  <div className="flex flex-col items-center text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
+                      <svg className="w-8 h-8 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                      </svg>
                     </div>
-                  )}
-                  <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
-                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">Started</p>
-                    <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                      {new Date(lead.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-                    </p>
+                    <p className="text-sm text-gray-400 dark:text-gray-500">A representative will be assigned shortly</p>
                   </div>
+                )}
+                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Project Started</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {new Date(lead.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                  </p>
                 </div>
               </div>
             </div>
