@@ -1,6 +1,7 @@
 import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { getCustomerSession } from "../../../lib/session";
+import { isValidPreviewToken } from "../../../lib/preview-token";
 import nodemailer from "nodemailer";
 
 const transporter = nodemailer.createTransport({
@@ -14,9 +15,14 @@ const transporter = nodemailer.createTransport({
 });
 
 export async function POST(req: Request) {
-  const { leadId, page } = await req.json();
+  const { leadId, page, preview } = await req.json();
   if (!leadId) {
     return NextResponse.json({ error: "leadId is required" }, { status: 400 });
+  }
+
+  // Skip tracking in admin preview mode (server-side validation)
+  if (preview && isValidPreviewToken(leadId, preview)) {
+    return NextResponse.json({ tracked: false, reason: "admin_preview" });
   }
 
   const session = await getCustomerSession();

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { prisma } from "@leads-portal/database";
 import NdaSection from "../../components/NdaSection";
 import SowSection from "../../components/SowSection";
@@ -125,7 +126,7 @@ export default async function ProjectPage({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#2870a8] via-[#01358d] to-[#101b63] dark:from-[#1a1a2e] dark:via-[#16213e] dark:to-[#0f3460]">
-      <VisitTracker leadId={lead.id} page={activeTab} />
+      <Suspense fallback={null}><VisitTracker leadId={lead.id} page={activeTab} /></Suspense>
       {/* Nav */}
       <nav className="bg-white/10 backdrop-blur-sm border-b border-white/20 dark:bg-black/20 dark:border-white/10">
         <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">

@@ -229,6 +229,7 @@ interface Lead {
   files: LeadFileItem[];
   assignedTo?: { id: string; name: string; email: string } | null;
   watchers?: { admin: { id: string; name: string; email: string } }[];
+  previewToken?: string;
 }
 
 interface LeadFileItem {
@@ -2153,6 +2154,32 @@ export default function LeadDetailPage() {
                       </button>
                     </div>
                   </div>
+
+                  {/* Admin Preview Link (no tracking/notifications) */}
+                  {lead.previewToken && (
+                    <div className="mt-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                      <p className="text-xs font-medium text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">Admin Preview URL <span className="normal-case font-normal">(no tracking)</span></p>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`${process.env.NEXT_PUBLIC_CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us"}/project?id=${lead.id}&preview=${lead.previewToken}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-amber-700 dark:text-amber-300 hover:underline break-all"
+                        >
+                          {`${process.env.NEXT_PUBLIC_CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us"}/project?id=${lead.id}&preview=${lead.previewToken}`}
+                        </a>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(`${process.env.NEXT_PUBLIC_CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us"}/project?id=${lead.id}&preview=${lead.previewToken}`);
+                          }}
+                          className="text-xs text-amber-500 hover:text-amber-700 dark:hover:text-amber-300 flex-shrink-0"
+                          title="Copy Admin Preview URL"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Audit Info */}
                   {(lead.createdBy || lead.updatedBy) && (

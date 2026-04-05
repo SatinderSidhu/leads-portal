@@ -2,6 +2,7 @@ import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { getAdminSession } from "../../../../lib/session";
 import { logAudit } from "../../../../lib/audit";
+import { generatePreviewToken } from "../../../../lib/preview-token";
 
 export async function GET(
   _req: Request,
@@ -37,7 +38,7 @@ export async function GET(
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
 
-  return NextResponse.json(lead);
+  return NextResponse.json({ ...lead, previewToken: generatePreviewToken(id) });
 }
 
 export async function PUT(
