@@ -4,6 +4,7 @@ import NdaSection from "../../components/NdaSection";
 import SowSection from "../../components/SowSection";
 import AppFlowSection from "../../components/AppFlowSection";
 import ProjectFeedback from "../../components/ProjectFeedback";
+import NdaRequestCard from "../../components/NdaRequestCard";
 import ProjectShell from "../../components/ProjectShell";
 import VisitTracker from "../../components/VisitTracker";
 import ChatWidget from "../../components/ChatWidget";
@@ -36,24 +37,6 @@ const STATUS_COLORS: Record<string, string> = {
   BUILD_SUBMITTED: "bg-indigo-500",
   GO_LIVE: "bg-emerald-500",
 };
-
-const PIPELINE_STAGES = [
-  { key: "NEW", label: "New", short: "New" },
-  { key: "SOW_READY", label: "SOW Ready", short: "SOW" },
-  { key: "SOW_SIGNED", label: "SOW Signed", short: "Signed" },
-  { key: "APP_FLOW_READY", label: "App Flow", short: "Flow" },
-  { key: "DESIGN_READY", label: "Design", short: "Design" },
-  { key: "DESIGN_APPROVED", label: "Approved", short: "Approved" },
-  { key: "BUILD_IN_PROGRESS", label: "Building", short: "Build" },
-  { key: "BUILD_READY_FOR_REVIEW", label: "Review", short: "Review" },
-  { key: "BUILD_SUBMITTED", label: "Submitted", short: "Submit" },
-  { key: "GO_LIVE", label: "Go Live", short: "Live" },
-];
-
-function getStageIndex(status: string): number {
-  const idx = PIPELINE_STAGES.findIndex((s) => s.key === status);
-  return idx >= 0 ? idx : 0;
-}
 
 const TABS = [
   { key: "overview", label: "Overview", icon: "overview" },
@@ -93,14 +76,6 @@ function IconFlow({ className = "w-5 h-5" }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21 3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5" />
-    </svg>
-  );
-}
-
-function IconShield({ className = "w-5 h-5" }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
     </svg>
   );
 }
@@ -212,7 +187,6 @@ export default async function ProjectPage({
   const adminBaseUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
   const isLoggedIn = !!session;
   const returnTo = encodeURIComponent(`/project?id=${lead.id}&tab=${activeTab}${v ? `&v=${v}` : ""}`);
-  const currentStage = getStageIndex(lead.status);
   const initials = lead.customerName
     .split(" ")
     .map((n) => n[0])
@@ -288,69 +262,72 @@ export default async function ProjectPage({
               </div>
             </div>
 
-            {/* Progress Stepper */}
-            <div className="bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 mb-6 shadow-sm">
-              <div className="flex items-center justify-between mb-5">
-                <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Project Progress</p>
-                <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold ${
-                  lead.status === "GO_LIVE"
-                    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300"
-                    : "bg-[#01358d]/10 text-[#01358d] dark:bg-blue-500/20 dark:text-blue-300"
-                }`}>
-                  <div className={`w-1.5 h-1.5 rounded-full ${STATUS_COLORS[lead.status] || "bg-gray-400"}`} />
-                  {STATUS_LABELS[lead.status] || lead.status}
-                </span>
-              </div>
-              {/* Desktop stepper */}
-              <div className="hidden md:block">
-                <div className="flex items-center justify-between relative">
-                  <div className="absolute top-4 left-0 right-0 h-0.5 bg-gray-200 dark:bg-gray-700" />
-                  <div
-                    className="absolute top-4 left-0 h-0.5 bg-[#f9556d] transition-all duration-500"
-                    style={{ width: `${(currentStage / (PIPELINE_STAGES.length - 1)) * 100}%` }}
-                  />
-                  {PIPELINE_STAGES.map((stage, i) => {
-                    const isCompleted = i < currentStage;
-                    const isCurrent = i === currentStage;
-                    return (
-                      <div key={stage.key} className="flex flex-col items-center relative z-10" style={{ width: `${100 / PIPELINE_STAGES.length}%` }}>
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
-                          isCompleted
-                            ? "bg-[#f9556d] text-white"
-                            : isCurrent
-                              ? "bg-[#01358d] text-white ring-4 ring-[#f9556d]/30"
-                              : "bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-500 border border-gray-200 dark:border-gray-700"
-                        }`}>
-                          {isCompleted ? (
-                            <IconCheck className="w-4 h-4" />
-                          ) : (
-                            <span className="text-[10px] font-bold">{i + 1}</span>
-                          )}
-                        </div>
-                        <p className={`text-[10px] mt-2 font-medium text-center leading-tight ${
-                          isCompleted || isCurrent ? "text-gray-900 dark:text-white" : "text-gray-400 dark:text-gray-500"
-                        }`}>
-                          {stage.short}
-                        </p>
+            {/* Project Description + Representative */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+              {/* Project Description — first thing after welcome */}
+              {lead.projectDescription && (
+                <div className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+                  <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Project Description (as we know)</p>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{lead.projectDescription}</p>
+                </div>
+              )}
+
+              {/* Your Representative */}
+              <div className={`bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm ${!lead.projectDescription ? "lg:col-span-3" : ""}`}>
+                <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4">Your Representative</p>
+                {lead.assignedTo ? (
+                  <div className="flex flex-col items-center text-center">
+                    {lead.assignedTo.profilePicture ? (
+                      <img
+                        src={`${adminBaseUrl}${lead.assignedTo.profilePicture}`}
+                        alt={lead.assignedTo.name}
+                        className="w-16 h-16 rounded-2xl object-cover mb-3"
+                      />
+                    ) : (
+                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#01358d] to-[#2870a8] flex items-center justify-center mb-3">
+                        <span className="text-xl font-bold text-white">
+                          {lead.assignedTo.name.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase()}
+                        </span>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-              {/* Mobile progress bar */}
-              <div className="md:hidden">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-gray-500 text-xs">Step {currentStage + 1} of {PIPELINE_STAGES.length}</span>
-                  <span className="text-gray-900 dark:text-white text-xs font-semibold">{PIPELINE_STAGES[currentStage]?.label}</span>
-                </div>
-                <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                  <div className="h-full bg-[#f9556d] rounded-full transition-all duration-500" style={{ width: `${((currentStage + 1) / PIPELINE_STAGES.length) * 100}%` }} />
+                    )}
+                    <h4 className="text-base font-semibold text-gray-900 dark:text-white">{lead.assignedTo.name}</h4>
+                    <p className="text-xs text-[#01358d] dark:text-blue-400 font-medium mt-0.5">Project Representative</p>
+                    <a href={`mailto:${lead.assignedTo.email}`} className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#01358d] dark:hover:text-blue-400 transition mt-1 break-all">
+                      {lead.assignedTo.email}
+                    </a>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
+                      <svg className="w-8 h-8 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                      </svg>
+                    </div>
+                    <p className="text-sm text-gray-400 dark:text-gray-500">A representative will be assigned shortly</p>
+                  </div>
+                )}
+                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Project Started</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                    {new Date(lead.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Dashboard Cards — Always shown */}
+            {/* Dashboard Cards — NDA first, then SOW, App Flow, Meeting */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              {/* NDA Card (with Request NDA functionality) */}
+              <NdaRequestCard
+                leadId={lead.id}
+                customerName={lead.customerName}
+                hasNda={hasNda}
+                ndaStatus={lead.nda?.status}
+                ndaSignerName={lead.nda?.signerName}
+                isLoggedIn={isLoggedIn}
+                returnTo={returnTo}
+              />
+
               {/* SOW Card */}
               <a
                 href={hasSow ? `/project?id=${lead.id}&tab=sow` : "#"}
@@ -404,38 +381,6 @@ export default async function ProjectPage({
                 )}
               </a>
 
-              {/* NDA Card */}
-              <a
-                href={hasNda ? `/project?id=${lead.id}&tab=nda` : "#"}
-                className={`group bg-white dark:bg-gray-900 rounded-2xl p-5 border shadow-sm transition-all duration-200 ${
-                  hasNda
-                    ? "border-gray-200 dark:border-gray-700 hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md hover:-translate-y-0.5 cursor-pointer"
-                    : "border-dashed border-gray-200 dark:border-gray-700 opacity-60 cursor-default"
-                }`}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${hasNda ? "bg-indigo-100 dark:bg-indigo-900/40" : "bg-gray-100 dark:bg-gray-800"}`}>
-                    <IconShield className={`w-5 h-5 ${hasNda ? "text-indigo-600 dark:text-indigo-400" : "text-gray-400"}`} />
-                  </div>
-                  {hasNda && <IconArrowRight className="w-4 h-4 text-gray-300 group-hover:text-indigo-500 transition-colors" />}
-                </div>
-                <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Non-Disclosure Agreement</p>
-                {hasNda ? (
-                  <>
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {lead.nda!.status === "SIGNED" ? `Signed by ${lead.nda!.signerName}` : "Ready for review"}
-                    </p>
-                    {lead.nda!.status === "SIGNED" && (
-                      <span className="inline-flex items-center gap-1 mt-2 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded-full">
-                        <IconCheck className="w-3 h-3" /> Signed
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-xs text-gray-400 dark:text-gray-500">Not yet shared</p>
-                )}
-              </a>
-
               {/* Book Meeting Card */}
               <a
                 href={`/project?id=${lead.id}&tab=appointments`}
@@ -450,59 +395,6 @@ export default async function ProjectPage({
                 <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Book a Meeting</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">Schedule time with our team</p>
               </a>
-            </div>
-
-            {/* Project Details + Contact */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-              {/* Project Description */}
-              {lead.projectDescription && (
-                <div className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
-                  <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Project Description</p>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{lead.projectDescription}</p>
-                </div>
-              )}
-
-              {/* Your Representative */}
-              <div className={`bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm ${!lead.projectDescription ? "lg:col-span-3" : ""}`}>
-                <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-4">Your Representative</p>
-                {lead.assignedTo ? (
-                  <div className="flex flex-col items-center text-center">
-                    {lead.assignedTo.profilePicture ? (
-                      <img
-                        src={`${adminBaseUrl}${lead.assignedTo.profilePicture}`}
-                        alt={lead.assignedTo.name}
-                        className="w-16 h-16 rounded-2xl object-cover mb-3"
-                      />
-                    ) : (
-                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#01358d] to-[#2870a8] flex items-center justify-center mb-3">
-                        <span className="text-xl font-bold text-white">
-                          {lead.assignedTo.name.split(" ").map((n: string) => n[0]).slice(0, 2).join("").toUpperCase()}
-                        </span>
-                      </div>
-                    )}
-                    <h4 className="text-base font-semibold text-gray-900 dark:text-white">{lead.assignedTo.name}</h4>
-                    <p className="text-xs text-[#01358d] dark:text-blue-400 font-medium mt-0.5">Project Representative</p>
-                    <a href={`mailto:${lead.assignedTo.email}`} className="text-sm text-gray-500 dark:text-gray-400 hover:text-[#01358d] dark:hover:text-blue-400 transition mt-1 break-all">
-                      {lead.assignedTo.email}
-                    </a>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center text-center">
-                    <div className="w-16 h-16 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center mb-3">
-                      <svg className="w-8 h-8 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                      </svg>
-                    </div>
-                    <p className="text-sm text-gray-400 dark:text-gray-500">A representative will be assigned shortly</p>
-                  </div>
-                )}
-                <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-800">
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Project Started</p>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {new Date(lead.createdAt).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}
-                  </p>
-                </div>
-              </div>
             </div>
 
             {/* Status History Timeline */}
