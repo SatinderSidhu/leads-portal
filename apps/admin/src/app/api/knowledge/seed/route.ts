@@ -537,6 +537,265 @@ Supports filters: status, stage, source, industry, assignedTo, search. Paginated
 
 ## API Docs
 Visit **/api-docs** in the admin portal for interactive Swagger documentation.` },
+
+  // New Features (v4.2-4.5)
+  { category: "Getting Started", sortOrder: 3, title: "Release History", slug: "release-history", content: `# Release History
+
+The Release History page provides a complete version timeline for the Leads Portal.
+
+## Accessing Release History
+
+Navigate to **Release History** in the admin sidebar (bottom section, tag icon).
+
+## What You'll See
+
+- **Current Build**: The git commit SHA and build timestamp of the running deployment
+- **Latest Release Banner**: Shows the most recent version with a count of changes
+- **Version Timeline**: Every release with:
+  - Version number (e.g., v4.4)
+  - Release date
+  - Git commit ID (clickable — links to GitHub)
+  - List of changes with checkmark bullets
+
+## How It Works
+
+- Release data is maintained in \`apps/admin/src/data/releases.ts\`
+- The build commit SHA is injected at build time via Docker and displayed at the top
+- Each new deployment automatically shows the latest build ID
+- The latest release is highlighted with a blue accent and "Latest" badge` },
+
+  { category: "Email System", sortOrder: 3, title: "System Email Templates", slug: "system-email-templates", content: `# System Email Templates
+
+The system automatically sends emails to customers for various events (welcome, status updates, document sharing, etc.). Admins can now customize the content of these system emails.
+
+## Accessing System Templates
+
+1. Go to **Email Templates** in the sidebar
+2. Click the **System Templates** tab (next to Compose Templates)
+
+## Available System Templates
+
+| Template | When It's Sent |
+|----------|---------------|
+| Welcome Email | When a new lead is created or welcome email is triggered |
+| Status Update | When project status changes |
+| NDA Ready | When an NDA is shared with the customer |
+| SOW Ready | When a Scope of Work is shared |
+| App Flow Ready | When an app flow diagram is shared |
+| SOW Comment Reply | When admin replies to a customer's SOW comment |
+| App Flow Comment Reply | When admin replies to an app flow comment |
+| Admin Message | When admin sends a message via live chat |
+| NDA Signed Confirmation | Sent to customer after NDA is signed |
+| SOW Signed Confirmation | Sent to customer after SOW is approved |
+
+## Editing a Template
+
+1. Click any system template card to open the editor
+2. A purple **System Template** banner shows the template key and available merge tags
+3. Edit the **Subject** and **Body** using the rich text editor
+4. **Click any merge tag** to copy it to your clipboard (e.g., \`{{customerName}}\`)
+5. Paste merge tags into your template — they'll be replaced with actual values when emails are sent
+6. Click **Save** to update
+
+## Merge Tags
+
+Merge tags are placeholders that get replaced with real data. Common tags:
+
+- \`{{customerName}}\` — The customer's full name
+- \`{{projectName}}\` — The project name
+- \`{{portalUrl}}\` — Link to the customer portal
+- \`{{statusLabel}}\` — The new status (for status update emails)
+- \`{{adminName}}\` — The admin who sent the message/reply
+
+Each template shows its specific available tags in the purple banner.
+
+## Important Notes
+
+- System templates **cannot be deleted** (the delete button is hidden)
+- If a template is accidentally corrupted, you can restore it by re-running the database seed
+- Changes take effect immediately — the next email sent will use your updated template
+- If the template is missing from the database, the system falls back to the built-in default` },
+
+  { category: "Email System", sortOrder: 4, title: "Email Unsubscribe", slug: "email-unsubscribe", content: `# Email Unsubscribe
+
+All customer-facing emails now include an unsubscribe link at the bottom. This allows customers to opt out of email communications.
+
+## How It Works
+
+1. Every email sent to a customer includes a small "unsubscribe here" link at the bottom
+2. Clicking the link takes the customer to the **Customer Portal Unsubscribe Page**
+3. The page shows their email address (pre-filled) and two buttons:
+   - **Unsubscribe** (red) — stops all email communications
+   - **Cancel — I changed my mind** — goes back to the portal
+
+## What Happens When a Customer Unsubscribes
+
+1. **Do Not Contact** is enabled on ALL leads matching that email address
+2. An **audit log** entry is created: "Customer Unsubscribed from Emails"
+3. An **email notification** is sent to the assigned admin and all watchers with a red "Customer Unsubscribed" header
+4. The customer sees a confirmation page
+
+## Re-Enabling Communications
+
+If a customer changes their mind:
+1. Go to the lead detail page in admin portal
+2. Find the red **Do Not Contact** banner at the top
+3. Click **Disable** to re-enable email communications
+
+## Which Emails Include the Unsubscribe Link?
+
+All 10+ customer-facing email types: welcome, status update, NDA/SOW/App Flow ready, manual compose, admin messages, comment replies, and signed confirmations.` },
+
+  { category: "Lead Management", sortOrder: 6, title: "Admin Preview Mode", slug: "admin-preview-mode", content: `# Admin Preview Mode
+
+Admin Preview Mode lets you view the customer portal as if you were the customer — without triggering any visit tracking, email notifications, or audit log entries.
+
+## How to Use It
+
+1. Open any lead's detail page in the admin portal
+2. Scroll down to the project info section
+3. You'll see two URL boxes:
+   - **Customer Portal URL** (blue) — The link shared with customers. Visiting this triggers tracking
+   - **Admin Preview URL** (amber, labeled "no tracking") — Safe for admin to visit without triggering anything
+
+4. Click the **copy button** on the Admin Preview URL
+5. Open it in a new tab — you'll see the customer portal without any notifications being sent
+
+## What's Different in Preview Mode?
+
+- **No visit tracking** — No "Customer Portal Visit" audit entry or email to watchers
+- **No notification emails** — Admin watchers won't be notified
+- **Full functionality** — Everything else works normally (SOW viewing, app flows, etc.)
+
+## How It Works (Technical)
+
+The Admin Preview URL includes a signed HMAC token (\`&preview=<token>\`). This token is verified by the customer portal — only someone with access to the server's SESSION_SECRET can generate a valid token. It's not guessable.` },
+
+  { category: "Collaboration", sortOrder: 4, title: "Customer Portal Navigation", slug: "customer-portal-navigation", content: `# Customer Portal Navigation
+
+The customer portal uses a **left sidebar** for navigation, similar to the admin portal.
+
+## Sidebar Features
+
+- **Collapse/Expand**: Click the chevron to collapse the sidebar to icons only
+- **Hover Expand**: When collapsed, hover over the sidebar to temporarily see labels
+- **Pin/Lock**: Click the pin icon to keep the sidebar permanently open
+- **Persistence**: Sidebar state (collapsed/locked) is saved to the browser — customers won't have to re-expand every visit
+
+## Navigation Items
+
+| Item | Icon | Description |
+|------|------|-------------|
+| Overview | Grid | Project dashboard with cards and description |
+| Scope of Work | Document | SOW documents (only visible when shared) |
+| App Flow | Arrows | App flow diagrams (only visible when shared) |
+| NDA | Shield | Non-disclosure agreement (only visible when shared) |
+| Book Meeting | Calendar | Schedule time with the team |
+
+Items that aren't available yet show as grayed out with a "Soon" badge.
+
+## Mobile View
+
+On mobile devices, the sidebar becomes a hamburger menu:
+- Tap the hamburger icon (top-left) to open the sidebar as an overlay
+- Tap outside or navigate to close it
+
+## Overview Dashboard Cards
+
+The Overview page shows four main cards:
+1. **NDA** — Shows status (signed/ready/not shared) or a "Request NDA" link
+2. **Scope of Work** — Shows version count or "Not yet shared"
+3. **App Flow** — Shows flow count or "Not yet shared"
+4. **Book Meeting** — Always available, links to booking page
+
+Cards that aren't shared yet appear with a dashed border and reduced opacity.` },
+
+  { category: "Collaboration", sortOrder: 5, title: "NDA Request from Customer", slug: "nda-request", content: `# NDA Request from Customer
+
+Customers can now request an NDA directly from the customer portal, even before you've shared one.
+
+## How It Works (Customer Side)
+
+1. Customer visits their portal and sees the **NDA card** on the Overview page
+2. If no NDA has been shared yet, the card shows a **"Request NDA"** link
+3. Clicking it opens a modal with:
+   - A pre-written, editable message (professional, friendly tone)
+   - An **upload button** to attach their own NDA document (PDF or Word, max 10MB)
+   - **Submit Request** and **Cancel** buttons
+4. After submitting, the card updates to show "Request sent — we'll get back to you soon"
+
+## What Happens on Submit (Admin Side)
+
+1. A **note** is created on the lead with the customer's message (prefixed with "[NDA Request]")
+2. An **audit log** entry: "NDA Requested by Customer"
+3. An **email notification** is sent to the assigned admin and all watchers with:
+   - The customer's message
+   - Mention of any attached file
+   - A "View Lead & Send NDA" button linking to the admin portal
+
+## Finding NDA Requests
+
+- Check the lead's **Notes** section — NDA requests appear with a "[NDA Request]" prefix
+- Check the **Audit Log** for "NDA Requested by Customer" entries
+- Check your email for the NDA Request notification
+
+## Responding to an NDA Request
+
+1. Open the lead in admin portal
+2. Go to the NDA section
+3. Generate or upload an NDA as usual
+4. Send it to the customer — they'll receive the NDA Ready email` },
+
+  { category: "Collaboration", sortOrder: 6, title: "Your Representative (Customer Portal)", slug: "customer-representative", content: `# Your Representative
+
+The customer portal now shows the assigned admin as the customer's "Representative" — giving customers a personal point of contact.
+
+## What Customers See
+
+On the Overview page, next to the project description, there's a **"Your Representative"** card showing:
+- **Profile photo** (or initials if no photo uploaded)
+- **Admin's name**
+- **"Project Representative"** title
+- **Email address** (clickable mailto link)
+- **Project start date**
+
+If no admin is assigned yet, customers see: "A representative will be assigned shortly."
+
+## Setting Up Your Profile Photo
+
+1. Go to **My Profile** in the admin sidebar
+2. Click the profile picture area to upload a photo
+3. The photo will appear on the customer portal for all leads assigned to you
+
+## How Assignment Works
+
+- When you create a lead, you're automatically assigned as the representative
+- You can reassign leads from the lead detail page using the assignment dropdown
+- The customer portal updates automatically when assignment changes` },
+
+  { category: "Settings", sortOrder: 2, title: "Branding & Chat Widget", slug: "branding-chat-widget", content: `# Chat Widget
+
+The live chat widget appears on the customer portal as a floating chat bubble in the bottom-right corner.
+
+## Customer Experience
+
+- A **chat bubble** appears after 10 seconds on the page
+- Clicking it opens the chat panel with a welcome message: "We are here to help you by answering any question. Please send us your question."
+- Customers must be signed in to send messages
+- The **close button** is in the top-right corner of the chat header
+- When new admin messages arrive, a sound plays and an unread badge appears
+
+## Admin Experience
+
+- Messages appear in the **Live Chat** section in the sidebar (with unread count badge)
+- The **/messages** page shows all conversations: Unread tab + All Conversations tab
+- On individual lead detail pages, a floating chat widget shows the conversation
+- **Do Not Contact** blocks admin replies
+
+## Notifications
+
+- When a customer sends a message: admin watchers + assigned admin get an email
+- When an admin replies: customer gets an email notification` },
 ];
 
 export async function POST() {
