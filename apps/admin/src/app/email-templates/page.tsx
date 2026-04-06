@@ -77,6 +77,8 @@ export default function EmailTemplatesListPage() {
   const [composeTemplates, setComposeTemplates] = useState<EmailTemplate[]>([]);
   const [systemTemplates, setSystemTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [seeding, setSeeding] = useState(false);
+  const [seedResult, setSeedResult] = useState<{ created: number; skipped: number } | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<EmailTemplate | null>(null);
 
   useEffect(() => {
@@ -89,22 +91,72 @@ export default function EmailTemplatesListPage() {
     }).finally(() => setLoading(false));
   }, []);
 
-  const templates = activeTab === "compose" ? composeTemplates : systemTemplates;
+  async function handleSeedSystemTemplates() {
+    setSeeding(true);
+    setSeedResult(null);
+    try {
+      const res = await fetch("/api/email-templates/seed", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setSeedResult(data);
+        // Refresh the system templates list
+        const refreshRes = await fetch("/api/email-templates?type=system");
+        if (refreshRes.ok) {
+          const refreshed = await refreshRes.json();
+          if (Array.isArray(refreshed)) setSystemTemplates(refreshed);
+        }
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setSeeding(false);
+    }
+  }
 
   return (
     <div className="p-6">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">Email Templates</h1>
-        {activeTab === "compose" && (
+        {activeTab === "compose" ? (
           <button
             onClick={() => router.push("/email-templates/new")}
             className="bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 transition"
           >
             + New Template
           </button>
+        ) : (
+          <button
+            onClick={handleSeedSystemTemplates}
+            disabled={seeding}
+            className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 0 0-3.7-3.7 48.678 48.678 0 0 0-7.324 0 4.006 4.006 0 0 0-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 0 0 3.7 3.7 48.656 48.656 0 0 0 7.324 0 4.006 4.006 0 0 0 3.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3-3 3" />
+            </svg>
+            {seeding ? "Seeding..." : "Seed Default Templates"}
+          </button>
         )}
       </div>
+
+      {/* Seed Result Banner */}
+      {seedResult && (
+        <div className="mb-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-xl px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <svg className="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+            </svg>
+            <p className="text-sm text-emerald-700 dark:text-emerald-300">
+              {seedResult.created > 0
+                ? `Created ${seedResult.created} system template${seedResult.created !== 1 ? "s" : ""}${seedResult.skipped > 0 ? ` (${seedResult.skipped} already existed)` : ""}`
+                : `All ${seedResult.skipped} system templates already exist`}
+            </p>
+          </div>
+          <button onClick={() => setSeedResult(null)} className="text-emerald-400 hover:text-emerald-600 transition">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-6 w-fit">
@@ -143,8 +195,23 @@ export default function EmailTemplatesListPage() {
         /* System Templates — Card Grid */
         systemTemplates.length === 0 ? (
           <div className="text-center py-16 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700">
-            <p className="text-gray-500 dark:text-gray-400 mb-2">No system templates found.</p>
-            <p className="text-gray-400 dark:text-gray-500 text-sm">System templates are created automatically when the database is seeded.</p>
+            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+              <svg className="w-8 h-8 text-purple-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+              </svg>
+            </div>
+            <p className="text-gray-900 dark:text-white font-semibold mb-1">No system templates found</p>
+            <p className="text-gray-400 dark:text-gray-500 text-sm mb-5 max-w-sm mx-auto">System templates define the content of automated emails sent to customers. Click below to load the default templates.</p>
+            <button
+              onClick={handleSeedSystemTemplates}
+              disabled={seeding}
+              className="inline-flex items-center gap-2 bg-purple-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-purple-700 disabled:opacity-50 transition"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12c0-1.232-.046-2.453-.138-3.662a4.006 4.006 0 0 0-3.7-3.7 48.678 48.678 0 0 0-7.324 0 4.006 4.006 0 0 0-3.7 3.7c-.017.22-.032.441-.046.662M19.5 12l3-3m-3 3-3-3m-12 3c0 1.232.046 2.453.138 3.662a4.006 4.006 0 0 0 3.7 3.7 48.656 48.656 0 0 0 7.324 0 4.006 4.006 0 0 0 3.7-3.7c.017-.22.032-.441.046-.662M4.5 12l3 3m-3-3-3 3" />
+              </svg>
+              {seeding ? "Seeding..." : "Load Default System Templates"}
+            </button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
