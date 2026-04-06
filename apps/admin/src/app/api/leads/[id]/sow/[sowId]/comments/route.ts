@@ -51,29 +51,33 @@ export async function POST(
       select: { customerEmail: true, customerName: true, projectName: true },
     });
     if (lead) {
-      const { transporter, getFromAddress, getUnsubscribeFooter } = await import("../../../../../../../lib/email");
+      const { transporter, getFromAddress, getUnsubscribeFooter, getSystemEmailContent } = await import("../../../../../../../lib/email");
       const portalUrl = `${process.env.CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us"}/project?id=${id}&tab=sow&v=${sow.version}`;
+      const fallbackHtml = `
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+          <div style="background: linear-gradient(135deg, #01358d 0%, #2870a8 100%); border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 30px;">
+            <h1 style="color: white; margin: 0; font-size: 20px;">SOW Comment Reply</h1>
+            <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 15px;">${lead.projectName} — v${sow.version}</p>
+          </div>
+          <div style="background: #f8f9fa; border-radius: 12px; padding: 30px;">
+            <p style="color: #333; font-size: 16px;"><strong>${session.name}</strong> replied to your comment:</p>
+            <div style="background: white; border-left: 4px solid #01358d; padding: 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
+              <p style="color: #333; font-size: 15px; margin: 0; white-space: pre-wrap;">${content.trim().slice(0, 500)}</p>
+            </div>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${portalUrl}" style="display: inline-block; background: #01358d; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-size: 15px; font-weight: 600;">View SOW</a>
+            </div>
+          </div>
+        </div>`;
+      const { subject: sowSubj, html: sowReplyHtml } = await getSystemEmailContent("system_sow_comment_reply", {
+        customerName: lead.customerName, projectName: lead.projectName, adminName: session.name,
+        commentContent: content.trim().slice(0, 500), sowUrl: portalUrl, sowVersion: String(sow.version),
+      }, `Reply to SOW Comment — ${lead.projectName}`, fallbackHtml);
       await transporter.sendMail({
         from: getFromAddress(session.name),
         to: lead.customerEmail,
-        subject: `Reply to SOW Comment — ${lead.projectName}`,
-        html: `
-          <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-            <div style="background: linear-gradient(135deg, #01358d 0%, #2870a8 100%); border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 30px;">
-              <h1 style="color: white; margin: 0; font-size: 20px;">SOW Comment Reply</h1>
-              <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 15px;">${lead.projectName} — v${sow.version}</p>
-            </div>
-            <div style="background: #f8f9fa; border-radius: 12px; padding: 30px;">
-              <p style="color: #333; font-size: 16px;"><strong>${session.name}</strong> replied to your comment:</p>
-              <div style="background: white; border-left: 4px solid #01358d; padding: 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
-                <p style="color: #333; font-size: 15px; margin: 0; white-space: pre-wrap;">${content.trim().slice(0, 500)}</p>
-              </div>
-              <div style="text-align: center; margin: 30px 0;">
-                <a href="${portalUrl}" style="display: inline-block; background: #01358d; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-size: 15px; font-weight: 600;">View SOW</a>
-              </div>
-            </div>
-          </div>
-        ` + getUnsubscribeFooter(lead.customerEmail, id),
+        subject: sowSubj,
+        html: sowReplyHtml + getUnsubscribeFooter(lead.customerEmail, id),
       });
     }
   } catch (e) {

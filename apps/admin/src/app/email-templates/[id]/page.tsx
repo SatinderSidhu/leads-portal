@@ -25,11 +25,25 @@ interface EmailTemplate {
   tags: string[];
   notes: string | null;
   purpose: string;
+  systemKey: string | null;
   createdBy: string | null;
   updatedBy: string | null;
   createdAt: string;
   updatedAt: string;
 }
+
+const SYSTEM_KEY_TAGS: Record<string, string[]> = {
+  system_welcome: ["customerName", "projectName", "portalUrl"],
+  system_status_update: ["customerName", "projectName", "statusLabel", "portalUrl"],
+  system_nda_ready: ["customerName", "projectName", "ndaUrl"],
+  system_sow_ready: ["customerName", "projectName", "sowVersion", "sowUrl", "portalUrl"],
+  system_app_flow_ready: ["customerName", "projectName", "flowName", "flowUrl"],
+  system_sow_comment_reply: ["customerName", "projectName", "adminName", "commentContent", "sowUrl", "sowVersion"],
+  system_app_flow_comment_reply: ["customerName", "projectName", "adminName", "commentContent", "flowUrl", "flowName"],
+  system_admin_message: ["customerName", "projectName", "adminName", "messageContent", "portalUrl"],
+  system_nda_signed: ["customerName", "projectName", "signerName", "signedDate", "portalUrl"],
+  system_sow_signed: ["customerName", "projectName", "signerName", "signedDate", "sowVersion", "portalUrl"],
+};
 
 export default function EditEmailTemplatePage() {
   const params = useParams();
@@ -161,19 +175,43 @@ export default function EditEmailTemplatePage() {
               </svg>
               Send Test
             </button>
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="px-4 py-2 border border-red-300 dark:border-red-700 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition"
-            >
-              {deleting ? "Deleting..." : "Delete"}
-            </button>
+            {!template?.systemKey && (
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="px-4 py-2 border border-red-300 dark:border-red-700 rounded-lg text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 transition"
+              >
+                {deleting ? "Deleting..." : "Delete"}
+              </button>
+            )}
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6 space-y-6 max-w-3xl">
+          {/* System template info banner */}
+          {template?.systemKey && (
+            <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <svg className="w-4 h-4 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                </svg>
+                <p className="text-sm font-semibold text-purple-800 dark:text-purple-300">System Template</p>
+                <span className="text-[10px] font-mono bg-purple-100 dark:bg-purple-800 text-purple-600 dark:text-purple-300 px-1.5 py-0.5 rounded">{template.systemKey}</span>
+              </div>
+              <p className="text-xs text-purple-600 dark:text-purple-400 mb-3">This template is used automatically by the system. You can customize the subject and body content. Use the merge tags below in your template — they will be replaced with actual values when emails are sent.</p>
+              <div className="flex flex-wrap gap-1.5">
+                {(SYSTEM_KEY_TAGS[template.systemKey] || []).map((tag) => (
+                  <span key={tag} className="text-xs font-mono bg-white dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 px-2 py-1 rounded-lg border border-purple-200 dark:border-purple-700 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800 transition" onClick={() => navigator.clipboard.writeText(`{{${tag}}}`)}>
+                    {`{{${tag}}}`}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Title *

@@ -53,31 +53,33 @@ export async function POST(
 
   // Send email notification to customer (non-blocking)
   try {
-    const { transporter, getFromAddress, getUnsubscribeFooter } = await import("../../../../../lib/email");
+    const { transporter, getFromAddress, getUnsubscribeFooter, getSystemEmailContent } = await import("../../../../../lib/email");
     const portalUrl = `${process.env.CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us"}/project?id=${id}`;
+    const fallbackHtml = `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+        <div style="background: linear-gradient(135deg, #01358d 0%, #2870a8 100%); border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 30px;">
+          <h1 style="color: white; margin: 0; font-size: 20px;">New Message</h1>
+          <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 15px;">${lead.projectName}</p>
+        </div>
+        <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+          <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;"><strong>${session.name}</strong> sent you a message:</p>
+          <div style="background: white; border-left: 4px solid #01358d; padding: 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
+            <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${content.trim().slice(0, 500)}</p>
+          </div>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${portalUrl}" style="display: inline-block; background: #01358d; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-size: 15px; font-weight: 600;">View & Reply</a>
+          </div>
+        </div>
+      </div>`;
+    const { subject: msgSubj, html: msgHtml } = await getSystemEmailContent("system_admin_message", {
+      customerName: lead.customerName, projectName: lead.projectName, adminName: session.name,
+      messageContent: content.trim().slice(0, 500), portalUrl,
+    }, `New Message — ${lead.projectName}`, fallbackHtml);
     await transporter.sendMail({
       from: getFromAddress(session.name),
       to: lead.customerEmail,
-      subject: `New Message — ${lead.projectName}`,
-      html: `
-        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-          <div style="background: linear-gradient(135deg, #01358d 0%, #2870a8 100%); border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 30px;">
-            <h1 style="color: white; margin: 0; font-size: 20px;">New Message</h1>
-            <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 15px;">${lead.projectName}</p>
-          </div>
-          <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
-            <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
-              <strong>${session.name}</strong> sent you a message:
-            </p>
-            <div style="background: white; border-left: 4px solid #01358d; padding: 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
-              <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 0; white-space: pre-wrap;">${content.trim().slice(0, 500)}</p>
-            </div>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${portalUrl}" style="display: inline-block; background: #01358d; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-size: 15px; font-weight: 600;">View & Reply</a>
-            </div>
-          </div>
-        </div>
-      ` + getUnsubscribeFooter(lead.customerEmail, id),
+      subject: msgSubj,
+      html: msgHtml + getUnsubscribeFooter(lead.customerEmail, id),
     });
   } catch (e) {
     console.error("[Message] Failed to notify customer:", e);

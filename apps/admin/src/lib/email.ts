@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { prisma } from "@leads-portal/database";
 
 export const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
@@ -61,19 +62,49 @@ interface AdminInfo {
   name: string;
 }
 
+/**
+ * Load a system email template from DB and merge tags.
+ * Falls back to provided defaults if template not found.
+ */
+export async function getSystemEmailContent(
+  systemKey: string,
+  mergeData: Record<string, string>,
+  fallbackSubject: string,
+  fallbackHtml: string
+): Promise<{ subject: string; html: string }> {
+  try {
+    const template = await prisma.emailTemplate.findUnique({
+      where: { systemKey },
+      select: { subject: true, body: true },
+    });
+    if (template) {
+      const merge = (text: string) => {
+        let result = text;
+        for (const [key, value] of Object.entries(mergeData)) {
+          result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
+        }
+        return result;
+      };
+      return { subject: merge(template.subject), html: merge(template.body) };
+    }
+  } catch (e) {
+    console.error(`[Email] Failed to load system template "${systemKey}":`, e);
+  }
+  return { subject: fallbackSubject, html: fallbackHtml };
+}
+
 export async function sendWelcomeEmail(lead: Lead, admin?: AdminInfo): Promise<{ subject: string; html: string }> {
   const customerPortalUrl = `${process.env.CUSTOMER_PORTAL_URL}?id=${lead.id}`;
 
   console.log(`[Email] Sending welcome email to ${lead.customerEmail} for project "${lead.projectName}"...`);
   const start = Date.now();
 
-  const subject = `Welcome to ${lead.projectName}!`;
-  const html = `
+  const fallbackSubject = `Welcome to ${lead.projectName}!`;
+  const fallbackHtml = `
     <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
       <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
         <h1 style="color: white; margin: 0; font-size: 28px;">Welcome, ${lead.customerName}!</h1>
       </div>
-
       <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
         <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
           We're excited to get started on <strong>${lead.projectName}</strong> with you.
@@ -81,21 +112,19 @@ export async function sendWelcomeEmail(lead: Lead, admin?: AdminInfo): Promise<{
         <p style="color: #333; font-size: 16px; line-height: 1.6;">
           You can view your project details and stay updated by visiting your personal project portal:
         </p>
-
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${customerPortalUrl}"
-             style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 32px;
-                    border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">
-            View Your Project
-          </a>
+          <a href="${customerPortalUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">View Your Project</a>
         </div>
       </div>
-
-      <p style="color: #999; font-size: 13px; text-align: center;">
-        If you have any questions, simply reply to this email.
-      </p>
+      <p style="color: #999; font-size: 13px; text-align: center;">If you have any questions, simply reply to this email.</p>
     </div>
   `;
+
+  const { subject, html } = await getSystemEmailContent("system_welcome", {
+    customerName: lead.customerName,
+    projectName: lead.projectName,
+    portalUrl: customerPortalUrl,
+  }, fallbackSubject, fallbackHtml);
 
   const htmlWithUnsub = html + getUnsubscribeFooter(lead.customerEmail, lead.id);
 
@@ -135,47 +164,42 @@ export async function sendStatusUpdateEmail(
   console.log(`[Email] Sending status update to ${lead.customerEmail} — "${fromStatus}" → "${toStatus}"...`);
   const start = Date.now();
 
-  const statusHtml = `
-      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">Project Status Update</h1>
-          <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">${lead.projectName}</p>
-        </div>
-
-        <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
-          <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
-            Hi ${lead.customerName},
-          </p>
-          <p style="color: #333; font-size: 16px; line-height: 1.6;">
-            Your project status has been updated to:
-          </p>
-          <div style="text-align: center; margin: 20px 0;">
-            <span style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 24px; border-radius: 20px; font-size: 18px; font-weight: 600;">
-              ${statusLabel}
-            </span>
-          </div>
-
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${customerPortalUrl}"
-               style="display: inline-block; background: #333; color: white; padding: 14px 32px;
-                      border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">
-              View Project Details
-            </a>
-          </div>
-        </div>
-
-        <p style="color: #999; font-size: 13px; text-align: center;">
-          If you have any questions, simply reply to this email.
-        </p>
+  const fallbackSubject = `${lead.projectName} — Status Update: ${statusLabel}`;
+  const fallbackHtml = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">Project Status Update</h1>
+        <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">${lead.projectName}</p>
       </div>
-    ` + getUnsubscribeFooter(lead.customerEmail, lead.id);
+      <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+        <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">Hi ${lead.customerName},</p>
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">Your project status has been updated to:</p>
+        <div style="text-align: center; margin: 20px 0;">
+          <span style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 10px 24px; border-radius: 20px; font-size: 18px; font-weight: 600;">${statusLabel}</span>
+        </div>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${customerPortalUrl}" style="display: inline-block; background: #333; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">View Project Details</a>
+        </div>
+      </div>
+      <p style="color: #999; font-size: 13px; text-align: center;">If you have any questions, simply reply to this email.</p>
+    </div>
+  `;
+
+  const { subject, html: statusHtml } = await getSystemEmailContent("system_status_update", {
+    customerName: lead.customerName,
+    projectName: lead.projectName,
+    statusLabel,
+    portalUrl: customerPortalUrl,
+  }, fallbackSubject, fallbackHtml);
+
+  const finalHtml = statusHtml + getUnsubscribeFooter(lead.customerEmail, lead.id);
 
   const info = await transporter.sendMail({
     from: getFromAddress(admin?.name),
     replyTo: getReplyToAddress(lead.id, admin?.name),
     to: lead.customerEmail,
-    subject: `${lead.projectName} — Status Update: ${statusLabel}`,
-    html: statusHtml,
+    subject,
+    html: finalHtml,
   });
 
   console.log(`[Email] Status email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
@@ -187,39 +211,30 @@ export async function sendNdaReadyEmail(lead: Lead, admin?: AdminInfo): Promise<
   console.log(`[Email] Sending NDA ready email to ${lead.customerEmail}...`);
   const start = Date.now();
 
-  const subject = `NDA Ready for Review — ${lead.projectName}`;
-  const html = `
+  const fallbackSubject = `NDA Ready for Review — ${lead.projectName}`;
+  const fallbackHtml = `
     <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
       <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
         <h1 style="color: white; margin: 0; font-size: 24px;">Non-Disclosure Agreement</h1>
         <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">Ready for Your Review</p>
       </div>
-
       <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
-        <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
-          Hi ${lead.customerName},
-        </p>
-        <p style="color: #333; font-size: 16px; line-height: 1.6;">
-          A Non-Disclosure Agreement for <strong>${lead.projectName}</strong> has been prepared and is ready for your review and signature.
-        </p>
-        <p style="color: #333; font-size: 16px; line-height: 1.6;">
-          You can review the full document online, download a PDF copy, and sign it electronically — all from your project portal.
-        </p>
-
+        <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">Hi ${lead.customerName},</p>
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">A Non-Disclosure Agreement for <strong>${lead.projectName}</strong> has been prepared and is ready for your review and signature.</p>
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">You can review the full document online, download a PDF copy, and sign it electronically — all from your project portal.</p>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${ndaUrl}"
-             style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 32px;
-                    border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">
-            Review &amp; Sign NDA
-          </a>
+          <a href="${ndaUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">Review &amp; Sign NDA</a>
         </div>
       </div>
-
-      <p style="color: #999; font-size: 13px; text-align: center;">
-        If you have any questions, simply reply to this email.
-      </p>
+      <p style="color: #999; font-size: 13px; text-align: center;">If you have any questions, simply reply to this email.</p>
     </div>
   `;
+
+  const { subject, html } = await getSystemEmailContent("system_nda_ready", {
+    customerName: lead.customerName,
+    projectName: lead.projectName,
+    ndaUrl,
+  }, fallbackSubject, fallbackHtml);
 
   const ndaHtmlWithUnsub = html + getUnsubscribeFooter(lead.customerEmail, lead.id);
 
@@ -306,49 +321,36 @@ export async function sendSowReadyEmail(
   console.log(`[Email] Sending SOW ready email to ${lead.customerEmail} for v${version}...`);
   const start = Date.now();
 
-  const subject = `Scope of Work Ready — ${lead.projectName}`;
-  const html = `
-      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">Scope of Work</h1>
-          <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">Ready for Your Review</p>
-        </div>
+  const versionMsg = version > 1
+    ? `An updated Scope of Work (Version ${version}) for <strong>${lead.projectName}</strong> has been prepared and is ready for your review.`
+    : `The Scope of Work for <strong>${lead.projectName}</strong> has been prepared and is ready for your review.`;
 
-        <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
-          <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
-            Hi ${lead.customerName},
-          </p>
-          <p style="color: #333; font-size: 16px; line-height: 1.6;">
-            ${version > 1
-              ? `An updated Scope of Work (Version ${version}) for <strong>${lead.projectName}</strong> has been prepared and is ready for your review.`
-              : `The Scope of Work for <strong>${lead.projectName}</strong> has been prepared and is ready for your review.`
-            }
-          </p>
-          <p style="color: #333; font-size: 16px; line-height: 1.6;">
-            This document outlines the project deliverables, timeline, and key milestones. Please review it carefully and let us know if you have any questions.
-          </p>
-
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${sowDirectUrl}"
-               style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 32px;
-                      border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">
-              View Scope of Work
-            </a>
-          </div>
-
-          <div style="text-align: center;">
-            <a href="${customerPortalUrl}"
-               style="color: #667eea; font-size: 14px; text-decoration: none;">
-              Or visit your project portal
-            </a>
-          </div>
-        </div>
-
-        <p style="color: #999; font-size: 13px; text-align: center;">
-          If you have any questions, simply reply to this email.
-        </p>
+  const fallbackSubject = `Scope of Work Ready — ${lead.projectName}`;
+  const fallbackHtml = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+      <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">Scope of Work</h1>
+        <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">Ready for Your Review</p>
       </div>
-    `;
+      <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+        <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">Hi ${lead.customerName},</p>
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">${versionMsg}</p>
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">This document outlines the project deliverables, timeline, and key milestones. Please review it carefully.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${sowDirectUrl}" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">View Scope of Work</a>
+        </div>
+      </div>
+      <p style="color: #999; font-size: 13px; text-align: center;">If you have any questions, simply reply to this email.</p>
+    </div>
+  `;
+
+  const { subject, html } = await getSystemEmailContent("system_sow_ready", {
+    customerName: lead.customerName,
+    projectName: lead.projectName,
+    sowVersion: String(version),
+    sowUrl: sowDirectUrl,
+    portalUrl: customerPortalUrl,
+  }, fallbackSubject, fallbackHtml);
 
   const sowHtmlWithUnsub = html + getUnsubscribeFooter(lead.customerEmail, leadId);
 
@@ -424,39 +426,31 @@ export async function sendAppFlowReadyEmail(
   console.log(`[Email] Sending app flow ready email to ${lead.customerEmail}...`);
   const start = Date.now();
 
-  const subject = `App Flow Ready — ${lead.projectName}`;
-  const html = `
-      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-        <div style="background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">App Flow</h1>
-          <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">Ready for Your Review</p>
-        </div>
-
-        <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
-          <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
-            Hi ${lead.customerName},
-          </p>
-          <p style="color: #333; font-size: 16px; line-height: 1.6;">
-            The app flow diagram <strong>"${flowName}"</strong> for <strong>${lead.projectName}</strong> has been prepared and is ready for your review.
-          </p>
-          <p style="color: #333; font-size: 16px; line-height: 1.6;">
-            This diagram shows the application's user journey and screen flow. Please review it and leave any comments or feedback.
-          </p>
-
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${portalUrl}"
-               style="display: inline-block; background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%); color: white; padding: 14px 32px;
-                      border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">
-              View App Flow
-            </a>
-          </div>
-        </div>
-
-        <p style="color: #999; font-size: 13px; text-align: center;">
-          If you have any questions, simply reply to this email.
-        </p>
+  const fallbackSubject = `App Flow Ready — ${lead.projectName}`;
+  const fallbackHtml = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+      <div style="background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">App Flow</h1>
+        <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">Ready for Your Review</p>
       </div>
-    `;
+      <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+        <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">Hi ${lead.customerName},</p>
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">The app flow diagram <strong>"${flowName}"</strong> for <strong>${lead.projectName}</strong> has been prepared and is ready for your review.</p>
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">This diagram shows the application's user journey and screen flow. Please review it and leave any comments or feedback.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${portalUrl}" style="display: inline-block; background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">View App Flow</a>
+        </div>
+      </div>
+      <p style="color: #999; font-size: 13px; text-align: center;">If you have any questions, simply reply to this email.</p>
+    </div>
+  `;
+
+  const { subject, html } = await getSystemEmailContent("system_app_flow_ready", {
+    customerName: lead.customerName,
+    projectName: lead.projectName,
+    flowName,
+    flowUrl: portalUrl,
+  }, fallbackSubject, fallbackHtml);
 
   const flowHtmlWithUnsub = html + getUnsubscribeFooter(lead.customerEmail, leadId);
 

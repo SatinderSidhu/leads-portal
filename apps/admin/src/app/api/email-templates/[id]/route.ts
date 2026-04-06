@@ -80,6 +80,10 @@ export async function DELETE(
 ) {
   const { id } = await params;
   try {
+    const template = await prisma.emailTemplate.findUnique({ where: { id }, select: { systemKey: true } });
+    if (template?.systemKey) {
+      return NextResponse.json({ error: "System templates cannot be deleted" }, { status: 403 });
+    }
     await prisma.emailTemplate.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch {

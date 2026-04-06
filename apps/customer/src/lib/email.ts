@@ -12,6 +12,37 @@ const transporter = nodemailer.createTransport({
 });
 
 /**
+ * Load a system email template from DB and merge tags.
+ * Falls back to provided defaults if template not found.
+ */
+export async function getSystemEmailContent(
+  systemKey: string,
+  mergeData: Record<string, string>,
+  fallbackSubject: string,
+  fallbackHtml: string
+): Promise<{ subject: string; html: string }> {
+  try {
+    const template = await prisma.emailTemplate.findUnique({
+      where: { systemKey },
+      select: { subject: true, body: true },
+    });
+    if (template) {
+      const merge = (text: string) => {
+        let result = text;
+        for (const [key, value] of Object.entries(mergeData)) {
+          result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
+        }
+        return result;
+      };
+      return { subject: merge(template.subject), html: merge(template.body) };
+    }
+  } catch (e) {
+    console.error(`[Email] Failed to load system template "${systemKey}":`, e);
+  }
+  return { subject: fallbackSubject, html: fallbackHtml };
+}
+
+/**
  * Generate the unsubscribe footer HTML for customer-facing emails.
  */
 export function getUnsubscribeFooter(customerEmail: string, leadId: string): string {
@@ -56,45 +87,34 @@ export async function sendNdaSignedEmail(params: NdaSignedParams) {
   console.log(`[Email] Sending NDA signed confirmations for "${projectName}"...`);
   const start = Date.now();
 
-  // Email to customer
+  // Email to customer (use system template)
+  const fallbackNdaHtml = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+      <div style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">NDA Signed Successfully</h1>
+        <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">${projectName}</p>
+      </div>
+      <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+        <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">Hi ${customerName},</p>
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">This confirms that the Non-Disclosure Agreement for <strong>${projectName}</strong> has been successfully signed.</p>
+        <div style="background: white; border-radius: 8px; padding: 16px; margin: 20px 0; border: 1px solid #e5e7eb;">
+          <p style="color: #666; font-size: 14px; margin: 4px 0;"><strong>Signed By:</strong> ${signerName}</p>
+          <p style="color: #666; font-size: 14px; margin: 4px 0;"><strong>Date:</strong> ${formattedDate}</p>
+        </div>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${portalUrl}" style="display: inline-block; background: #333; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">View Your Project</a>
+        </div>
+      </div>
+      <p style="color: #999; font-size: 13px; text-align: center;">If you have any questions, simply reply to this email.</p>
+    </div>`;
+  const { subject: ndaSubj, html: ndaCustHtml } = await getSystemEmailContent("system_nda_signed", {
+    customerName, projectName, signerName, signedDate: formattedDate, portalUrl,
+  }, `NDA Signed Successfully — ${projectName}`, fallbackNdaHtml);
   await transporter.sendMail({
     from: fromEmail,
     to: customerEmail,
-    subject: `NDA Signed Successfully — ${projectName}`,
-    html: `
-      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-        <div style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">NDA Signed Successfully</h1>
-          <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">${projectName}</p>
-        </div>
-
-        <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
-          <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
-            Hi ${customerName},
-          </p>
-          <p style="color: #333; font-size: 16px; line-height: 1.6;">
-            This confirms that the Non-Disclosure Agreement for <strong>${projectName}</strong> has been successfully signed.
-          </p>
-
-          <div style="background: white; border-radius: 8px; padding: 16px; margin: 20px 0; border: 1px solid #e5e7eb;">
-            <p style="color: #666; font-size: 14px; margin: 4px 0;"><strong>Signed By:</strong> ${signerName}</p>
-            <p style="color: #666; font-size: 14px; margin: 4px 0;"><strong>Date:</strong> ${formattedDate}</p>
-          </div>
-
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${portalUrl}"
-               style="display: inline-block; background: #333; color: white; padding: 14px 32px;
-                      border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">
-              View Your Project
-            </a>
-          </div>
-        </div>
-
-        <p style="color: #999; font-size: 13px; text-align: center;">
-          If you have any questions, simply reply to this email.
-        </p>
-      </div>
-    ` + getUnsubscribeFooter(customerEmail, leadId),
+    subject: ndaSubj,
+    html: ndaCustHtml + getUnsubscribeFooter(customerEmail, leadId),
   });
 
   // Email to admin
@@ -192,30 +212,34 @@ export async function sendSowSignedNotification(
   console.log(`[Email] Sending SOW signed notifications for "${lead.projectName}"...`);
   const start = Date.now();
 
-  // Email to customer
+  // Email to customer (use system template)
+  const fallbackSowHtml = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+      <div style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">SOW Approved</h1>
+        <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">${lead.projectName}</p>
+      </div>
+      <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+        <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">Hi ${lead.customerName},</p>
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">This confirms that the Scope of Work (v${version}) for <strong>${lead.projectName}</strong> has been approved and signed.</p>
+        <div style="background: white; border-radius: 8px; padding: 16px; margin: 20px 0; border: 1px solid #e5e7eb;">
+          <p style="color: #666; font-size: 14px; margin: 4px 0;"><strong>Signed By:</strong> ${signerName}</p>
+          <p style="color: #666; font-size: 14px; margin: 4px 0;"><strong>Date:</strong> ${formattedDate}</p>
+        </div>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${portalUrl}" style="display: inline-block; background: #333; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">View Your Project</a>
+        </div>
+      </div>
+    </div>`;
+  const { subject: sowSubj, html: sowCustHtml } = await getSystemEmailContent("system_sow_signed", {
+    customerName: lead.customerName, projectName: lead.projectName, signerName,
+    signedDate: formattedDate, sowVersion: String(version), portalUrl,
+  }, `Scope of Work Approved — ${lead.projectName}`, fallbackSowHtml);
   await transporter.sendMail({
     from: fromEmail,
     to: lead.customerEmail,
-    subject: `Scope of Work Approved — ${lead.projectName}`,
-    html: `
-      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
-        <div style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">SOW Approved</h1>
-          <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">${lead.projectName}</p>
-        </div>
-        <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
-          <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">Hi ${lead.customerName},</p>
-          <p style="color: #333; font-size: 16px; line-height: 1.6;">This confirms that the Scope of Work (v${version}) for <strong>${lead.projectName}</strong> has been approved and signed.</p>
-          <div style="background: white; border-radius: 8px; padding: 16px; margin: 20px 0; border: 1px solid #e5e7eb;">
-            <p style="color: #666; font-size: 14px; margin: 4px 0;"><strong>Signed By:</strong> ${signerName}</p>
-            <p style="color: #666; font-size: 14px; margin: 4px 0;"><strong>Date:</strong> ${formattedDate}</p>
-          </div>
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${portalUrl}" style="display: inline-block; background: #333; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">View Your Project</a>
-          </div>
-        </div>
-      </div>
-    ` + getUnsubscribeFooter(lead.customerEmail, lead.id),
+    subject: sowSubj,
+    html: sowCustHtml + getUnsubscribeFooter(lead.customerEmail, lead.id),
   });
 
   // Email to admin

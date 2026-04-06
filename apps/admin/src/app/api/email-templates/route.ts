@@ -3,9 +3,19 @@ import type { EmailTemplatePurpose } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getAdminSession } from "../../../lib/session";
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const { searchParams } = new URL(req.url);
+    const type = searchParams.get("type"); // "system" | "compose" | null (all)
+
+    const where = type === "system"
+      ? { systemKey: { not: null } }
+      : type === "compose"
+        ? { systemKey: null }
+        : {};
+
     const templates = await prisma.emailTemplate.findMany({
+      where,
       orderBy: { createdAt: "desc" },
     });
     return NextResponse.json(templates);
