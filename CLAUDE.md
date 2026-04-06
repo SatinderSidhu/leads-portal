@@ -288,7 +288,9 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 - `POST /api/app-flows/[flowId]/comments` — Add comment to app flow
 - `GET/POST /api/notes?leadId=X` — Customer comments/feedback on project overview
 - `GET/POST /api/messages?leadId=X` — Customer secure messaging (list/send, marks admin messages as read)
-- `POST /api/track-visit` — Track customer portal visit (rate-limited 30min per lead/email, notifies watchers)
+- `POST /api/track-visit` — Track customer portal visit (rate-limited 30min per lead/email, notifies watchers, skipped in admin preview mode)
+- `POST /api/nda/request` — Customer NDA request (message + optional file upload, audit log + note + email to admin)
+- `POST /api/unsubscribe` — Customer email unsubscribe (enables doNotContact on all matching leads, audit log, emails admin)
 - `GET /api/branding` — Public branding config for document rendering (reads from shared DB)
 
 ## Key Lib Files
@@ -296,7 +298,7 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 | File | Exports |
 |------|---------|
 | `apps/admin/src/lib/session.ts` | `getAdminSession()` — reads session cookie, returns admin user |
-| `apps/admin/src/lib/email.ts` | `sendWelcomeEmail()`, `sendStatusUpdateEmail()`, `sendNdaReadyEmail()`, `sendAdminWelcomeEmail()`, `sendSowReadyEmail()`, `sendAppFlowReadyEmail()`, `sendLeadAssignedEmail()` |
+| `apps/admin/src/lib/email.ts` | `sendWelcomeEmail()`, `sendStatusUpdateEmail()`, `sendNdaReadyEmail()`, `sendAdminWelcomeEmail()`, `sendSowReadyEmail()`, `sendAppFlowReadyEmail()`, `sendLeadAssignedEmail()`, `getSystemEmailContent()`, `getUnsubscribeFooter()` |
 | `apps/admin/src/lib/watcher-notifications.ts` | `notifyWatchers()` — central utility to email watchers + assigned admin on lead updates |
 | `apps/admin/src/lib/api-auth.ts` | `validateToken()`, `unauthorized()` — Bearer token auth for v1 API |
 | `apps/admin/src/lib/nda-template.ts` | `generateNdaContent()` — NDA text template |
@@ -308,7 +310,9 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 | `apps/admin/src/lib/notify.ts` | `sendNotification()` — Central notification dispatcher; checks admin preferences before sending, supports broadcast and lead-specific events |
 | `apps/admin/src/lib/audit.ts` | `logAudit()` — Non-blocking audit trail logger for all lead write operations |
 | `apps/customer/src/lib/session.ts` | `getCustomerSession()` — reads customer-session cookie, returns CustomerSession |
-| `apps/customer/src/lib/email.ts` | `sendNdaSignedEmail()`, `sendSowCommentNotification()`, `sendSowSignedNotification()`, `sendAppFlowCommentNotification()`, `notifyLeadWatchers()` |
+| `apps/customer/src/lib/email.ts` | `sendNdaSignedEmail()`, `sendSowCommentNotification()`, `sendSowSignedNotification()`, `sendAppFlowCommentNotification()`, `notifyLeadWatchers()`, `getSystemEmailContent()`, `getUnsubscribeFooter()` |
+| `apps/admin/src/lib/preview-token.ts` | `generatePreviewToken()` — HMAC-based preview token for admin impersonation |
+| `apps/customer/src/lib/preview-token.ts` | `generatePreviewToken()`, `isValidPreviewToken()` — Preview token validation |
 | `apps/customer/src/lib/generate-pdf.ts` | `downloadNdaPdf()`, `downloadSowPdf()` — jsPDF generation |
 | `packages/database/src/index.ts` | Singleton `PrismaClient` export |
 
@@ -330,6 +334,10 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 | ProjectFeedback | `apps/customer/src/components/ProjectFeedback.tsx` | Customer comment box on project overview tab, notifies admin watchers |
 | VisitTracker | `apps/customer/src/components/VisitTracker.tsx` | Invisible component that tracks customer portal visits on page load |
 | ChatWidget | `apps/customer/src/components/ChatWidget.tsx` | Floating chat bubble (bottom-right) for customer-admin secure messaging |
+| ProjectShell | `apps/customer/src/components/ProjectShell.tsx` | Layout wrapper: left sidebar + content area, manages collapse/hover/lock state |
+| ProjectSidebar | `apps/customer/src/components/ProjectSidebar.tsx` | Collapsible left nav: nav items with icons/badges, user info, theme toggle |
+| NdaRequestCard | `apps/customer/src/components/NdaRequestCard.tsx` | NDA card with "Request NDA" link when not shared, opens modal |
+| NdaRequestModal | `apps/customer/src/components/NdaRequestModal.tsx` | Modal for requesting NDA: editable message + file upload (PDF/Word) |
 
 ## Development
 
@@ -416,6 +424,9 @@ docker compose exec db pg_dump -U postgres leads_portal > backup.sql  # DB backu
 - From address uses logged-in admin's name as display name (e.g. `"Satinder Sidhu" <leads@kitlabs.us>`)
 - Reply-To uses lead-specific `reply+{leadId}@reply.kitlabs.us` for SES inbound routing, wrapped with admin's display name
 - Inbound email replies processed via SES → SNS → `/api/webhooks/ses-inbound` webhook, stored as ReceivedEmail
+- **Unsubscribe**: All customer-facing emails include an unsubscribe link at the bottom. Links to `/unsubscribe` page on customer portal with pre-filled email. On unsubscribe: enables `doNotContact` on all matching leads, logs audit, emails admin + watchers
+- **System Email Templates**: 10 system-triggered emails are stored as editable templates in the DB (`systemKey` field on `EmailTemplate` model). Admin can customize subject and body via RichTextEditor at `/email-templates` (System Templates tab). Templates use merge tags like `{{customerName}}`, `{{projectName}}`, etc. Fallback to hardcoded HTML if template not found. `getSystemEmailContent()` utility loads template from DB and replaces merge tags
+- **Admin Preview URL**: Lead detail page shows an "Admin Preview URL" (amber) alongside the Customer Portal URL. Uses HMAC-signed token (`preview=<token>`) to suppress visit tracking, audit logs, and email notifications when admin visits the customer portal
 
 ### Email Notifications (Customer-Facing)
 | Trigger | Function | Location | Recipients |
@@ -661,11 +672,14 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - Create/edit articles with Markdown editor
 
 ## Customer Portal Design
-- **Wider layout**: max-w-6xl (1152px) instead of max-w-4xl (896px)
-- **Welcome message**: personalized with project name, warm description of portal purpose
-- **Status badge**: frosted glass card showing current project status
-- **KITLabs Resources section**: 5 product cards (Portfolio, Cost Estimator, App Builder, Digital Card, Support Portal) + quick links (Services, Industries, About, Contact, Book Meeting)
-- **Footer**: KITLabs logo, company name, dynamic copyright year
+- **Left sidebar navigation**: Collapsible sidebar (ProjectShell + ProjectSidebar) replacing top tabs. Collapse/expand, hover-expand, pin/lock, localStorage persistence. Mobile: hamburger + overlay sidebar
+- **Welcome message**: personalized greeting explaining portal purpose (track progress, review documents, collaborate, schedule meetings)
+- **Dashboard cards**: Overview tab shows NDA, SOW, App Flow, Book Meeting cards (always visible, grayed out with "Not yet shared" when unavailable). NDA card has "Request NDA" link when not shared
+- **Your Representative**: Shows assigned admin's profile photo, name, title, and email (with fallback for unassigned)
+- **NDA Request flow**: Customer can request NDA via modal with pre-filled editable message + file upload (PDF/Word). Logs audit + creates note + emails admin
+- **Unsubscribe page**: `/unsubscribe` with pre-filled email, enables doNotContact on all matching leads
+- **KITLabs Resources section**: SVG icons in colored containers, hover effects
+- **Footer**: horizontal layout (logo + text left, copyright right)
 
 ## Important Patterns
 - All admin API routes use `getAdminSession()` for auth (returns null if not logged in)

@@ -1112,6 +1112,9 @@ _This section will be updated as new features are planned and developed._
 | ~~Do Not Contact~~ | ~~Block outbound emails for closed/lost leads~~ — **Implemented v3.3** | ~~Medium~~ |
 | ~~Audit Log~~ | ~~Complete activity trail per lead with customer engagement tracking~~ — **Implemented v3.2** | ~~Medium~~ |
 | ~~Persistent Navigation~~ | ~~Sidebar navigation with breadcrumbs across all admin pages~~ — **Implemented v3.4** | ~~Medium~~ |
+| ~~Email Unsubscribe~~ | ~~Customer email unsubscribe with Do Not Contact auto-enable~~ — **Implemented v4.3** | ~~Medium~~ |
+| ~~Editable System Emails~~ | ~~Admin-customizable system email templates with merge tags~~ — **Implemented v4.4** | ~~Medium~~ |
+| ~~Customer Portal Sidebar~~ | ~~Left sidebar navigation with collapse/expand/lock for customer portal~~ — **Implemented v4.2** | ~~Medium~~ |
 
 ---
 
@@ -1140,3 +1143,6 @@ _This section will be updated as new features are planned and developed._
 | 3.9 | April 3, 2026 | Customer portal redesign (wider layout max-w-6xl, warm welcome message, KITLabs Resources section with 5 product cards + quick links, branded footer), compact lead detail view (3-column grid showing all 21 fields, no hidden empty fields) | — |
 | 4.0 | April 3, 2026 | Live Chat enhancements: admin sidebar unread badge (polls 15s), dedicated /messages page with unread/all tabs, fast polling (5s) for live chat feel, customer chat auto-opens after 10s with sound notifications, "Unread Chats" dashboard stat, "Notifications" renamed to "Communications", professional font sizing on customer portal | — |
 | 4.1 | April 4, 2026 | Admin comment replies on SOW and App Flow sections (new SOW comments API, updated App Flow comments with email notifications, inline reply UI on lead detail), floating chat widget on admin lead detail (replaces inline section), Apollo URL field on leads, OpenAPI spec v4.0 (all new fields, GET endpoint, expanded enums) | — |
+| 4.2 | April 5, 2026 | Admin preview mode (impersonate customer portal without triggering notifications/audit), customer portal redesign (left sidebar navigation with collapse/expand/lock, card-based dashboard, SVG icons, progress stepper, Your Representative card showing assigned admin), NDA Request flow (customer can request NDA with editable message + file upload, audit logged, admin notified) | — |
+| 4.3 | April 5, 2026 | Email unsubscribe feature (unsubscribe link in all customer-facing emails, /unsubscribe page on customer portal, enables Do Not Contact on all leads, audit logged, admin notified), chat widget improvements (close button in header, welcome message) | — |
+| 4.4 | April 5, 2026 | Editable system email templates (10 system-triggered emails now stored as customizable templates in DB, admin can edit subject/body via RichTextEditor with merge tag support, Compose/System tabs on Email Templates page, templates cannot be deleted, fallback to hardcoded defaults) | — |
