@@ -38,10 +38,37 @@ interface EmailTemplate {
   id: string;
   title: string;
   subject: string;
+  body: string;
   purpose: string;
   tags: string[];
   systemKey: string | null;
   createdAt: string;
+}
+
+// Sample data for previewing system templates
+const SAMPLE_DATA: Record<string, string> = {
+  customerName: "Sarah Johnson",
+  projectName: "Acme Mobile App",
+  portalUrl: "https://leadsportal.kitlabs.us/project?id=sample",
+  statusLabel: "Design Ready",
+  ndaUrl: "https://leadsportal.kitlabs.us/project?id=sample&tab=nda",
+  sowUrl: "https://leadsportal.kitlabs.us/project?id=sample&tab=sow&v=2",
+  sowVersion: "2",
+  flowName: "User Onboarding Flow",
+  flowUrl: "https://leadsportal.kitlabs.us/project?id=sample&tab=app-flow",
+  adminName: "Satinder Sidhu",
+  commentContent: "Great progress! I've reviewed the latest version and have a few minor suggestions. Let's discuss on our next call.",
+  messageContent: "Hi Sarah! Just wanted to check in and see if you had a chance to review the latest SOW. Let me know if you have any questions.",
+  signerName: "Sarah Johnson",
+  signedDate: "April 5, 2026, 2:30 PM",
+};
+
+function mergeTags(text: string): string {
+  let result = text;
+  for (const [key, value] of Object.entries(SAMPLE_DATA)) {
+    result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
+  }
+  return result;
 }
 
 export default function EmailTemplatesListPage() {
@@ -50,6 +77,7 @@ export default function EmailTemplatesListPage() {
   const [composeTemplates, setComposeTemplates] = useState<EmailTemplate[]>([]);
   const [systemTemplates, setSystemTemplates] = useState<EmailTemplate[]>([]);
   const [loading, setLoading] = useState(true);
+  const [previewTemplate, setPreviewTemplate] = useState<EmailTemplate | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -139,7 +167,7 @@ export default function EmailTemplatesListPage() {
                   </div>
                   <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition">{meta.label}</h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">{meta.description}</p>
-                  <div className="flex flex-wrap gap-1">
+                  <div className="flex flex-wrap gap-1 mb-3">
                     {meta.tags.slice(0, 4).map((tag) => (
                       <span key={tag} className="text-[10px] font-mono bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded">
                         {`{{${tag}}}`}
@@ -148,6 +176,28 @@ export default function EmailTemplatesListPage() {
                     {meta.tags.length > 4 && (
                       <span className="text-[10px] text-gray-400">+{meta.tags.length - 4} more</span>
                     )}
+                  </div>
+                  <div className="flex items-center gap-2 pt-3 border-t border-gray-100 dark:border-gray-700">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setPreviewTemplate(tpl); }}
+                      className="flex items-center gap-1.5 text-xs font-medium text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 transition"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                      </svg>
+                      Preview
+                    </button>
+                    <span className="text-gray-300 dark:text-gray-600">|</span>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); router.push(`/email-templates/${tpl.id}`); }}
+                      className="flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
+                      </svg>
+                      Edit
+                    </button>
                   </div>
                 </div>
               );
@@ -208,6 +258,84 @@ export default function EmailTemplatesListPage() {
             </div>
           </div>
         )
+      )}
+
+      {/* Preview Modal */}
+      {previewTemplate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setPreviewTemplate(null)} />
+          <div className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-t-2xl">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <svg className="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                  </svg>
+                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Email Preview</h3>
+                  <span className="text-[10px] font-mono bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded">{previewTemplate.systemKey}</span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Rendered with sample data — this is how the email will look to customers</p>
+              </div>
+              <button onClick={() => setPreviewTemplate(null)} className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center justify-center transition">
+                <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Subject */}
+            <div className="px-6 py-3 border-b border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Subject</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">{mergeTags(previewTemplate.subject)}</p>
+            </div>
+
+            {/* Sample Data Banner */}
+            <div className="px-6 py-2 bg-amber-50 dark:bg-amber-900/20 border-b border-amber-200 dark:border-amber-800 flex items-center gap-2">
+              <svg className="w-3.5 h-3.5 text-amber-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+              </svg>
+              <p className="text-[10px] text-amber-700 dark:text-amber-300">
+                Sample data: <span className="font-mono">Sarah Johnson</span> / <span className="font-mono">Acme Mobile App</span> / <span className="font-mono">Satinder Sidhu</span>
+              </p>
+            </div>
+
+            {/* Email Body Preview */}
+            <div className="flex-1 overflow-y-auto bg-gray-100 dark:bg-gray-950 p-6">
+              <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <iframe
+                  srcDoc={mergeTags(previewTemplate.body)}
+                  className="w-full border-0"
+                  style={{ minHeight: "400px" }}
+                  title="Email Preview"
+                  onLoad={(e) => {
+                    const iframe = e.target as HTMLIFrameElement;
+                    if (iframe.contentDocument) {
+                      iframe.style.height = Math.max(400, iframe.contentDocument.body.scrollHeight + 20) + "px";
+                    }
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 rounded-b-2xl flex items-center justify-between">
+              <button
+                onClick={() => { setPreviewTemplate(null); router.push(`/email-templates/${previewTemplate.id}`); }}
+                className="text-xs font-medium text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 transition flex items-center gap-1.5"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" />
+                </svg>
+                Edit Template
+              </button>
+              <button onClick={() => setPreviewTemplate(null)} className="px-4 py-1.5 text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded-lg transition">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
