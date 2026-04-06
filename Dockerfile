@@ -18,12 +18,14 @@ RUN npx prisma generate --schema=packages/database/prisma/schema.prisma
 
 # Build admin
 FROM base AS admin-builder
+ARG COMMIT_SHA=unknown
 WORKDIR /app
 COPY --from=prisma /app/node_modules ./node_modules
 COPY --from=prisma /app/packages/database ./packages/database
 COPY package.json ./
 COPY apps/admin ./apps/admin
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_COMMIT_SHA=$COMMIT_SHA
 RUN npm run build --workspace=apps/admin
 
 # Build customer

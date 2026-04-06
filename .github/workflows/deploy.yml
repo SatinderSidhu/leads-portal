@@ -40,6 +40,7 @@ jobs:
         run: |
           ECR=${{ steps.ecr-login.outputs.registry }}
           docker build --target admin \
+            --build-arg COMMIT_SHA=${{ steps.meta.outputs.tag }} \
             -t $ECR/${{ env.ECR_ADMIN }}:${{ steps.meta.outputs.tag }} \
             -t $ECR/${{ env.ECR_ADMIN }}:latest \
             .
