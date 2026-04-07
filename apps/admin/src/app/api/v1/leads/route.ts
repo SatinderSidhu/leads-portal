@@ -29,6 +29,8 @@ export async function GET(req: Request) {
   const industry = searchParams.get("industry") || "";
   const assignedTo = searchParams.get("assignedTo") || "";
   const search = searchParams.get("search")?.trim() || "";
+  const sortBy = searchParams.get("sortBy") || "updatedAt";
+  const sortOrder = searchParams.get("sortOrder") || "desc";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: any = {};
@@ -47,7 +49,20 @@ export async function GET(req: Request) {
   if (stage) where.stage = stage;
   if (source) where.source = source;
   if (industry) where.industry = { contains: industry, mode: "insensitive" };
-  if (assignedTo) where.assignedTo = { name: { contains: assignedTo, mode: "insensitive" } };
+  if (assignedTo === "unassigned") {
+    where.assignedToId = null;
+  } else if (assignedTo) {
+    where.assignedTo = { name: { contains: assignedTo, mode: "insensitive" } };
+  }
+
+  const VALID_SORT_FIELDS = ["updatedAt", "createdAt", "projectName", "customerName", "customerEmail", "source", "status", "stage"];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let orderBy: any = { updatedAt: "desc" };
+  if (sortBy === "assignedTo") {
+    orderBy = { assignedTo: { name: sortOrder === "asc" ? "asc" : "desc" } };
+  } else if (VALID_SORT_FIELDS.includes(sortBy)) {
+    orderBy = { [sortBy]: sortOrder === "asc" ? "asc" : "desc" };
+  }
 
   const [leads, total] = await Promise.all([
     prisma.lead.findMany({
@@ -55,7 +70,7 @@ export async function GET(req: Request) {
       include: {
         assignedTo: { select: { id: true, name: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy,
       skip: (page - 1) * limit,
       take: limit,
     }),

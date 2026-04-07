@@ -692,7 +692,7 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - Dark mode supported via ThemeProvider + ThemeToggle
 - RichTextEditor uses `lastContentRef` to prevent infinite update loops when syncing external content
 - Swagger/OpenAPI spec at `public/openapi.json` v4.0, UI at `/api-docs` — covers all Lead fields (30+), LeadCreate (25+), enums, GET with filters
-- Leads API supports pagination (`page`, `limit`), search, and filters (`status`, `stage`, `source`)
+- Leads API supports pagination (`page`, `limit` default 50), search, filters (`status`, `stage`, `source`, `assignedTo` with "unassigned" option), and sorting (`sortBy`, `sortOrder` — default sort by `updatedAt` desc). Sortable fields: updatedAt, createdAt, projectName, customerName, customerEmail, source, status, stage, assignedTo
 - SOW uploads saved to `public/uploads/sow/` with auto-incrementing version numbers
 - Customer portal uses `ADMIN_PORTAL_URL` env var for cross-domain file access (SOW documents)
 - AI-generated SOW content stored as HTML in `ScopeOfWork.content` field (no file)

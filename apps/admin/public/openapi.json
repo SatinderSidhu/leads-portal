@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Leads Portal API",
-    "version": "4.5.0",
+    "version": "4.6.0",
     "description": "External API for managing leads and content in the KITLabs Leads Portal.\n\nAll endpoints require Bearer token authentication via the Authorization header.\n\n## Authentication\n```\nAuthorization: Bearer <your-api-token>\n```\n\n## Base URL\n- Production: `https://leadsportaladmin.kitlabs.us`\n- Local: `http://localhost:3000`",
     "contact": {
       "name": "KITLabs Inc",
@@ -182,7 +182,9 @@
           { "name": "stage", "in": "query", "schema": { "type": "string", "enum": ["COLD", "WARM", "HOT", "ACTIVE", "CLOSED", "NEW", "CONTACTED", "RESPONDED", "MEETING_BOOKED", "QUALIFIED", "DISQUALIFIED", "NURTURE"] }, "description": "Filter by sales stage" },
           { "name": "source", "in": "query", "schema": { "type": "string", "enum": ["MANUAL", "AGENT", "BARK", "LINKEDIN_SALES_NAV", "APOLLO", "LINKEDIN_COMPANY_PAGE", "REFERRAL", "WEBSITE", "COLD_OUTREACH", "EVENT", "OTHER"] }, "description": "Filter by lead source" },
           { "name": "industry", "in": "query", "schema": { "type": "string" }, "description": "Filter by industry (partial match, case-insensitive)" },
-          { "name": "assignedTo", "in": "query", "schema": { "type": "string" }, "description": "Filter by assigned admin name (partial match)" }
+          { "name": "assignedTo", "in": "query", "schema": { "type": "string" }, "description": "Filter by assigned admin name (partial match). Use 'unassigned' to filter leads with no admin assigned." },
+          { "name": "sortBy", "in": "query", "schema": { "type": "string", "enum": ["updatedAt", "createdAt", "projectName", "customerName", "customerEmail", "source", "status", "stage", "assignedTo"], "default": "updatedAt" }, "description": "Sort by field (default: updatedAt)" },
+          { "name": "sortOrder", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" }, "description": "Sort direction (default: desc)" }
         ],
         "responses": {
           "200": {

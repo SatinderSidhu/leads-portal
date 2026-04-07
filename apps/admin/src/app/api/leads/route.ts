@@ -17,6 +17,8 @@ export async function GET(req: Request) {
   const stage = searchParams.get("stage") || "";
   const source = searchParams.get("source") || "";
   const assignedTo = searchParams.get("assignedTo") || "";
+  const sortBy = searchParams.get("sortBy") || "updatedAt";
+  const sortOrder = searchParams.get("sortOrder") || "desc";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const where: any = {};
@@ -40,11 +42,23 @@ export async function GET(req: Request) {
   if (source) where.source = source;
   if (industry) where.industry = { contains: industry, mode: "insensitive" };
 
-  // Filter by assigned admin: "me" = current user, specific ID, or "" = all
+  // Filter by assigned admin: "me" = current user, "unassigned" = no admin, specific ID, or "" = all
   if (assignedTo === "me" && session) {
     where.assignedToId = session.id;
+  } else if (assignedTo === "unassigned") {
+    where.assignedToId = null;
   } else if (assignedTo && assignedTo !== "all") {
     where.assignedToId = assignedTo;
+  }
+
+  // Build orderBy — support sorting by relation fields
+  const VALID_SORT_FIELDS = ["updatedAt", "createdAt", "projectName", "customerName", "customerEmail", "source", "status", "stage"];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let orderBy: any = { updatedAt: "desc" };
+  if (sortBy === "assignedTo") {
+    orderBy = { assignedTo: { name: sortOrder === "asc" ? "asc" : "desc" } };
+  } else if (VALID_SORT_FIELDS.includes(sortBy)) {
+    orderBy = { [sortBy]: sortOrder === "asc" ? "asc" : "desc" };
   }
 
   const [leads, total] = await Promise.all([
@@ -53,7 +67,7 @@ export async function GET(req: Request) {
       include: {
         assignedTo: { select: { id: true, name: true } },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy,
       skip: (page - 1) * limit,
       take: limit,
     }),

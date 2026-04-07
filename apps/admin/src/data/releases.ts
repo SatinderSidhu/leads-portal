@@ -7,6 +7,23 @@ export interface Release {
 
 export const releases: Release[] = [
   {
+    version: "4.5",
+    date: "2026-04-07",
+    commitId: "pending",
+    changes: [
+      "Dashboard: clickable column headers with sort direction arrows (default sort by last updated)",
+      "Dashboard: configurable page size dropdown (20, 50, 100 — default 50)",
+      "Dashboard: 'Unassigned' filter option in Assigned To dropdown",
+      "Lead detail: email conversation moved to right column, audit log second, next steps third",
+      "Breadcrumb fixes: /leads redirects to /dashboard, /portfolio/projects to /portfolio",
+      "Release History page with version timeline and build info",
+      "8 new Knowledge Base articles for recent features",
+      "System email template preview with sample data rendering",
+      "Seed button for loading default system templates from UI",
+      "OpenAPI spec v4.6 with sortBy, sortOrder, and unassigned filter params",
+    ],
+  },
+  {
     version: "4.4",
     date: "2026-04-05",
     commitId: "9a82eeb",

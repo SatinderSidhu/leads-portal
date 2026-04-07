@@ -97,6 +97,7 @@ interface Lead {
   stage: string;
   emailSent: boolean;
   createdAt: string;
+  updatedAt: string;
   assignedTo?: { id: string; name: string } | null;
 }
 
@@ -110,8 +111,9 @@ interface Pagination {
 export default function DashboardPage() {
   const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, totalPages: 0 });
+  const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 50, total: 0, totalPages: 0 });
   const [loading, setLoading] = useState(true);
+  const [pageSize, setPageSize] = useState(50);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -121,6 +123,10 @@ export default function DashboardPage() {
   const [assignedToFilter, setAssignedToFilter] = useState("me");
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Sorting
+  const [sortBy, setSortBy] = useState("updatedAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Fetch admin users for assignedTo filter
   useEffect(() => {
@@ -140,12 +146,14 @@ export default function DashboardPage() {
 
   const fetchLeads = useCallback(async (page: number) => {
     setLoading(true);
-    const params = new URLSearchParams({ page: String(page), limit: "20" });
+    const params = new URLSearchParams({ page: String(page), limit: String(pageSize) });
     if (debouncedSearch) params.set("search", debouncedSearch);
     if (statusFilter) params.set("status", statusFilter);
     if (stageFilter) params.set("stage", stageFilter);
     if (sourceFilter) params.set("source", sourceFilter);
     if (assignedToFilter) params.set("assignedTo", assignedToFilter);
+    if (sortBy) params.set("sortBy", sortBy);
+    if (sortOrder) params.set("sortOrder", sortOrder);
 
     const res = await fetch(`/api/leads?${params}`);
     if (!res.ok) {
@@ -157,7 +165,16 @@ export default function DashboardPage() {
     setLeads(data.leads);
     setPagination(data.pagination);
     setLoading(false);
-  }, [debouncedSearch, statusFilter, stageFilter, sourceFilter, assignedToFilter, router]);
+  }, [debouncedSearch, statusFilter, stageFilter, sourceFilter, assignedToFilter, sortBy, sortOrder, pageSize, router]);
+
+  function handleSort(field: string) {
+    if (sortBy === field) {
+      setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+    } else {
+      setSortBy(field);
+      setSortOrder(field === "updatedAt" || field === "createdAt" ? "desc" : "asc");
+    }
+  }
 
   // Reset to page 1 when filters change
   useEffect(() => {
@@ -227,6 +244,7 @@ export default function DashboardPage() {
               >
                 <option value="me">My Leads</option>
                 <option value="all">All Leads</option>
+                <option value="unassigned">Unassigned</option>
                 {adminUsers.map((admin) => (
                   <option key={admin.id} value={admin.id}>{admin.name}</option>
                 ))}
@@ -273,30 +291,31 @@ export default function DashboardPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
-                      <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Project Name
-                      </th>
-                      <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Customer
-                      </th>
-                      <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Email
-                      </th>
-                      <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Source
-                      </th>
-                      <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Stage
-                      </th>
-                      <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Assigned To
-                      </th>
-                      <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                        Created
-                      </th>
+                      {[
+                        { field: "projectName", label: "Project Name" },
+                        { field: "customerName", label: "Customer" },
+                        { field: "customerEmail", label: "Email" },
+                        { field: "source", label: "Source" },
+                        { field: "status", label: "Status" },
+                        { field: "stage", label: "Stage" },
+                        { field: "assignedTo", label: "Assigned To" },
+                        { field: "updatedAt", label: "Updated" },
+                      ].map((col) => (
+                        <th
+                          key={col.field}
+                          onClick={() => handleSort(col.field)}
+                          className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:text-gray-700 dark:hover:text-gray-200 transition select-none"
+                        >
+                          <span className="flex items-center gap-1">
+                            {col.label}
+                            {sortBy === col.field ? (
+                              <svg className={`w-3 h-3 transition-transform ${sortOrder === "asc" ? "" : "rotate-180"}`} fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 15.75l7.5-7.5 7.5 7.5" /></svg>
+                            ) : (
+                              <svg className="w-3 h-3 opacity-0 group-hover:opacity-30" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 15L12 18.75 15.75 15m-7.5-6L12 5.25 15.75 9" /></svg>
+                            )}
+                          </span>
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -340,7 +359,7 @@ export default function DashboardPage() {
                           {lead.assignedTo?.name || <span className="text-gray-400 italic">Unassigned</span>}
                         </td>
                         <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
-                          {new Date(lead.createdAt).toLocaleDateString()}
+                          {new Date(lead.updatedAt).toLocaleDateString()}
                         </td>
                       </tr>
                     ))}
@@ -350,11 +369,26 @@ export default function DashboardPage() {
             </div>
 
             {/* Pagination */}
-            {pagination.totalPages > 1 && (
-              <div className="flex items-center justify-between mt-4">
+            <div className="flex items-center justify-between mt-4">
+              <div className="flex items-center gap-3">
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   Showing {(pagination.page - 1) * pagination.limit + 1}–{Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
                 </p>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-gray-400">Show</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => { setPageSize(Number(e.target.value)); }}
+                    className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 outline-none"
+                  >
+                    {[20, 50, 100].map((size) => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                  <span className="text-xs text-gray-400">per page</span>
+                </div>
+              </div>
+              {pagination.totalPages > 1 && (
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => fetchLeads(pagination.page - 1)}
@@ -395,8 +429,8 @@ export default function DashboardPage() {
                     Next
                   </button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </>
         )}
     </div>
