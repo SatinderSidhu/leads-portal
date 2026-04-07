@@ -32,6 +32,13 @@ const ROUTE_LABELS: Record<string, string> = {
   "api-docs": "API Docs",
 };
 
+// Routes that don't have their own page — redirect to a valid parent
+const ROUTE_REDIRECTS: Record<string, string> = {
+  "/leads": "/dashboard",
+  "/portfolio/services": "/portfolio",
+  "/portfolio/projects": "/portfolio",
+};
+
 export default function Breadcrumbs() {
   const pathname = usePathname();
   const segments = pathname.split("/").filter(Boolean);
@@ -48,10 +55,18 @@ export default function Breadcrumbs() {
   let path = "";
   for (const seg of segments) {
     path += `/${seg}`;
-    // Skip UUID segments — show "Lead Detail" instead
+    // Skip UUID segments — show contextual label instead
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}/.test(seg);
-    const label = isUuid ? "Lead Detail" : ROUTE_LABELS[seg] || seg;
-    crumbs.push({ label, href: path });
+    let label = isUuid ? "Detail" : ROUTE_LABELS[seg] || seg;
+    // Contextual detail labels based on parent
+    if (isUuid && segments[0] === "leads") label = "Lead Detail";
+    if (isUuid && segments[0] === "portfolio" && segments[1] === "projects") label = "Project Detail";
+    if (isUuid && segments[0] === "portfolio" && segments[1] === "services") label = "Service Detail";
+    if (isUuid && segments[0] === "email-templates") label = "Edit Template";
+    if (isUuid && segments[0] === "sow-templates") label = "Edit Template";
+    if (isUuid && segments[0] === "admin-users") label = "Edit User";
+    const href = ROUTE_REDIRECTS[path] || path;
+    crumbs.push({ label, href });
   }
 
   return (
