@@ -138,6 +138,8 @@ export async function POST(req: Request) {
         location: (body.location as string)?.trim() || null,
         linkedinUrl: (body.linkedinUrl as string)?.trim() || null,
         apolloUrl: (body.apolloUrl as string)?.trim() || null,
+        facebookUrl: (body.facebookUrl as string)?.trim() || null,
+        twitterUrl: (body.twitterUrl as string)?.trim() || null,
         // Company intelligence fields
         industry: (body.industry as string)?.trim() || null,
         companySize: (body.companySize as string)?.trim() || null,

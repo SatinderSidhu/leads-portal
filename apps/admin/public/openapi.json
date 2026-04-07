@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Leads Portal API",
-    "version": "4.0.0",
-    "description": "External API for managing leads and content in the KITLabs Leads Portal. All endpoints require Bearer token authentication via the Authorization header.",
+    "version": "4.5.0",
+    "description": "External API for managing leads and content in the KITLabs Leads Portal.\n\nAll endpoints require Bearer token authentication via the Authorization header.\n\n## Authentication\n```\nAuthorization: Bearer <your-api-token>\n```\n\n## Base URL\n- Production: `https://leadsportaladmin.kitlabs.us`\n- Local: `http://localhost:3000`",
     "contact": {
       "name": "KITLabs Inc",
       "url": "https://kitlabs.us"
@@ -30,6 +30,7 @@
     "schemas": {
       "Lead": {
         "type": "object",
+        "description": "Full lead object returned by the API",
         "properties": {
           "id": { "type": "string", "format": "uuid" },
           "projectName": { "type": "string" },
@@ -40,9 +41,9 @@
           "city": { "type": "string", "nullable": true },
           "zip": { "type": "string", "nullable": true },
           "dateCreated": { "type": "string", "format": "date-time", "nullable": true },
-          "source": { "type": "string" },
-          "status": { "type": "string" },
-          "stage": { "type": "string" },
+          "source": { "type": "string", "description": "LeadSource enum value" },
+          "status": { "type": "string", "description": "LeadStatus enum value" },
+          "stage": { "type": "string", "description": "LeadStage enum value" },
           "jobTitle": { "type": "string", "nullable": true },
           "companyName": { "type": "string", "nullable": true },
           "location": { "type": "string", "nullable": true },
@@ -52,19 +53,32 @@
           "aboutCompany": { "type": "string", "nullable": true },
           "linkedinUrl": { "type": "string", "nullable": true },
           "apolloUrl": { "type": "string", "nullable": true },
-          "naicsSectorCode": { "type": "string", "nullable": true },
-          "naicsSubsectorCode": { "type": "string", "nullable": true },
+          "facebookUrl": { "type": "string", "nullable": true },
+          "twitterUrl": { "type": "string", "nullable": true },
+          "naicsSectorCode": { "type": "string", "nullable": true, "description": "2-digit NAICS sector code" },
+          "naicsSubsectorCode": { "type": "string", "nullable": true, "description": "3-digit NAICS subsector code" },
           "extractedDate": { "type": "string", "format": "date-time", "nullable": true },
           "lastContactedDate": { "type": "string", "format": "date-time", "nullable": true },
-          "leadScore": { "type": "integer", "nullable": true },
+          "leadScore": { "type": "integer", "nullable": true, "description": "1-100 quality score" },
           "connectionRequestSent": { "type": "boolean" },
           "connectionAccepted": { "type": "boolean" },
           "initialMessageSent": { "type": "boolean" },
           "meetingBooked": { "type": "boolean" },
           "meetingDate": { "type": "string", "format": "date-time", "nullable": true },
           "responseReceived": { "type": "boolean" },
-          "doNotContact": { "type": "boolean" },
-          "zohoLeadId": { "type": "string", "nullable": true },
+          "emailSent": { "type": "boolean", "description": "Whether welcome email has been sent" },
+          "doNotContact": { "type": "boolean", "description": "Whether outbound emails are blocked" },
+          "zohoLeadId": { "type": "string", "nullable": true, "description": "Linked Zoho CRM record ID" },
+          "assignedTo": {
+            "type": "object",
+            "nullable": true,
+            "description": "Assigned admin user",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" }
+            }
+          },
+          "createdBy": { "type": "string", "nullable": true },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" }
         }
@@ -72,29 +86,40 @@
       "LeadCreate": {
         "type": "object",
         "required": ["projectName", "customerName", "customerEmail", "projectDescription"],
+        "description": "Fields for creating a new lead. Only the 4 required fields are mandatory — everything else is optional.",
         "properties": {
-          "projectName": { "type": "string", "description": "Name of the project or opportunity" },
-          "customerName": { "type": "string", "description": "Full name of the customer/lead" },
-          "customerEmail": { "type": "string", "format": "email", "description": "Customer's email address" },
-          "projectDescription": { "type": "string", "description": "Detailed project description" },
+          "projectName": { "type": "string", "description": "Name of the project or opportunity (required)" },
+          "customerName": { "type": "string", "description": "Full name of the customer/lead (required)" },
+          "customerEmail": { "type": "string", "format": "email", "description": "Customer's email address (required, must be valid)" },
+          "projectDescription": { "type": "string", "description": "Detailed project description (required)" },
           "phone": { "type": "string", "description": "Phone number" },
           "city": { "type": "string", "description": "City" },
           "zip": { "type": "string", "description": "Zip/postal code" },
           "dateCreated": { "type": "string", "format": "date", "description": "Date lead was captured (ISO 8601, e.g. 2026-04-01)" },
-          "leadSource": { "type": "string", "enum": ["MANUAL", "AGENT", "BARK", "LINKEDIN_SALES_NAV", "APOLLO", "LINKEDIN_COMPANY_PAGE", "REFERRAL", "WEBSITE", "COLD_OUTREACH", "EVENT", "OTHER"], "description": "Where the lead came from. Maps to source field." },
-          "leadStatus": { "type": "string", "enum": ["COLD", "WARM", "HOT", "ACTIVE", "CLOSED", "NEW", "CONTACTED", "RESPONDED", "MEETING_BOOKED", "QUALIFIED", "DISQUALIFIED", "NURTURE"], "description": "Sales pipeline stage. Maps to stage field." },
+          "leadSource": {
+            "type": "string",
+            "enum": ["MANUAL", "AGENT", "BARK", "LINKEDIN_SALES_NAV", "APOLLO", "LINKEDIN_COMPANY_PAGE", "REFERRAL", "WEBSITE", "COLD_OUTREACH", "EVENT", "OTHER"],
+            "description": "Where the lead came from. Maps to 'source' field on the lead. Defaults to AGENT if not provided."
+          },
+          "leadStatus": {
+            "type": "string",
+            "enum": ["COLD", "WARM", "HOT", "ACTIVE", "CLOSED", "NEW", "CONTACTED", "RESPONDED", "MEETING_BOOKED", "QUALIFIED", "DISQUALIFIED", "NURTURE"],
+            "description": "Sales pipeline stage. Maps to 'stage' field on the lead. Defaults to COLD if not provided."
+          },
           "jobTitle": { "type": "string", "description": "Role/title (e.g. CTO, VP Engineering)" },
           "companyName": { "type": "string", "description": "Company name" },
           "location": { "type": "string", "description": "City/State/Region (e.g. San Francisco, CA)" },
-          "industry": { "type": "string", "description": "Industry vertical (e.g. Software Development)" },
-          "companySize": { "type": "string", "description": "Employee range (e.g. 51-200)" },
+          "industry": { "type": "string", "description": "Industry vertical (e.g. Software Development). If provided and NAICS codes are not, NAICS codes will be auto-resolved." },
+          "companySize": { "type": "string", "description": "Employee range (e.g. 1-10, 11-50, 51-200, 201-500, 501-1000, 1001-5000, 5001-10000, 10000+)" },
           "companyWebsite": { "type": "string", "description": "Company website URL" },
           "aboutCompany": { "type": "string", "description": "Description of what the company does" },
           "linkedinUrl": { "type": "string", "description": "LinkedIn profile URL" },
           "apolloUrl": { "type": "string", "description": "Apollo.io profile URL" },
+          "facebookUrl": { "type": "string", "description": "Facebook profile URL" },
+          "twitterUrl": { "type": "string", "description": "Twitter/X profile URL" },
           "naicsSectorCode": { "type": "string", "description": "2-digit NAICS sector code (e.g. '54'). If omitted, auto-resolved from industry text." },
           "naicsSubsectorCode": { "type": "string", "description": "3-digit NAICS subsector code (e.g. '541'). If omitted, auto-resolved from industry text." },
-          "extractedDate": { "type": "string", "format": "date-time", "description": "When the lead was first captured. Auto-defaults to current time if not provided." },
+          "extractedDate": { "type": "string", "format": "date-time", "description": "When the lead was first captured. Auto-defaults to current timestamp if not provided." },
           "lastContactedDate": { "type": "string", "format": "date-time", "description": "Date of most recent outreach" },
           "leadScore": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Lead quality score (1-100)" },
           "connectionRequestSent": { "type": "boolean", "default": false, "description": "Whether LinkedIn connection request was sent" },
@@ -102,9 +127,7 @@
           "initialMessageSent": { "type": "boolean", "default": false, "description": "Whether first outreach message was sent" },
           "meetingBooked": { "type": "boolean", "default": false, "description": "Whether the lead booked a meeting" },
           "meetingDate": { "type": "string", "format": "date-time", "description": "Scheduled meeting date/time" },
-          "responseReceived": { "type": "boolean", "default": false, "description": "Whether any reply was received" },
-          "notes": { "type": "string", "description": "Free-text notes (deprecated — use the notes API instead)" },
-          "assignedTo": { "type": "string", "description": "Admin username to assign to (for filtering)" }
+          "responseReceived": { "type": "boolean", "default": false, "description": "Whether any reply was received" }
         }
       },
       "LeadList": {
@@ -150,58 +173,80 @@
       "get": {
         "tags": ["Leads"],
         "summary": "List leads",
-        "description": "Returns paginated list of leads with optional filters. Supports search across name, email, company, job title.",
+        "description": "Returns a paginated list of leads with optional filters. Supports full-text search across customer name, email, company name, and job title.",
         "parameters": [
-          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Page number" },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 }, "description": "Items per page" },
-          { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search across name, email, company, job title" },
-          { "name": "status", "in": "query", "schema": { "type": "string" }, "description": "Filter by lead status (e.g. NEW, SOW_READY)" },
-          { "name": "stage", "in": "query", "schema": { "type": "string" }, "description": "Filter by sales stage (e.g. CONTACTED, QUALIFIED)" },
-          { "name": "source", "in": "query", "schema": { "type": "string" }, "description": "Filter by lead source (e.g. APOLLO, LINKEDIN_SALES_NAV)" },
-          { "name": "industry", "in": "query", "schema": { "type": "string" }, "description": "Filter by industry (partial match)" },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Page number (starts at 1)" },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 }, "description": "Items per page (max 100)" },
+          { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search across name, email, company, job title (case-insensitive)" },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["NEW", "SOW_READY", "SOW_SIGNED", "APP_FLOW_READY", "DESIGN_READY", "DESIGN_APPROVED", "BUILD_IN_PROGRESS", "BUILD_READY_FOR_REVIEW", "BUILD_SUBMITTED", "GO_LIVE", "LOST", "NO_RESPONSE", "ON_HOLD", "CANCELLED"] }, "description": "Filter by project status" },
+          { "name": "stage", "in": "query", "schema": { "type": "string", "enum": ["COLD", "WARM", "HOT", "ACTIVE", "CLOSED", "NEW", "CONTACTED", "RESPONDED", "MEETING_BOOKED", "QUALIFIED", "DISQUALIFIED", "NURTURE"] }, "description": "Filter by sales stage" },
+          { "name": "source", "in": "query", "schema": { "type": "string", "enum": ["MANUAL", "AGENT", "BARK", "LINKEDIN_SALES_NAV", "APOLLO", "LINKEDIN_COMPANY_PAGE", "REFERRAL", "WEBSITE", "COLD_OUTREACH", "EVENT", "OTHER"] }, "description": "Filter by lead source" },
+          { "name": "industry", "in": "query", "schema": { "type": "string" }, "description": "Filter by industry (partial match, case-insensitive)" },
           { "name": "assignedTo", "in": "query", "schema": { "type": "string" }, "description": "Filter by assigned admin name (partial match)" }
         ],
         "responses": {
           "200": {
-            "description": "Paginated lead list",
+            "description": "Paginated lead list with assigned admin info",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LeadList" } } }
           },
-          "401": { "description": "Unauthorized" }
+          "401": { "description": "Unauthorized — invalid or missing Bearer token" }
         }
       },
       "post": {
         "tags": ["Leads"],
         "summary": "Create a new lead",
-        "description": "Creates a new lead with all supported fields. All new fields are optional and default to null/false. Enum fields (leadSource, leadStatus) are validated — unknown values return 400. extractedDate defaults to current timestamp if not provided.",
+        "description": "Creates a new lead with all supported fields. Only 4 fields are required: projectName, customerName, customerEmail, projectDescription. All other fields are optional and default to null/false.\n\n**Enum validation**: leadSource and leadStatus are validated — unknown values return 400.\n\n**NAICS auto-resolution**: If naicsSectorCode/naicsSubsectorCode are not provided but industry is, NAICS codes are automatically resolved from the industry text.\n\n**extractedDate**: Defaults to current timestamp if not provided.\n\n**Lead status**: All new leads are created with status=NEW. The stage field is set from leadStatus (defaults to COLD).",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": { "$ref": "#/components/schemas/LeadCreate" },
-              "example": {
-                "projectName": "Acme Corp - CTO Opportunity",
-                "customerName": "Jane Smith",
-                "customerEmail": "jane@acme.com",
-                "projectDescription": "Lead from Apollo.io. Interested in mobile app development.",
-                "phone": "+1-555-0123",
-                "linkedinUrl": "https://linkedin.com/in/janesmith",
-                "apolloUrl": "https://app.apollo.io/#/people/jane-smith",
-                "jobTitle": "CTO",
-                "companyName": "Acme Corp",
-                "location": "San Francisco, CA",
-                "industry": "Software Development",
-                "companySize": "51-200",
-                "companyWebsite": "https://acme.com",
-                "aboutCompany": "Acme Corp builds enterprise SaaS tools for project management.",
-                "leadSource": "APOLLO",
-                "leadStatus": "NEW",
-                "extractedDate": "2026-04-04T14:30:00Z",
-                "leadScore": 75,
-                "connectionRequestSent": true,
-                "connectionAccepted": false,
-                "initialMessageSent": true,
-                "meetingBooked": false,
-                "responseReceived": false
+              "examples": {
+                "minimal": {
+                  "summary": "Minimal (required fields only)",
+                  "value": {
+                    "projectName": "Acme Corp - Mobile App",
+                    "customerName": "Jane Smith",
+                    "customerEmail": "jane@acme.com",
+                    "projectDescription": "Mobile app development for inventory management."
+                  }
+                },
+                "full": {
+                  "summary": "Full lead with all fields",
+                  "value": {
+                    "projectName": "Acme Corp - CTO Opportunity",
+                    "customerName": "Jane Smith",
+                    "customerEmail": "jane@acme.com",
+                    "projectDescription": "Lead from Apollo.io. Interested in mobile app development for inventory management.",
+                    "phone": "+1-555-0123",
+                    "city": "San Francisco",
+                    "zip": "94105",
+                    "linkedinUrl": "https://linkedin.com/in/janesmith",
+                    "apolloUrl": "https://app.apollo.io/#/people/jane-smith",
+                    "facebookUrl": "https://facebook.com/janesmith",
+                    "twitterUrl": "https://twitter.com/janesmith",
+                    "jobTitle": "CTO",
+                    "companyName": "Acme Corp",
+                    "location": "San Francisco, CA",
+                    "industry": "Software Development",
+                    "companySize": "51-200",
+                    "companyWebsite": "https://acme.com",
+                    "aboutCompany": "Acme Corp builds enterprise SaaS tools for project management.",
+                    "leadSource": "APOLLO",
+                    "leadStatus": "NEW",
+                    "extractedDate": "2026-04-04T14:30:00Z",
+                    "lastContactedDate": "2026-04-05T10:00:00Z",
+                    "leadScore": 75,
+                    "naicsSectorCode": "54",
+                    "naicsSubsectorCode": "541",
+                    "connectionRequestSent": true,
+                    "connectionAccepted": false,
+                    "initialMessageSent": true,
+                    "meetingBooked": false,
+                    "meetingDate": null,
+                    "responseReceived": false
+                  }
+                }
               }
             }
           }
@@ -212,10 +257,10 @@
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Lead" } } }
           },
           "400": {
-            "description": "Validation error (missing required fields or invalid enum values)",
+            "description": "Validation error — missing required fields, invalid email format, or invalid enum values",
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
           },
-          "401": { "description": "Unauthorized" }
+          "401": { "description": "Unauthorized — invalid or missing Bearer token" }
         }
       }
     },
