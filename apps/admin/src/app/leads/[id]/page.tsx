@@ -2561,236 +2561,6 @@ export default function LeadDetailPage() {
 
             {/* Messages handled by floating chat widget below */}
 
-            {/* Email Conversation Thread */}
-            {(() => {
-              const allEmails = [
-                ...lead.sentEmails.map((e) => ({
-                  type: "sent" as const,
-                  id: e.id,
-                  subject: e.subject,
-                  date: e.createdAt,
-                  status: e.status,
-                  openedAt: e.openedAt,
-                  sentBy: e.sentBy,
-                  template: e.template,
-                  body: e.body,
-                  cc: e.cc,
-                  bcc: e.bcc,
-                  attachments: e.attachments,
-                  fromName: null as string | null,
-                  fromEmail: null as string | null,
-                  bodyText: null as string | null,
-                  bodyHtml: null as string | null,
-                })),
-                ...lead.receivedEmails.map((e) => ({
-                  type: "received" as const,
-                  id: e.id,
-                  subject: e.subject,
-                  date: e.receivedAt,
-                  status: null as string | null,
-                  openedAt: null as string | null,
-                  sentBy: null as string | null,
-                  template: null as { title: string; purpose: string } | null,
-                  body: null as string | null,
-                  cc: null as string | null,
-                  bcc: null as string | null,
-                  attachments: [] as EmailAttachmentItem[],
-                  fromName: e.fromName,
-                  fromEmail: e.fromEmail,
-                  bodyText: e.bodyText,
-                  bodyHtml: e.bodyHtml,
-                })),
-              ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-              const totalCount = allEmails.length;
-              const visibleEmails = threadCollapsed ? allEmails.slice(0, 3) : allEmails;
-
-              return (
-                <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
-                  <button
-                    onClick={() => setThreadCollapsed(!threadCollapsed)}
-                    className="flex items-center justify-between w-full mb-4"
-                  >
-                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                      Email Conversation ({totalCount})
-                    </h2>
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-2 text-xs text-gray-400">
-                        <span className="flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full bg-teal-500 inline-block" /> Sent
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full bg-blue-500 inline-block" /> Received
-                        </span>
-                      </div>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        strokeWidth={2}
-                        stroke="currentColor"
-                        className={`w-4 h-4 text-gray-400 transition-transform ${threadCollapsed ? "" : "rotate-180"}`}
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
-                      </svg>
-                    </div>
-                  </button>
-
-                  {totalCount === 0 ? (
-                    <p className="text-gray-400 text-sm">No email activity yet</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {visibleEmails.map((item) => {
-                        const emailKey = `${item.type}-${item.id}`;
-                        const isExpanded = expandedEmails.has(emailKey);
-
-                        return (
-                          <div
-                            key={emailKey}
-                            className={`rounded-lg border p-4 ${
-                              item.type === "sent"
-                                ? "border-teal-200 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-900/10 ml-8"
-                                : "border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10 mr-8"
-                            }`}
-                          >
-                            <div className="flex items-start justify-between gap-2 mb-1">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                {item.type === "sent" ? (
-                                  <span className="flex items-center gap-1.5 text-xs font-medium text-teal-700 dark:text-teal-400">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                                    </svg>
-                                    Sent {item.sentBy ? `by ${item.sentBy}` : ""}
-                                  </span>
-                                ) : (
-                                  <span className="flex items-center gap-1.5 text-xs font-medium text-blue-700 dark:text-blue-400">
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 3.75H6.912a2.25 2.25 0 00-2.15 1.588L2.35 13.177a2.25 2.25 0 00-.1.661V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 00-2.15-1.588H15M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859" />
-                                    </svg>
-                                    From {item.fromName || item.fromEmail}
-                                  </span>
-                                )}
-                                {item.status && (
-                                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${EMAIL_STATUS_COLORS[item.status] || "bg-gray-100 text-gray-800"}`}>
-                                    {item.status}
-                                  </span>
-                                )}
-                                {item.openedAt && (
-                                  <span className="text-xs text-gray-400">
-                                    Opened {new Date(item.openedAt).toLocaleDateString()}
-                                  </span>
-                                )}
-                              </div>
-                              <span className="text-xs text-gray-400 whitespace-nowrap">
-                                {new Date(item.date).toLocaleString()}
-                              </span>
-                            </div>
-
-                            {/* Subject */}
-                            <p className="text-sm font-medium text-gray-900 dark:text-white">
-                              {item.subject}
-                            </p>
-
-                            {/* CC/BCC info */}
-                            {item.cc && (
-                              <p className="text-xs text-gray-400 mt-0.5">CC: {item.cc}</p>
-                            )}
-                            {item.bcc && (
-                              <p className="text-xs text-gray-400">BCC: {item.bcc}</p>
-                            )}
-
-                            {item.template && (
-                              <p className="text-xs text-gray-400 mt-0.5">
-                                Template: {item.template.title}
-                              </p>
-                            )}
-
-                            {/* Attachments */}
-                            {item.attachments.length > 0 && (
-                              <div className="flex flex-wrap gap-2 mt-2">
-                                {item.attachments.map((att) => (
-                                  <a
-                                    key={att.id}
-                                    href={att.filePath}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition"
-                                  >
-                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3 h-3">
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
-                                    </svg>
-                                    {att.fileName}
-                                    <span className="text-gray-400">({formatFileSize(att.fileSize)})</span>
-                                  </a>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* Action buttons row */}
-                            <div className="flex items-center gap-2 mt-2">
-                              <button
-                                onClick={() => toggleEmailExpanded(emailKey)}
-                                className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition"
-                              >
-                                {isExpanded ? "Hide body" : "Show body"}
-                              </button>
-                              <button
-                                onClick={() => handleReply(item)}
-                                className={`text-xs font-medium transition ${
-                                  item.type === "received"
-                                    ? "text-blue-600 dark:text-blue-400 hover:text-blue-800"
-                                    : "text-teal-600 dark:text-teal-400 hover:text-teal-800"
-                                }`}
-                              >
-                                Reply
-                              </button>
-                            </div>
-
-                            {/* Expanded body */}
-                            {isExpanded && (
-                              <div className="mt-3 p-3 bg-white dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 overflow-auto max-h-96">
-                                {item.type === "sent" && item.body ? (
-                                  <div
-                                    className="text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none"
-                                    dangerouslySetInnerHTML={{ __html: item.body }}
-                                  />
-                                ) : item.type === "received" && (item.bodyHtml || item.bodyText) ? (
-                                  item.bodyHtml ? (
-                                    <div
-                                      className="text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none"
-                                      dangerouslySetInnerHTML={{ __html: item.bodyHtml }}
-                                    />
-                                  ) : (
-                                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
-                                      {item.bodyText}
-                                    </p>
-                                  )
-                                ) : (
-                                  <p className="text-sm text-gray-400 italic">No body content available</p>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-
-                      {/* Show more / less toggle */}
-                      {totalCount > 3 && (
-                        <button
-                          onClick={() => setThreadCollapsed(!threadCollapsed)}
-                          className="w-full text-center py-2 text-sm text-teal-600 dark:text-teal-400 hover:underline"
-                        >
-                          {threadCollapsed
-                            ? `Show all ${totalCount} emails`
-                            : "Collapse thread"}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-
             {/* Files Section */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
               <div className="flex items-center justify-between mb-4">
@@ -3158,6 +2928,128 @@ export default function LeadDetailPage() {
               </div>
             )}
 
+            {/* Email Conversation Thread */}
+            {(() => {
+              const allEmails = [
+                ...lead.sentEmails.map((e) => ({
+                  type: "sent" as const, id: e.id, subject: e.subject, date: e.createdAt, status: e.status,
+                  openedAt: e.openedAt, sentBy: e.sentBy, template: e.template, body: e.body,
+                  cc: e.cc, bcc: e.bcc, attachments: e.attachments,
+                  fromName: null as string | null, fromEmail: null as string | null,
+                  bodyText: null as string | null, bodyHtml: null as string | null,
+                })),
+                ...lead.receivedEmails.map((e) => ({
+                  type: "received" as const, id: e.id, subject: e.subject, date: e.receivedAt,
+                  status: null as string | null, openedAt: null as string | null,
+                  sentBy: null as string | null, template: null as { title: string; purpose: string } | null,
+                  body: null as string | null, cc: null as string | null, bcc: null as string | null,
+                  attachments: [] as EmailAttachmentItem[],
+                  fromName: e.fromName, fromEmail: e.fromEmail, bodyText: e.bodyText, bodyHtml: e.bodyHtml,
+                })),
+              ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+              const totalCount = allEmails.length;
+              const visibleEmails = threadCollapsed ? allEmails.slice(0, 3) : allEmails;
+              return (
+                <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
+                  <button onClick={() => setThreadCollapsed(!threadCollapsed)} className="flex items-center justify-between w-full mb-3">
+                    <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Email Conversation ({totalCount})</h2>
+                    <div className="flex items-center gap-2">
+                      <span className="flex items-center gap-1 text-[10px] text-gray-400"><span className="w-1.5 h-1.5 rounded-full bg-teal-500 inline-block" /> Sent</span>
+                      <span className="flex items-center gap-1 text-[10px] text-gray-400"><span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" /> Received</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={`w-3.5 h-3.5 text-gray-400 transition-transform ${threadCollapsed ? "" : "rotate-180"}`}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+                    </div>
+                  </button>
+                  {totalCount === 0 ? (
+                    <p className="text-gray-400 text-xs">No email activity yet</p>
+                  ) : (
+                    <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                      {visibleEmails.map((item) => {
+                        const emailKey = `${item.type}-${item.id}`;
+                        const isExpanded = expandedEmails.has(emailKey);
+                        return (
+                          <div key={emailKey} className={`rounded-lg border p-3 ${item.type === "sent" ? "border-teal-200 dark:border-teal-800 bg-teal-50/50 dark:bg-teal-900/10 ml-4" : "border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-900/10 mr-4"}`}>
+                            <div className="flex items-start justify-between gap-2 mb-0.5">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                {item.type === "sent" ? (
+                                  <span className="flex items-center gap-1 text-[10px] font-medium text-teal-700 dark:text-teal-400">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
+                                    Sent {item.sentBy ? `by ${item.sentBy}` : ""}
+                                  </span>
+                                ) : (
+                                  <span className="flex items-center gap-1 text-[10px] font-medium text-blue-700 dark:text-blue-400">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3 h-3"><path strokeLinecap="round" strokeLinejoin="round" d="M9 3.75H6.912a2.25 2.25 0 00-2.15 1.588L2.35 13.177a2.25 2.25 0 00-.1.661V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18v-4.162c0-.224-.034-.447-.1-.661L19.24 5.338a2.25 2.25 0 00-2.15-1.588H15M2.25 13.5h3.86a2.25 2.25 0 012.012 1.244l.256.512a2.25 2.25 0 002.013 1.244h3.218a2.25 2.25 0 002.013-1.244l.256-.512a2.25 2.25 0 012.013-1.244h3.859" /></svg>
+                                    From {item.fromName || item.fromEmail}
+                                  </span>
+                                )}
+                                {item.status && <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium ${EMAIL_STATUS_COLORS[item.status] || "bg-gray-100 text-gray-800"}`}>{item.status}</span>}
+                              </div>
+                              <span className="text-[10px] text-gray-400 whitespace-nowrap">{new Date(item.date).toLocaleString()}</span>
+                            </div>
+                            <p className="text-xs font-medium text-gray-900 dark:text-white">{item.subject}</p>
+                            {item.attachments.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {item.attachments.map((att) => (
+                                  <a key={att.id} href={att.filePath} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-[10px] text-gray-500 hover:bg-gray-200 dark:hover:bg-gray-600 transition">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-2.5 h-2.5"><path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" /></svg>
+                                    {att.fileName}
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                            <div className="flex items-center gap-2 mt-1">
+                              <button onClick={() => toggleEmailExpanded(emailKey)} className="text-[10px] text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition">{isExpanded ? "Hide body" : "Show body"}</button>
+                              <button onClick={() => handleReply(item)} className={`text-[10px] font-medium transition ${item.type === "received" ? "text-blue-600 dark:text-blue-400" : "text-teal-600 dark:text-teal-400"}`}>Reply</button>
+                            </div>
+                            {isExpanded && (
+                              <div className="mt-2 p-2 bg-white dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 overflow-auto max-h-64">
+                                {item.type === "sent" && item.body ? (
+                                  <div className="text-xs text-gray-700 dark:text-gray-300 prose prose-xs dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: item.body }} />
+                                ) : item.type === "received" && (item.bodyHtml || item.bodyText) ? (
+                                  item.bodyHtml ? (
+                                    <div className="text-xs text-gray-700 dark:text-gray-300 prose prose-xs dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: item.bodyHtml }} />
+                                  ) : (
+                                    <p className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{item.bodyText}</p>
+                                  )
+                                ) : (
+                                  <p className="text-xs text-gray-400 italic">No body content available</p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                      {totalCount > 3 && (
+                        <button onClick={() => setThreadCollapsed(!threadCollapsed)} className="w-full text-center py-1.5 text-xs text-teal-600 dark:text-teal-400 hover:underline">
+                          {threadCollapsed ? `Show all ${totalCount} emails` : "Collapse thread"}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Audit Log */}
+            <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
+              <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Audit Log</h2>
+              {auditLogs.length === 0 ? (
+                <p className="text-gray-400 text-xs">No activity recorded yet</p>
+              ) : (
+                <div className="space-y-2 max-h-72 overflow-y-auto">
+                  {auditLogs.map((log) => (
+                    <div key={log.id} className="flex gap-2 text-xs">
+                      <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600 mt-1.5" />
+                      <div className="min-w-0">
+                        <p className="text-gray-700 dark:text-gray-300 font-medium">{log.action}</p>
+                        {log.detail && <p className="text-gray-500 dark:text-gray-400 truncate">{log.detail}</p>}
+                        <p className="text-gray-400">{log.actor && `${log.actor} — `}{new Date(log.createdAt).toLocaleString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Next Steps Section */}
             <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
               <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
@@ -3523,30 +3415,6 @@ export default function LeadDetailPage() {
               </div>
             </div>
 
-            {/* Audit Log */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
-              <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
-                Audit Log
-              </h2>
-              {auditLogs.length === 0 ? (
-                <p className="text-gray-400 text-xs">No activity recorded yet</p>
-              ) : (
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {auditLogs.map((log) => (
-                    <div key={log.id} className="flex gap-2 text-xs">
-                      <div className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-gray-300 dark:bg-gray-600 mt-1.5" />
-                      <div className="min-w-0">
-                        <p className="text-gray-700 dark:text-gray-300 font-medium">{log.action}</p>
-                        {log.detail && <p className="text-gray-500 dark:text-gray-400 truncate">{log.detail}</p>}
-                        <p className="text-gray-400">
-                          {log.actor && `${log.actor} — `}{new Date(log.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
             </div>
           </div>
         </div>
