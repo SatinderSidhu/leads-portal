@@ -98,7 +98,7 @@ leads-portal/
 | CustomerVisit | customer_visits | Tracks customer portal page views (leadId, visitorEmail, page, timestamp) |
 | NotificationPreference | notification_preferences | Per-admin notification toggles (9 event types) + optional notification email |
 | PortfolioService | portfolio_services | Services offered by KITLabs (name, description, pitch scripts, documents, URLs) |
-| PortfolioProject | portfolio_projects | Completed projects (title, description, category, domain, technologies, client, demo, scripts, docs) |
+| PortfolioProject | portfolio_projects | Completed projects (title, description, category, domain, industry, industrySector/NAICS, industrySubsector/NAICS, technologies, client, demoVideoUrl, portfolioUrl, customerReviewUrl, additionalLinks JSON, scripts, docs) |
 | Message | messages | Secure messaging between admin and customer (content, senderName, senderType, readAt) |
 | EmailDraft | email_drafts | Saved email drafts per lead (subject, body, cc, bcc) |
 | NaicsSector | naics_sectors | NAICS 2022 industry sector codes (20 sectors) |
@@ -592,7 +592,7 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 
 ## Portfolio System
 - **PortfolioService**: KITLabs services with name, description, email/phone/meeting pitch scripts, documents (JSON array of {name, url}), URLs (JSON array of {label, url})
-- **PortfolioProject**: Completed projects linked to a service, with title, description, category, domain, technologies (JSON array), client info, demo video URL, documents, pitch scripts, completion date
+- **PortfolioProject**: Completed projects linked to a service, with title, description, category, domain, industry, industrySector (NAICS code), industrySubsector (NAICS code), technologies (JSON array), client info, demoVideoUrl, portfolioUrl, customerReviewUrl, additionalLinks (JSON array of {label, url}), documents, pitch scripts, completion date. URL fields have copy buttons on detail page. Industry sector/subsector use NAICS cascading dropdowns
 - Service detail page: tabbed pitch scripts with Copy button, clickable URLs with copy icon, document links, linked projects grid
 - Project detail page: 2-column layout (info+client on left, scripts on right), technology tags, demo video, documents
 - Edit project via `?editId=` query param; pre-link to service via `?serviceId=`

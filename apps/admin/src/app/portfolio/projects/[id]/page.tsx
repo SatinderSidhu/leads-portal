@@ -5,12 +5,41 @@ import { useParams, useRouter } from "next/navigation";
 
 interface Project {
   id: string; title: string; description: string;
-  category: string | null; domain: string | null; technologies: string[];
+  category: string | null; domain: string | null;
+  industry: string | null; industrySector: string | null; industrySubsector: string | null;
+  technologies: string[];
   customerName: string | null; customerDetail: string | null;
-  demoVideoUrl: string | null; documents: { name: string; url: string }[];
+  demoVideoUrl: string | null; portfolioUrl: string | null; customerReviewUrl: string | null;
+  additionalLinks: { label: string; url: string }[];
+  documents: { name: string; url: string }[];
   emailScript: string | null; phoneScript: string | null; meetingScript: string | null;
   completedAt: string | null; createdAt: string;
   service: { id: string; name: string } | null;
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      onClick={(e) => { e.preventDefault(); navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }}
+      className="flex-shrink-0 text-[10px] text-gray-400 hover:text-[#01358d] dark:hover:text-blue-400 bg-gray-50 dark:bg-gray-700 px-1.5 py-0.5 rounded border border-gray-200 dark:border-gray-600 transition"
+      title="Copy URL"
+    >
+      {copied ? "Copied!" : "Copy"}
+    </button>
+  );
+}
+
+function UrlField({ label, url }: { label: string; url: string }) {
+  return (
+    <div>
+      <p className="text-xs text-gray-500 uppercase mb-0.5">{label}</p>
+      <div className="flex items-center gap-2">
+        <a href={url} target="_blank" rel="noopener noreferrer" className="text-sm text-[#01358d] dark:text-blue-400 hover:underline break-all truncate">{url}</a>
+        <CopyButton text={url} />
+      </div>
+    </div>
+  );
 }
 
 export default function ProjectDetailPage() {
@@ -48,6 +77,7 @@ export default function ProjectDetailPage() {
             )}
             {project.category && <span className="text-xs bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300 px-2 py-0.5 rounded-full">{project.category}</span>}
             {project.domain && <span className="text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full">{project.domain}</span>}
+            {project.industry && <span className="text-xs bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full">{project.industry}</span>}
           </div>
         </div>
         <div className="flex gap-2">
@@ -74,6 +104,12 @@ export default function ProjectDetailPage() {
               {project.completedAt && (
                 <div><p className="text-xs text-gray-500 uppercase">Completed</p><p className="text-sm font-medium text-gray-900 dark:text-white">{new Date(project.completedAt).toLocaleDateString()}</p></div>
               )}
+              {project.industrySector && (
+                <div><p className="text-xs text-gray-500 uppercase">Industry Sector</p><p className="text-sm font-medium text-gray-900 dark:text-white">{project.industrySector}</p></div>
+              )}
+              {project.industrySubsector && (
+                <div><p className="text-xs text-gray-500 uppercase">Subsector</p><p className="text-sm font-medium text-gray-900 dark:text-white">{project.industrySubsector}</p></div>
+              )}
               {project.technologies.length > 0 && (
                 <div className="col-span-2">
                   <p className="text-xs text-gray-500 uppercase mb-1">Technologies</p>
@@ -87,19 +123,37 @@ export default function ProjectDetailPage() {
             </div>
           </div>
 
+          {/* URLs with copy buttons */}
+          {(project.demoVideoUrl || project.portfolioUrl || project.customerReviewUrl) && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6 space-y-3">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Links</h2>
+              {project.portfolioUrl && <UrlField label="Portfolio URL" url={project.portfolioUrl} />}
+              {project.demoVideoUrl && <UrlField label="Demo Video" url={project.demoVideoUrl} />}
+              {project.customerReviewUrl && <UrlField label="Customer Reviews" url={project.customerReviewUrl} />}
+            </div>
+          )}
+
+          {/* Additional Links */}
+          {project.additionalLinks?.length > 0 && (
+            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
+              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Additional Links</h2>
+              <div className="space-y-2">
+                {project.additionalLinks.map((link, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-xs text-gray-500 min-w-[80px]">{link.label}</span>
+                    <a href={link.url} target="_blank" rel="noopener noreferrer" className="text-sm text-[#01358d] dark:text-blue-400 hover:underline break-all truncate">{link.url}</a>
+                    <CopyButton text={link.url} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Customer Detail */}
           {project.customerDetail && (
             <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
               <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Client Details</h2>
               <p className="text-gray-700 dark:text-gray-300 whitespace-pre-wrap text-sm">{project.customerDetail}</p>
-            </div>
-          )}
-
-          {/* Demo Video */}
-          {project.demoVideoUrl && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
-              <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Demo Video</h2>
-              <a href={project.demoVideoUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-[#01358d] dark:text-blue-400 hover:underline break-all">{project.demoVideoUrl}</a>
             </div>
           )}
 

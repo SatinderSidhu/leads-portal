@@ -18,18 +18,23 @@ function NewProjectForm() {
   const preServiceId = searchParams.get("serviceId");
   const [saving, setSaving] = useState(false);
   const [services, setServices] = useState<Service[]>([]);
+  const [naicsSectors, setNaicsSectors] = useState<{ code: string; name: string; subsectors: { code: string; name: string }[] }[]>([]);
   const [techInput, setTechInput] = useState("");
   const [form, setForm] = useState({
     title: "", description: "", serviceId: preServiceId || "",
-    category: "", domain: "", customerName: "", customerDetail: "",
-    demoVideoUrl: "", emailScript: "", phoneScript: "", meetingScript: "",
+    category: "", domain: "", industry: "", industrySector: "", industrySubsector: "",
+    customerName: "", customerDetail: "",
+    demoVideoUrl: "", portfolioUrl: "", customerReviewUrl: "",
+    emailScript: "", phoneScript: "", meetingScript: "",
     completedAt: "",
   });
   const [techs, setTechs] = useState<string[]>([]);
   const [docs, setDocs] = useState<{ name: string; url: string }[]>([]);
+  const [additionalLinks, setAdditionalLinks] = useState<{ label: string; url: string }[]>([]);
 
   useEffect(() => {
     fetch("/api/portfolio/services").then((r) => r.json()).then((d) => setServices(Array.isArray(d) ? d : []));
+    fetch("/api/naics").then((r) => r.json()).then((d) => { if (d.sectors) setNaicsSectors(d.sectors); });
   }, []);
 
   useEffect(() => {
@@ -37,13 +42,16 @@ function NewProjectForm() {
     fetch(`/api/portfolio/projects/${editId}`).then((r) => r.json()).then((p) => {
       setForm({
         title: p.title || "", description: p.description || "", serviceId: p.service?.id || "",
-        category: p.category || "", domain: p.domain || "", customerName: p.customerName || "",
-        customerDetail: p.customerDetail || "", demoVideoUrl: p.demoVideoUrl || "",
+        category: p.category || "", domain: p.domain || "",
+        industry: p.industry || "", industrySector: p.industrySector || "", industrySubsector: p.industrySubsector || "",
+        customerName: p.customerName || "", customerDetail: p.customerDetail || "",
+        demoVideoUrl: p.demoVideoUrl || "", portfolioUrl: p.portfolioUrl || "", customerReviewUrl: p.customerReviewUrl || "",
         emailScript: p.emailScript || "", phoneScript: p.phoneScript || "", meetingScript: p.meetingScript || "",
         completedAt: p.completedAt ? new Date(p.completedAt).toISOString().slice(0, 10) : "",
       });
       setTechs(Array.isArray(p.technologies) ? p.technologies : []);
       setDocs(Array.isArray(p.documents) ? p.documents : []);
+      setAdditionalLinks(Array.isArray(p.additionalLinks) ? p.additionalLinks : []);
     });
   }, [editId]);
 
@@ -54,7 +62,7 @@ function NewProjectForm() {
     const method = editId ? "PUT" : "POST";
     const res = await fetch(url, {
       method, headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...form, technologies: techs, documents: docs, serviceId: form.serviceId || null }),
+      body: JSON.stringify({ ...form, technologies: techs, documents: docs, additionalLinks, serviceId: form.serviceId || null }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -105,6 +113,57 @@ function NewProjectForm() {
             <input type="date" value={form.completedAt} onChange={(e) => setForm({ ...form, completedAt: e.target.value })} className={inputClass} />
           </div>
         </div>
+
+        {/* Industry Classification */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Industry</label>
+            <input value={form.industry} onChange={(e) => setForm({ ...form, industry: e.target.value })} className={inputClass} placeholder="e.g. Financial Services" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Industry Sector (NAICS)</label>
+            <select
+              value={form.industrySector}
+              onChange={(e) => setForm({ ...form, industrySector: e.target.value, industrySubsector: "" })}
+              className={inputClass}
+            >
+              <option value="">Select sector...</option>
+              {naicsSectors.map((s) => (
+                <option key={s.code} value={s.code}>{s.code} — {s.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subsector (NAICS)</label>
+            <select
+              value={form.industrySubsector}
+              onChange={(e) => setForm({ ...form, industrySubsector: e.target.value })}
+              className={inputClass}
+              disabled={!form.industrySector}
+            >
+              <option value="">Select subsector...</option>
+              {naicsSectors.find((s) => s.code === form.industrySector)?.subsectors.map((sub) => (
+                <option key={sub.code} value={sub.code}>{sub.code} — {sub.name}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* URLs */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Demo Video URL</label>
+            <input value={form.demoVideoUrl} onChange={(e) => setForm({ ...form, demoVideoUrl: e.target.value })} className={inputClass} placeholder="https://youtube.com/..." />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Portfolio URL at KITLabs</label>
+            <input value={form.portfolioUrl} onChange={(e) => setForm({ ...form, portfolioUrl: e.target.value })} className={inputClass} placeholder="https://kitlabs.us/portfolio/..." />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Customer Reviews URL</label>
+            <input value={form.customerReviewUrl} onChange={(e) => setForm({ ...form, customerReviewUrl: e.target.value })} className={inputClass} placeholder="https://clutch.co/..." />
+          </div>
+        </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Technologies</label>
           <div className="flex gap-2 mb-2 flex-wrap">
@@ -124,15 +183,9 @@ function NewProjectForm() {
       {/* Client Info */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6 space-y-4">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Client Information</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Client Name</label>
-            <input value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} className={inputClass} placeholder="Client name" />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Demo Video URL</label>
-            <input value={form.demoVideoUrl} onChange={(e) => setForm({ ...form, demoVideoUrl: e.target.value })} className={inputClass} placeholder="https://youtube.com/..." />
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Client Name</label>
+          <input value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} className={inputClass} placeholder="Client name" />
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Client Details</label>
@@ -155,6 +208,19 @@ function NewProjectForm() {
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Meeting Script</label>
           <textarea value={form.meetingScript} onChange={(e) => setForm({ ...form, meetingScript: e.target.value })} rows={3} className={inputClass + " resize-none"} placeholder="Meeting script..." />
         </div>
+      </div>
+
+      {/* Additional Links */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6 space-y-3">
+        <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Additional Links</h2>
+        {additionalLinks.map((link, i) => (
+          <div key={i} className="flex gap-2">
+            <input value={link.label} onChange={(e) => { const n = [...additionalLinks]; n[i].label = e.target.value; setAdditionalLinks(n); }} className={inputClass} placeholder="Label (e.g. App Store)" />
+            <input value={link.url} onChange={(e) => { const n = [...additionalLinks]; n[i].url = e.target.value; setAdditionalLinks(n); }} className={inputClass} placeholder="https://..." />
+            <button onClick={() => setAdditionalLinks(additionalLinks.filter((_, j) => j !== i))} className="text-red-500 text-sm">Remove</button>
+          </div>
+        ))}
+        <button onClick={() => setAdditionalLinks([...additionalLinks, { label: "", url: "" }])} className="text-sm text-[#01358d] dark:text-blue-400 font-medium">+ Add Link</button>
       </div>
 
       {/* Documents */}

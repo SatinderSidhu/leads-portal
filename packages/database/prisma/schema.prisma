@@ -526,10 +526,16 @@ model PortfolioProject {
   service         PortfolioService? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   category        String?
   domain          String?
+  industry        String?
+  industrySector  String?  @map("industry_sector")
+  industrySubsector String? @map("industry_subsector")
   technologies    Json     @default("[]")
   customerName    String?  @map("customer_name")
   customerDetail  String?  @map("customer_detail") @db.Text
   demoVideoUrl    String?  @map("demo_video_url")
+  portfolioUrl    String?  @map("portfolio_url")
+  customerReviewUrl String? @map("customer_review_url")
+  additionalLinks Json     @default("[]") @map("additional_links")
   documents       Json     @default("[]")
   emailScript     String?  @map("email_script") @db.Text
   phoneScript     String?  @map("phone_script") @db.Text

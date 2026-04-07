@@ -7,9 +7,21 @@ export interface Release {
 
 export const releases: Release[] = [
   {
-    version: "4.5",
+    version: "4.6",
     date: "2026-04-07",
     commitId: "pending",
+    changes: [
+      "Portfolio projects: Industry, Industry Sector (NAICS dropdown), Industry Subsector (NAICS dropdown) fields",
+      "Portfolio projects: Portfolio URL at KITLabs, Customer Reviews URL, Additional Links (label + URL pairs)",
+      "Demo Video URL moved from Client section to Project section",
+      "Copy buttons on all URL fields (Portfolio URL, Demo URL, Customer Reviews, Additional Links) with 'Copied!' feedback",
+      "NAICS cascading dropdowns on project form (same as leads detail)",
+    ],
+  },
+  {
+    version: "4.5",
+    date: "2026-04-07",
+    commitId: "49e0306",
     changes: [
       "Dashboard: clickable column headers with sort direction arrows (default sort by last updated)",
       "Dashboard: configurable page size dropdown (20, 50, 100 — default 50)",
