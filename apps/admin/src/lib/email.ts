@@ -73,7 +73,7 @@ export async function getSystemEmailContent(
   fallbackHtml: string
 ): Promise<{ subject: string; html: string }> {
   try {
-    const template = await prisma.emailTemplate.findUnique({
+    const template = await prisma.emailTemplate.findFirst({
       where: { systemKey },
       select: { subject: true, body: true },
     });

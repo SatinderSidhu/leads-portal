@@ -76,30 +76,36 @@ const SYSTEM_TEMPLATES = [
 ];
 
 export async function POST() {
-  const session = await getAdminSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    const session = await getAdminSession();
+    if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  let created = 0;
-  let skipped = 0;
+    let created = 0;
+    let skipped = 0;
 
-  for (const tpl of SYSTEM_TEMPLATES) {
-    const existing = await prisma.emailTemplate.findUnique({ where: { systemKey: tpl.systemKey } });
-    if (existing) { skipped++; continue; }
+    for (const tpl of SYSTEM_TEMPLATES) {
+      // Use findFirst instead of findUnique for broader compatibility
+      const existing = await prisma.emailTemplate.findFirst({ where: { systemKey: tpl.systemKey } });
+      if (existing) { skipped++; continue; }
 
-    await prisma.emailTemplate.create({
-      data: {
-        title: tpl.title,
-        subject: tpl.subject,
-        body: tpl.body,
-        purpose: "NOTIFICATION",
-        systemKey: tpl.systemKey,
-        tags: [],
-        notes: tpl.notes,
-        createdBy: session.name,
-      },
-    });
-    created++;
+      await prisma.emailTemplate.create({
+        data: {
+          title: tpl.title,
+          subject: tpl.subject,
+          body: tpl.body,
+          purpose: "NOTIFICATION" as const,
+          systemKey: tpl.systemKey,
+          tags: [],
+          notes: tpl.notes,
+          createdBy: session.name,
+        },
+      });
+      created++;
+    }
+
+    return NextResponse.json({ created, skipped, total: SYSTEM_TEMPLATES.length });
+  } catch (error) {
+    console.error("[Seed System Templates] Error:", error);
+    return NextResponse.json({ error: "Failed to seed templates", detail: String(error) }, { status: 500 });
   }
-
-  return NextResponse.json({ created, skipped, total: SYSTEM_TEMPLATES.length });
 }
