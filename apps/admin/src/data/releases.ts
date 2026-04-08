@@ -7,9 +7,20 @@ export interface Release {
 
 export const releases: Release[] = [
   {
-    version: "4.6",
+    version: "4.7",
     date: "2026-04-07",
     commitId: "pending",
+    changes: [
+      "Email templates: 'Template Name' label with '(internal reference)' hint",
+      "Email templates: Industry text field for categorizing templates",
+      "Email templates: Industry Sector (NAICS) cascading dropdown",
+      "Email templates: Industry Subsector (NAICS) cascading dropdown",
+    ],
+  },
+  {
+    version: "4.6",
+    date: "2026-04-07",
+    commitId: "db36d9b",
     changes: [
       "Portfolio projects: Industry, Industry Sector (NAICS dropdown), Industry Subsector (NAICS dropdown) fields",
       "Portfolio projects: Portfolio URL at KITLabs, Customer Reviews URL, Additional Links (label + URL pairs)",

@@ -57,9 +57,17 @@ export default function EditEmailTemplatePage() {
   const [tags, setTags] = useState("");
   const [purpose, setPurpose] = useState("OTHER");
   const [notes, setNotes] = useState("");
+  const [industry, setIndustry] = useState("");
+  const [naicsSectorCode, setNaicsSectorCode] = useState("");
+  const [naicsSubsectorCode, setNaicsSubsectorCode] = useState("");
+  const [naicsSectors, setNaicsSectors] = useState<{ code: string; name: string; subsectors: { code: string; name: string }[] }[]>([]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showTestEmail, setShowTestEmail] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/naics").then((r) => r.json()).then((d) => { if (d.sectors) setNaicsSectors(d.sectors); }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch(`/api/email-templates/${params.id}`)
@@ -72,6 +80,9 @@ export default function EditEmailTemplatePage() {
         setTags((data.tags || []).join(", "));
         setPurpose(data.purpose);
         setNotes(data.notes || "");
+        setIndustry(data.industry || "");
+        setNaicsSectorCode(data.naicsSectorCode || "");
+        setNaicsSubsectorCode(data.naicsSubsectorCode || "");
       })
       .finally(() => setLoading(false));
   }, [params.id]);
@@ -96,6 +107,9 @@ export default function EditEmailTemplatePage() {
             .filter(Boolean),
           purpose,
           notes: notes.trim() || null,
+          industry: industry.trim() || null,
+          naicsSectorCode: naicsSectorCode || null,
+          naicsSubsectorCode: naicsSubsectorCode || null,
         }),
       });
 
@@ -214,7 +228,7 @@ export default function EditEmailTemplatePage() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Title *
+              Template Name * <span className="font-normal text-gray-400">(internal reference)</span>
             </label>
             <input
               type="text"
@@ -278,6 +292,28 @@ export default function EditEmailTemplatePage() {
                 placeholder="Comma-separated tags"
                 className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
               />
+            </div>
+          </div>
+
+          {/* Industry / NAICS Classification */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Industry</label>
+              <input type="text" value={industry} onChange={(e) => setIndustry(e.target.value)} placeholder="e.g. Financial Services" className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Industry Sector (NAICS)</label>
+              <select value={naicsSectorCode} onChange={(e) => { setNaicsSectorCode(e.target.value); setNaicsSubsectorCode(""); }} className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700">
+                <option value="">Select sector...</option>
+                {naicsSectors.map((s) => <option key={s.code} value={s.code}>{s.code} — {s.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Subsector (NAICS)</label>
+              <select value={naicsSubsectorCode} onChange={(e) => setNaicsSubsectorCode(e.target.value)} disabled={!naicsSectorCode} className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 disabled:opacity-50">
+                <option value="">Select subsector...</option>
+                {naicsSectors.find((s) => s.code === naicsSectorCode)?.subsectors.map((sub) => <option key={sub.code} value={sub.code}>{sub.code} — {sub.name}</option>)}
+              </select>
             </div>
           </div>
 

@@ -258,6 +258,9 @@ model EmailTemplate {
   tags      Json                 @default("[]")
   notes     String?              @db.Text @map("admin_notes")
   purpose   EmailTemplatePurpose @default(OTHER)
+  industry  String?
+  naicsSectorCode    String?    @map("naics_sector_code")
+  naicsSubsectorCode String?    @map("naics_subsector_code")
   systemKey String?              @unique @map("system_key")
   createdBy String?              @map("created_by")
   updatedBy String?              @map("updated_by")

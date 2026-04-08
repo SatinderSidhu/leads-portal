@@ -80,7 +80,7 @@ leads-portal/
 | StatusHistory | status_history | Audit trail of status changes |
 | Nda | ndas | Non-disclosure agreements (one per lead) |
 | LeadFile | lead_files | File attachments on leads |
-| EmailTemplate | email_templates | Reusable email templates with HTML body |
+| EmailTemplate | email_templates | Reusable email templates with HTML body, industry, naicsSectorCode, naicsSubsectorCode, systemKey for system templates |
 | EmailFlow | email_flows | Visual email automation flows (JSON nodes/edges) |
 | SentEmail | sent_emails | Email tracking (sent, opened, failed) |
 | EmailAttachment | email_attachments | File attachments on sent emails |

@@ -39,13 +39,16 @@ export async function POST(req: Request) {
     );
   }
 
-  const { title, subject, body: templateBody, tags, notes, purpose } = body as {
+  const { title, subject, body: templateBody, tags, notes, purpose, industry, naicsSectorCode, naicsSubsectorCode } = body as {
     title?: string;
     subject?: string;
     body?: string;
     tags?: string[];
     notes?: string;
     purpose?: string;
+    industry?: string;
+    naicsSectorCode?: string;
+    naicsSubsectorCode?: string;
   };
 
   const errors: string[] = [];
@@ -70,6 +73,9 @@ export async function POST(req: Request) {
         tags: tags || [],
         notes: notes?.trim() || null,
         purpose: (purpose as EmailTemplatePurpose) || "OTHER",
+        industry: industry?.trim() || null,
+        naicsSectorCode: naicsSectorCode?.trim() || null,
+        naicsSubsectorCode: naicsSubsectorCode?.trim() || null,
         createdBy: session?.name || "Unknown",
       },
     });
