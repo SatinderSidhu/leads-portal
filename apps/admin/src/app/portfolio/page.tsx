@@ -24,7 +24,6 @@ export default function PortfolioPage() {
   const [services, setServices] = useState<Service[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"services" | "projects">("services");
 
   useEffect(() => {
     Promise.all([
@@ -45,7 +44,7 @@ export default function PortfolioPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Portfolio</h1>
@@ -57,72 +56,67 @@ export default function PortfolioPage() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="flex gap-2">
-        {(["services", "projects"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
-              tab === t ? "bg-[#01358d] text-white" : "bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300"
-            }`}
-          >
-            {t === "services" ? `Services (${services.length})` : `Projects (${projects.length})`}
-          </button>
-        ))}
+      {/* Services Section */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Services ({services.length})</h2>
+        </div>
+        {services.length === 0 ? (
+          <p className="text-gray-400 text-sm py-6 text-center bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700">No services added yet.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {services.map((svc) => (
+              <div
+                key={svc.id}
+                onClick={() => router.push(`/portfolio/services/${svc.id}`)}
+                className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-5 hover:shadow-md hover:border-[#01358d]/30 dark:hover:border-blue-700 transition cursor-pointer"
+              >
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{svc.name}</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">{svc.description}</p>
+                {svc.projects.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
+                    <p className="text-xs text-gray-500 font-medium uppercase mb-1">{svc.projects.length} Project{svc.projects.length !== 1 ? "s" : ""}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {svc.projects.slice(0, 3).map((p) => (
+                        <span key={p.id} className="text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">{p.title}</span>
+                      ))}
+                      {svc.projects.length > 3 && <span className="text-xs text-gray-400">+{svc.projects.length - 3} more</span>}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Services */}
-      {tab === "services" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {services.length === 0 ? (
-            <p className="text-gray-400 text-sm col-span-full py-8 text-center">No services added yet.</p>
-          ) : services.map((svc) => (
-            <div
-              key={svc.id}
-              onClick={() => router.push(`/portfolio/services/${svc.id}`)}
-              className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-5 hover:shadow-md transition cursor-pointer"
-            >
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">{svc.name}</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">{svc.description}</p>
-              {svc.projects.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
-                  <p className="text-xs text-gray-500 font-medium uppercase mb-1">{svc.projects.length} Project{svc.projects.length !== 1 ? "s" : ""}</p>
-                  <div className="flex flex-wrap gap-1">
-                    {svc.projects.slice(0, 3).map((p) => (
-                      <span key={p.id} className="text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full">{p.title}</span>
-                    ))}
-                    {svc.projects.length > 3 && <span className="text-xs text-gray-400">+{svc.projects.length - 3} more</span>}
-                  </div>
+      {/* Projects Section */}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Projects ({projects.length})</h2>
+        </div>
+        {projects.length === 0 ? (
+          <p className="text-gray-400 text-sm py-6 text-center bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700">No projects added yet.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {projects.map((proj) => (
+              <div
+                key={proj.id}
+                onClick={() => router.push(`/portfolio/projects/${proj.id}`)}
+                className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-5 hover:shadow-md hover:border-teal-300 dark:hover:border-teal-700 transition cursor-pointer"
+              >
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-1">{proj.title}</h3>
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {proj.service && <span className="text-xs bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full">{proj.service.name}</span>}
+                  {proj.category && <span className="text-xs bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300 px-2 py-0.5 rounded-full">{proj.category}</span>}
+                  {proj.domain && <span className="text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full">{proj.domain}</span>}
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Projects */}
-      {tab === "projects" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {projects.length === 0 ? (
-            <p className="text-gray-400 text-sm col-span-full py-8 text-center">No projects added yet.</p>
-          ) : projects.map((proj) => (
-            <div
-              key={proj.id}
-              onClick={() => router.push(`/portfolio/projects/${proj.id}`)}
-              className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-5 hover:shadow-md transition cursor-pointer"
-            >
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-1">{proj.title}</h3>
-              <div className="flex flex-wrap gap-2 mt-2">
-                {proj.service && <span className="text-xs bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 px-2 py-0.5 rounded-full">{proj.service.name}</span>}
-                {proj.category && <span className="text-xs bg-teal-50 dark:bg-teal-900/20 text-teal-700 dark:text-teal-300 px-2 py-0.5 rounded-full">{proj.category}</span>}
-                {proj.domain && <span className="text-xs bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 px-2 py-0.5 rounded-full">{proj.domain}</span>}
+                {proj.customerName && <p className="text-xs text-gray-500 mt-2">Client: {proj.customerName}</p>}
               </div>
-              {proj.customerName && <p className="text-xs text-gray-500 mt-2">Client: {proj.customerName}</p>}
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
