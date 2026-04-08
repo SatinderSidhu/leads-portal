@@ -432,7 +432,7 @@ export default function LeadDetailPage() {
 
   // Load templates for compose
   useEffect(() => {
-    fetch("/api/email-templates")
+    fetch("/api/email-templates?type=compose")
       .then((res) => res.json())
       .then((data) => {
         if (Array.isArray(data)) setTemplates(data);

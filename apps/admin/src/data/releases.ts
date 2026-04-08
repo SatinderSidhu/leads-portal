@@ -7,9 +7,21 @@ export interface Release {
 
 export const releases: Release[] = [
   {
-    version: "4.10",
+    version: "4.11",
     date: "2026-04-08",
     commitId: "pending",
+    changes: [
+      "Email template type separation: system templates excluded from email compose and flow builder",
+      "Email compose on lead detail now only shows compose templates (not system templates)",
+      "Email flow builder now only shows compose templates as draggable nodes",
+      "API documentation: comprehensive OpenAPI v5.0 with all 90+ endpoints (previously only 3 external endpoints)",
+      "Documentation updates: TRD v1.9, BRD v1.9, CLAUDE.md, Knowledge Base articles",
+    ],
+  },
+  {
+    version: "4.10",
+    date: "2026-04-08",
+    commitId: "d70cfbd",
     changes: [
       "Fix: NAICS dropdowns not loading in portfolio projects and email templates (API returns array, not object)",
       "Fix: Admin login page logo broken (middleware was redirecting static image files to /login)",

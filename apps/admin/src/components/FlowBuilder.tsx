@@ -104,7 +104,7 @@ export default function FlowBuilder({
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   useEffect(() => {
-    fetch("/api/email-templates")
+    fetch("/api/email-templates?type=compose")
       .then((res) => res.json())
       .then(setTemplates);
   }, []);

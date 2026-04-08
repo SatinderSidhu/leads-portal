@@ -4,8 +4,8 @@
 
 | Field | Detail |
 |-------|--------|
-| Document Version | 1.8 |
-| Last Updated | March 13, 2026 |
+| Document Version | 1.9 |
+| Last Updated | April 8, 2026 |
 | Status | Active |
 
 ---
@@ -1146,6 +1146,7 @@ _This section will be updated as new features are planned and developed._
 | 4.2 | April 5, 2026 | Admin preview mode (impersonate customer portal without triggering notifications/audit), customer portal redesign (left sidebar navigation with collapse/expand/lock, card-based dashboard, SVG icons, progress stepper, Your Representative card showing assigned admin), NDA Request flow (customer can request NDA with editable message + file upload, audit logged, admin notified) | — |
 | 4.3 | April 5, 2026 | Email unsubscribe feature (unsubscribe link in all customer-facing emails, /unsubscribe page on customer portal, enables Do Not Contact on all leads, audit logged, admin notified), chat widget improvements (close button in header, welcome message) | — |
 | 4.4 | April 5, 2026 | Editable system email templates (10 system-triggered emails now stored as customizable templates in DB, admin can edit subject/body via RichTextEditor with merge tag support, Compose/System tabs on Email Templates page, templates cannot be deleted, fallback to hardcoded defaults) | — |
+| 4.11 | April 8, 2026 | Email template type separation: system templates excluded from email compose and flow builder (only compose templates shown). Comprehensive API documentation update (OpenAPI v5.0 with all 90+ endpoints) | — |
 | 4.10 | April 8, 2026 | Bugfix: NAICS dropdowns not loading in portfolio projects and email templates, admin login logo broken due to middleware redirect | — |
 | 4.9 | April 7, 2026 | Email draft scheduling: multiple drafts per lead, draft statuses (Draft/Approved/Scheduled/Cancelled) with color-coded cards, datetime picker for scheduled emails, inline preview, edit/delete actions. Foundation for future automated email sending | — |
 | 4.8 | April 7, 2026 | Next Steps enhancements: tracks who assigned each task (assignedBy), task completion notifies both assignedTo and assignedBy, new "Task Completed" notification preference in Communications settings, system email templates for task assigned/completed (admin-editable), 2-row UI with auto-expanding description textarea | — |

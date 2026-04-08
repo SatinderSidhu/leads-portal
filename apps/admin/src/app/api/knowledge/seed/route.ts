@@ -164,7 +164,9 @@ To re-enable communication, click **"Disable"** on the Do Not Contact banner.` }
 4. Click **"Send"**
 
 ## Email Templates
-Go to **Email Templates** in the sidebar to create reusable templates. Templates support merge tags:
+Go to **Email Templates** in the sidebar to create reusable compose templates. Only **compose templates** (user-created) appear in the template selector when composing emails — system templates are managed separately.
+
+Templates support merge tags:
 - \`{{customerName}}\`, \`{{projectName}}\`, \`{{phone}}\`, \`{{city}}\`, \`{{status}}\`, \`{{stage}}\`, \`{{source}}\`, \`{{dateCreated}}\`
 
 ## Email Tracking
@@ -276,6 +278,7 @@ Go to **Notifications** in the sidebar to manage your email notification prefere
 | Lead Assigned | A lead is assigned to you |
 | SOW Signed | Customer signs a Scope of Work |
 | NDA Signed | Customer signs an NDA |
+| Task Completed | An assigned task is marked as completed |
 
 ## Notification Email
 By default, notifications go to your profile email. You can set a separate notification email address on this page.
@@ -573,7 +576,13 @@ The system automatically sends emails to customers for various events (welcome, 
 1. Go to **Email Templates** in the sidebar
 2. Click the **System Templates** tab (next to Compose Templates)
 
-## Available System Templates
+## Compose vs System Templates
+
+The Email Templates page has two tabs:
+- **Compose Templates**: User-created templates for manual email composition. These are the only templates shown in the email compose dropdown on lead detail and in the email flow builder.
+- **System Templates**: Automated email templates triggered by the system. These are NOT shown in email compose or flow builder — they are only used by the system when specific events occur.
+
+## Available System Templates (12)
 
 | Template | When It's Sent |
 |----------|---------------|
@@ -587,6 +596,8 @@ The system automatically sends emails to customers for various events (welcome, 
 | Admin Message | When admin sends a message via live chat |
 | NDA Signed Confirmation | Sent to customer after NDA is signed |
 | SOW Signed Confirmation | Sent to customer after SOW is approved |
+| Task Assigned | When a task is assigned to an admin |
+| Task Completed | When an assigned task is marked as completed |
 
 ## Editing a Template
 

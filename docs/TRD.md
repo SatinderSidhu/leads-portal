@@ -4,8 +4,8 @@
 
 | Field | Detail |
 |-------|--------|
-| Document Version | 1.8 |
-| Last Updated | March 13, 2026 |
+| Document Version | 1.9 |
+| Last Updated | April 8, 2026 |
 | Status | Active |
 
 ---
@@ -1536,7 +1536,29 @@ Called from:
   - Displays an eye icon with the current watcher count (e.g., "Watch (3)" or "Unwatch (3)")
   - Click toggles the watch state via `POST` or `DELETE /api/leads/[id]/watch`
 
-### 13.6 Email Templates
+### 13.6 Email Template Types
+
+The system distinguishes between two types of email templates using the `systemKey` field on the `EmailTemplate` model:
+
+#### Compose Templates (`systemKey = null`)
+- User-created reusable templates for manual email composition
+- Used in: email compose on lead detail page, email flow builder, email templates management page (Compose Templates tab)
+- Support merge tags: `{{customerName}}`, `{{projectName}}`, `{{phone}}`, `{{city}}`, `{{status}}`, `{{stage}}`, `{{source}}`, `{{dateCreated}}`
+- Support industry classification: `industry`, `naicsSectorCode`, `naicsSubsectorCode` fields
+- Full CRUD (create, edit, delete)
+
+#### System Templates (`systemKey != null`)
+- 12 system-triggered email templates stored in DB with editable subject/body
+- Used exclusively by the system for automated emails (welcome, status update, NDA/SOW/App Flow ready, comment replies, signed confirmations, task assigned/completed)
+- Managed at `/email-templates` (System Templates tab) — admin can edit but cannot delete
+- Each has a unique `systemKey` (e.g., `system_welcome`, `system_task_assigned`)
+- `getSystemEmailContent()` loads template from DB, replaces merge tags, falls back to hardcoded HTML if missing
+
+#### Template Filtering
+- **API**: `GET /api/email-templates?type=compose` returns only compose templates; `?type=system` returns only system templates; no param returns all
+- **Email compose** (lead detail page): fetches `?type=compose` — system templates are excluded from the template selector
+- **Email flow builder**: fetches `?type=compose` — only compose templates appear as draggable nodes
+- **Email templates page**: fetches both separately, displays in two tabs (Compose Templates / System Templates)
 
 #### Lead Assigned Email
 
@@ -1699,6 +1721,7 @@ The `buildSowPrompt()` function handles 4 scenarios:
 | 4.1 | April 4, 2026 | GET/POST /api/leads/[id]/sow/[sowId]/comments (admin SOW comment API with email notification to customer), updated App Flow comments POST with email notification + audit logging, lead detail: SOW/App Flow sections show comments grouped by version/flow with admin/customer styling + inline reply input, floating chat widget on admin lead detail (replaced inline Messages section, 3s/10s adaptive polling, sound, auto-open on new message), apolloUrl field on Lead model + all APIs, OpenAPI spec v4.0 (Lead schema: 30+ fields, LeadCreate: 25+ fields with all enums, GET /api/v1/leads with filters + pagination) | — |
 | 4.2 | April 5, 2026 | Admin preview mode: HMAC-signed preview token (preview-token.ts in both portals), Admin Preview URL on lead detail (amber card), VisitTracker skips tracking when preview param present, track-visit API validates token server-side. Customer portal redesign: ProjectShell + ProjectSidebar components (collapsible left sidebar replacing top tabs, collapse/expand/hover/lock with localStorage, mobile hamburger overlay), card-based dashboard with SVG icons, progress stepper, Your Representative card (assigned admin photo/name/email), NdaRequestCard + NdaRequestModal (editable message + PDF/Word upload, POST /api/nda/request with audit + note + email to admin) | — |
 | 4.3 | April 5, 2026 | Email unsubscribe: getUnsubscribeFooter() added to all 10 customer-facing email touchpoints (welcome, status, NDA/SOW/App Flow ready, compose, messages, comment replies, NDA/SOW signed), /unsubscribe page on customer portal (pre-filled email, doNotContact toggle), POST /api/unsubscribe (enables doNotContact on all matching leads, audit log, emails admin). ChatWidget improvements: close button moved to header corner, welcome message, bubble hidden when panel open | — |
+| 4.11 | April 8, 2026 | Email template type separation: lead detail email compose and FlowBuilder now fetch only compose templates (`?type=compose`), excluding system templates from template selectors and flow builder node lists. OpenAPI spec v5.0 with all 90+ endpoints documented across 24 tag groups (previously only 3 external endpoints were documented) | — |
 | 4.10 | April 8, 2026 | Bugfix: NAICS dropdown fetch in portfolio/email-templates used d.sectors instead of Array.isArray(d) — dropdowns were empty. Bugfix: admin middleware matcher now excludes image file extensions (.jpg/.png/.svg etc) to prevent login redirect on public static files (logo was broken on login page) | — |
 | 4.9 | April 7, 2026 | EmailDraft model: status field (DRAFT/APPROVED/SCHEDULED/CANCELLED), scheduledAt DateTime. Multiple drafts per lead (no single-draft restriction). Color-coded draft cards (amber/green/blue/gray by status), inline status dropdown, datetime-local picker for scheduled emails, inline preview toggle, edit/delete actions. CRUD API updated for status + scheduledAt. Draft cards show status badge, scheduled time, creator info | — |
 | 4.8 | April 7, 2026 | NextStep model: assignedById field for tracking who assigned the task. NotificationPreference: taskCompleted toggle. 2 new system email templates (system_task_assigned, system_task_completed) with merge tags. Task completion notifies both assignedTo and assignedBy (respects taskCompleted preference). Reassignment updates assignedById. Next Steps UI: 2-row form layout with auto-expanding textarea (focus bg change), smaller controls in row 2. task_completed added to NotificationEvent type + EVENT_TO_PREF_KEY mapping | — |
