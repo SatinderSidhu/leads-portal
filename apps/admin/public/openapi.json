@@ -2,8 +2,8 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Leads Portal API",
-    "version": "4.6.0",
-    "description": "External API for managing leads and content in the KITLabs Leads Portal.\n\nAll endpoints require Bearer token authentication via the Authorization header.\n\n## Authentication\n```\nAuthorization: Bearer <your-api-token>\n```\n\n## Base URL\n- Production: `https://leadsportaladmin.kitlabs.us`\n- Local: `http://localhost:3000`",
+    "version": "5.0.0",
+    "description": "Complete API documentation for the KITLabs Leads Portal.\n\n## Authentication\n\n### Internal APIs (Session-based)\nMost admin endpoints require an active session cookie obtained via `POST /api/auth`. Customer portal endpoints require a customer session via `POST /api/auth` on the customer portal.\n\n### External APIs (Token-based)\nEndpoints under `/api/v1/` require Bearer token authentication:\n```\nAuthorization: Bearer <your-api-token>\n```\n\n## Base URLs\n- Admin Portal (Production): `https://leadsportaladmin.kitlabs.us`\n- Customer Portal (Production): `https://leadsportal.kitlabs.us`\n- Admin Portal (Local): `http://localhost:3000`\n- Customer Portal (Local): `http://localhost:3001`",
     "contact": {
       "name": "KITLabs Inc",
       "url": "https://kitlabs.us"
@@ -12,25 +12,57 @@
   "servers": [
     {
       "url": "https://leadsportaladmin.kitlabs.us",
-      "description": "Production"
+      "description": "Production (Admin)"
     },
     {
       "url": "http://localhost:3000",
-      "description": "Local development"
+      "description": "Local development (Admin)"
     }
+  ],
+  "tags": [
+    { "name": "Authentication", "description": "Admin login/logout" },
+    { "name": "Leads", "description": "Lead CRUD, assignment, and watch list" },
+    { "name": "Lead Status", "description": "Lead status changes and audit trail" },
+    { "name": "Lead Notes & Tasks", "description": "Admin notes and next steps task list" },
+    { "name": "Lead Emails & Drafts", "description": "Email compose, history, drafts, and welcome emails" },
+    { "name": "Lead NDA", "description": "NDA generation and sending" },
+    { "name": "Lead SOW", "description": "SOW upload, AI generation, export, sharing, and comments" },
+    { "name": "Lead App Flows", "description": "App flow CRUD, AI generation, sharing, and comments" },
+    { "name": "Lead Messages", "description": "Secure messaging between admin and customer" },
+    { "name": "Lead Files", "description": "File attachments on leads" },
+    { "name": "Admin Users", "description": "Admin user management and profile" },
+    { "name": "Email Templates", "description": "Email template CRUD" },
+    { "name": "Email Flows", "description": "Visual email automation flows" },
+    { "name": "Content", "description": "Social media content management" },
+    { "name": "Branding", "description": "Company branding configuration" },
+    { "name": "SOW Templates", "description": "Reusable SOW format templates" },
+    { "name": "Portfolio", "description": "Portfolio services and projects" },
+    { "name": "Knowledge Base", "description": "Knowledge base articles" },
+    { "name": "NAICS", "description": "NAICS 2022 industry classification codes" },
+    { "name": "Dashboard & Activity", "description": "Dashboard stats and activity feed" },
+    { "name": "Zoho CRM", "description": "Zoho CRM integration and sync" },
+    { "name": "Notifications", "description": "Notification preferences" },
+    { "name": "Tracking & Webhooks", "description": "Email open tracking and inbound email webhooks" },
+    { "name": "External API (v1)", "description": "Token-authenticated external API for leads and content" }
   ],
   "components": {
     "securitySchemes": {
+      "sessionAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "admin-session",
+        "description": "Session cookie obtained via POST /api/auth"
+      },
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "API token provided by the admin. Pass as: Authorization: Bearer <token>"
+        "description": "API token for external v1 endpoints. Pass as: Authorization: Bearer <token>"
       }
     },
     "schemas": {
       "Lead": {
         "type": "object",
-        "description": "Full lead object returned by the API",
+        "description": "Full lead object",
         "properties": {
           "id": { "type": "string", "format": "uuid" },
           "projectName": { "type": "string" },
@@ -41,9 +73,9 @@
           "city": { "type": "string", "nullable": true },
           "zip": { "type": "string", "nullable": true },
           "dateCreated": { "type": "string", "format": "date-time", "nullable": true },
-          "source": { "type": "string", "description": "LeadSource enum value" },
-          "status": { "type": "string", "description": "LeadStatus enum value" },
-          "stage": { "type": "string", "description": "LeadStage enum value" },
+          "source": { "type": "string", "description": "LeadSource enum" },
+          "status": { "type": "string", "description": "LeadStatus enum" },
+          "stage": { "type": "string", "description": "LeadStage enum" },
           "jobTitle": { "type": "string", "nullable": true },
           "companyName": { "type": "string", "nullable": true },
           "location": { "type": "string", "nullable": true },
@@ -55,27 +87,27 @@
           "apolloUrl": { "type": "string", "nullable": true },
           "facebookUrl": { "type": "string", "nullable": true },
           "twitterUrl": { "type": "string", "nullable": true },
-          "naicsSectorCode": { "type": "string", "nullable": true, "description": "2-digit NAICS sector code" },
-          "naicsSubsectorCode": { "type": "string", "nullable": true, "description": "3-digit NAICS subsector code" },
+          "naicsSectorCode": { "type": "string", "nullable": true },
+          "naicsSubsectorCode": { "type": "string", "nullable": true },
           "extractedDate": { "type": "string", "format": "date-time", "nullable": true },
           "lastContactedDate": { "type": "string", "format": "date-time", "nullable": true },
-          "leadScore": { "type": "integer", "nullable": true, "description": "1-100 quality score" },
+          "leadScore": { "type": "integer", "nullable": true, "minimum": 1, "maximum": 100 },
           "connectionRequestSent": { "type": "boolean" },
           "connectionAccepted": { "type": "boolean" },
           "initialMessageSent": { "type": "boolean" },
           "meetingBooked": { "type": "boolean" },
           "meetingDate": { "type": "string", "format": "date-time", "nullable": true },
           "responseReceived": { "type": "boolean" },
-          "emailSent": { "type": "boolean", "description": "Whether welcome email has been sent" },
-          "doNotContact": { "type": "boolean", "description": "Whether outbound emails are blocked" },
-          "zohoLeadId": { "type": "string", "nullable": true, "description": "Linked Zoho CRM record ID" },
+          "emailSent": { "type": "boolean" },
+          "doNotContact": { "type": "boolean" },
+          "zohoLeadId": { "type": "string", "nullable": true },
           "assignedTo": {
             "type": "object",
             "nullable": true,
-            "description": "Assigned admin user",
             "properties": {
               "id": { "type": "string" },
-              "name": { "type": "string" }
+              "name": { "type": "string" },
+              "email": { "type": "string" }
             }
           },
           "createdBy": { "type": "string", "nullable": true },
@@ -83,51 +115,80 @@
           "updatedAt": { "type": "string", "format": "date-time" }
         }
       },
+      "LeadDetail": {
+        "type": "object",
+        "description": "Full lead with related data (notes, status history, emails, files, watchers)",
+        "allOf": [
+          { "$ref": "#/components/schemas/Lead" },
+          {
+            "type": "object",
+            "properties": {
+              "notes": { "type": "array", "items": { "$ref": "#/components/schemas/Note" } },
+              "statusHistory": { "type": "array", "items": { "$ref": "#/components/schemas/StatusHistory" } },
+              "sentEmails": { "type": "array", "items": { "$ref": "#/components/schemas/SentEmail" } },
+              "receivedEmails": { "type": "array", "items": { "$ref": "#/components/schemas/ReceivedEmail" } },
+              "files": { "type": "array", "items": { "$ref": "#/components/schemas/LeadFile" } },
+              "watchers": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "admin": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string" },
+                        "name": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              },
+              "previewToken": { "type": "string" },
+              "_count": {
+                "type": "object",
+                "properties": {
+                  "sentEmails": { "type": "integer" }
+                }
+              }
+            }
+          }
+        ]
+      },
       "LeadCreate": {
         "type": "object",
         "required": ["projectName", "customerName", "customerEmail", "projectDescription"],
-        "description": "Fields for creating a new lead. Only the 4 required fields are mandatory — everything else is optional.",
         "properties": {
-          "projectName": { "type": "string", "description": "Name of the project or opportunity (required)" },
-          "customerName": { "type": "string", "description": "Full name of the customer/lead (required)" },
-          "customerEmail": { "type": "string", "format": "email", "description": "Customer's email address (required, must be valid)" },
-          "projectDescription": { "type": "string", "description": "Detailed project description (required)" },
-          "phone": { "type": "string", "description": "Phone number" },
-          "city": { "type": "string", "description": "City" },
-          "zip": { "type": "string", "description": "Zip/postal code" },
-          "dateCreated": { "type": "string", "format": "date", "description": "Date lead was captured (ISO 8601, e.g. 2026-04-01)" },
-          "leadSource": {
-            "type": "string",
-            "enum": ["MANUAL", "AGENT", "BARK", "LINKEDIN_SALES_NAV", "APOLLO", "LINKEDIN_COMPANY_PAGE", "REFERRAL", "WEBSITE", "COLD_OUTREACH", "EVENT", "OTHER"],
-            "description": "Where the lead came from. Maps to 'source' field on the lead. Defaults to AGENT if not provided."
-          },
-          "leadStatus": {
-            "type": "string",
-            "enum": ["COLD", "WARM", "HOT", "ACTIVE", "CLOSED", "NEW", "CONTACTED", "RESPONDED", "MEETING_BOOKED", "QUALIFIED", "DISQUALIFIED", "NURTURE"],
-            "description": "Sales pipeline stage. Maps to 'stage' field on the lead. Defaults to COLD if not provided."
-          },
-          "jobTitle": { "type": "string", "description": "Role/title (e.g. CTO, VP Engineering)" },
-          "companyName": { "type": "string", "description": "Company name" },
-          "location": { "type": "string", "description": "City/State/Region (e.g. San Francisco, CA)" },
-          "industry": { "type": "string", "description": "Industry vertical (e.g. Software Development). If provided and NAICS codes are not, NAICS codes will be auto-resolved." },
-          "companySize": { "type": "string", "description": "Employee range (e.g. 1-10, 11-50, 51-200, 201-500, 501-1000, 1001-5000, 5001-10000, 10000+)" },
-          "companyWebsite": { "type": "string", "description": "Company website URL" },
-          "aboutCompany": { "type": "string", "description": "Description of what the company does" },
-          "linkedinUrl": { "type": "string", "description": "LinkedIn profile URL" },
-          "apolloUrl": { "type": "string", "description": "Apollo.io profile URL" },
-          "facebookUrl": { "type": "string", "description": "Facebook profile URL" },
-          "twitterUrl": { "type": "string", "description": "Twitter/X profile URL" },
-          "naicsSectorCode": { "type": "string", "description": "2-digit NAICS sector code (e.g. '54'). If omitted, auto-resolved from industry text." },
-          "naicsSubsectorCode": { "type": "string", "description": "3-digit NAICS subsector code (e.g. '541'). If omitted, auto-resolved from industry text." },
-          "extractedDate": { "type": "string", "format": "date-time", "description": "When the lead was first captured. Auto-defaults to current timestamp if not provided." },
-          "lastContactedDate": { "type": "string", "format": "date-time", "description": "Date of most recent outreach" },
-          "leadScore": { "type": "integer", "minimum": 1, "maximum": 100, "description": "Lead quality score (1-100)" },
-          "connectionRequestSent": { "type": "boolean", "default": false, "description": "Whether LinkedIn connection request was sent" },
-          "connectionAccepted": { "type": "boolean", "default": false, "description": "Whether the lead accepted the connection" },
-          "initialMessageSent": { "type": "boolean", "default": false, "description": "Whether first outreach message was sent" },
-          "meetingBooked": { "type": "boolean", "default": false, "description": "Whether the lead booked a meeting" },
-          "meetingDate": { "type": "string", "format": "date-time", "description": "Scheduled meeting date/time" },
-          "responseReceived": { "type": "boolean", "default": false, "description": "Whether any reply was received" }
+          "projectName": { "type": "string" },
+          "customerName": { "type": "string" },
+          "customerEmail": { "type": "string", "format": "email" },
+          "projectDescription": { "type": "string" },
+          "phone": { "type": "string" },
+          "city": { "type": "string" },
+          "zip": { "type": "string" },
+          "dateCreated": { "type": "string", "format": "date" },
+          "source": { "type": "string", "enum": ["MANUAL", "AGENT", "BARK", "LINKEDIN_SALES_NAV", "APOLLO", "LINKEDIN_COMPANY_PAGE", "REFERRAL", "WEBSITE", "COLD_OUTREACH", "EVENT", "OTHER"], "default": "MANUAL" },
+          "stage": { "type": "string", "enum": ["COLD", "WARM", "HOT", "ACTIVE", "CLOSED", "NEW", "CONTACTED", "RESPONDED", "MEETING_BOOKED", "QUALIFIED", "DISQUALIFIED", "NURTURE"], "default": "COLD" },
+          "jobTitle": { "type": "string" },
+          "companyName": { "type": "string" },
+          "location": { "type": "string" },
+          "industry": { "type": "string" },
+          "companySize": { "type": "string" },
+          "companyWebsite": { "type": "string" },
+          "aboutCompany": { "type": "string" },
+          "linkedinUrl": { "type": "string" },
+          "apolloUrl": { "type": "string" },
+          "naicsSectorCode": { "type": "string" },
+          "naicsSubsectorCode": { "type": "string" },
+          "extractedDate": { "type": "string", "format": "date-time" },
+          "lastContactedDate": { "type": "string", "format": "date-time" },
+          "leadScore": { "type": "integer", "minimum": 1, "maximum": 100 },
+          "connectionRequestSent": { "type": "boolean", "default": false },
+          "connectionAccepted": { "type": "boolean", "default": false },
+          "initialMessageSent": { "type": "boolean", "default": false },
+          "meetingBooked": { "type": "boolean", "default": false },
+          "meetingDate": { "type": "string", "format": "date-time" },
+          "responseReceived": { "type": "boolean", "default": false },
+          "sendEmail": { "type": "boolean", "description": "Send welcome email on creation" }
         }
       },
       "LeadList": {
@@ -145,6 +206,264 @@
           }
         }
       },
+      "Note": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "content": { "type": "string" },
+          "leadId": { "type": "string" },
+          "createdBy": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "NextStep": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "content": { "type": "string" },
+          "leadId": { "type": "string" },
+          "dueDate": { "type": "string", "format": "date-time", "nullable": true },
+          "completed": { "type": "boolean" },
+          "completedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "createdBy": { "type": "string" },
+          "assignedTo": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" }
+            }
+          },
+          "assignedBy": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" }
+            }
+          },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "StatusHistory": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "fromStatus": { "type": "string", "nullable": true },
+          "toStatus": { "type": "string" },
+          "changedBy": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AuditLog": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "leadId": { "type": "string" },
+          "action": { "type": "string" },
+          "details": { "type": "string", "nullable": true },
+          "changedBy": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "SentEmail": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "subject": { "type": "string" },
+          "body": { "type": "string" },
+          "sentBy": { "type": "string" },
+          "status": { "type": "string", "enum": ["SENT", "OPENED", "FAILED"] },
+          "openedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "template": {
+            "type": "object",
+            "nullable": true,
+            "properties": {
+              "title": { "type": "string" },
+              "purpose": { "type": "string" }
+            }
+          },
+          "attachments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "fileName": { "type": "string" },
+                "filePath": { "type": "string" }
+              }
+            }
+          },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ReceivedEmail": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "from": { "type": "string" },
+          "subject": { "type": "string" },
+          "body": { "type": "string" },
+          "receivedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "LeadFile": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "fileName": { "type": "string" },
+          "filePath": { "type": "string" },
+          "fileSize": { "type": "integer" },
+          "fileType": { "type": "string" },
+          "uploadedBy": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Nda": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "leadId": { "type": "string" },
+          "content": { "type": "string" },
+          "status": { "type": "string", "enum": ["GENERATED", "SENT", "SIGNED"] },
+          "signedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "signerName": { "type": "string", "nullable": true },
+          "signerIp": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "ScopeOfWork": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "leadId": { "type": "string" },
+          "version": { "type": "integer" },
+          "content": { "type": "string", "nullable": true, "description": "HTML content for AI-generated SOWs" },
+          "fileName": { "type": "string", "nullable": true },
+          "filePath": { "type": "string", "nullable": true },
+          "fileSize": { "type": "integer", "nullable": true },
+          "isDraft": { "type": "boolean" },
+          "sharedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "sharedBy": { "type": "string", "nullable": true },
+          "signedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "signerName": { "type": "string", "nullable": true },
+          "uploadedBy": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "SowComment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "sowId": { "type": "string" },
+          "content": { "type": "string" },
+          "authorName": { "type": "string" },
+          "authorType": { "type": "string", "enum": ["customer", "admin"] },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AppFlow": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "leadId": { "type": "string" },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "flowType": { "type": "string", "enum": ["BASIC", "WIREFRAME"] },
+          "nodes": { "type": "array", "items": { "type": "object" } },
+          "edges": { "type": "array", "items": { "type": "object" } },
+          "sharedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "sharedBy": { "type": "string", "nullable": true },
+          "createdBy": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "_count": {
+            "type": "object",
+            "properties": {
+              "comments": { "type": "integer" }
+            }
+          }
+        }
+      },
+      "AppFlowComment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "appFlowId": { "type": "string" },
+          "content": { "type": "string" },
+          "authorName": { "type": "string" },
+          "authorType": { "type": "string", "enum": ["customer", "admin"] },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Message": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "leadId": { "type": "string" },
+          "content": { "type": "string" },
+          "senderName": { "type": "string" },
+          "senderType": { "type": "string", "enum": ["admin", "customer"] },
+          "readAt": { "type": "string", "format": "date-time", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "EmailDraft": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "leadId": { "type": "string" },
+          "subject": { "type": "string" },
+          "body": { "type": "string" },
+          "cc": { "type": "string", "nullable": true },
+          "bcc": { "type": "string", "nullable": true },
+          "status": { "type": "string", "enum": ["DRAFT", "APPROVED", "SCHEDULED", "CANCELLED"] },
+          "scheduledAt": { "type": "string", "format": "date-time", "nullable": true },
+          "createdBy": { "type": "string" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AdminUser": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "email": { "type": "string" },
+          "username": { "type": "string" },
+          "active": { "type": "boolean" },
+          "profilePicture": { "type": "string", "nullable": true },
+          "emailSignature": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "EmailTemplate": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "subject": { "type": "string" },
+          "body": { "type": "string" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "notes": { "type": "string", "nullable": true },
+          "purpose": { "type": "string", "enum": ["WELCOME", "FOLLOW_UP", "REMINDER", "NOTIFICATION", "PROMOTIONAL", "OTHER"], "nullable": true },
+          "industry": { "type": "string", "nullable": true },
+          "naicsSectorCode": { "type": "string", "nullable": true },
+          "naicsSubsectorCode": { "type": "string", "nullable": true },
+          "systemKey": { "type": "string", "nullable": true, "description": "Non-null for system email templates" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "EmailFlow": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "nodes": { "type": "array", "items": { "type": "object" } },
+          "edges": { "type": "array", "items": { "type": "object" } },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
       "Content": {
         "type": "object",
         "properties": {
@@ -158,6 +477,161 @@
           "createdAt": { "type": "string", "format": "date-time" }
         }
       },
+      "BrandingConfig": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "companyName": { "type": "string" },
+          "logoPath": { "type": "string", "nullable": true },
+          "website": { "type": "string", "nullable": true },
+          "primaryColor": { "type": "string" },
+          "accentColor": { "type": "string" },
+          "footerText": { "type": "string", "nullable": true },
+          "copyrightText": { "type": "string", "nullable": true }
+        }
+      },
+      "SowTemplate": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "content": { "type": "string", "nullable": true },
+          "fileName": { "type": "string", "nullable": true },
+          "filePath": { "type": "string", "nullable": true },
+          "industry": { "type": "string", "nullable": true },
+          "projectType": { "type": "string", "nullable": true },
+          "durationRange": { "type": "string", "nullable": true },
+          "costRange": { "type": "string", "nullable": true },
+          "isDefault": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "PortfolioService": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "emailScript": { "type": "string", "nullable": true },
+          "phoneScript": { "type": "string", "nullable": true },
+          "meetingScript": { "type": "string", "nullable": true },
+          "documents": { "type": "array", "items": { "type": "object", "properties": { "name": { "type": "string" }, "url": { "type": "string" } } } },
+          "urls": { "type": "array", "items": { "type": "object", "properties": { "label": { "type": "string" }, "url": { "type": "string" } } } },
+          "sortOrder": { "type": "integer" },
+          "projects": { "type": "array", "items": { "$ref": "#/components/schemas/PortfolioProject" } },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "PortfolioProject": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "description": { "type": "string", "nullable": true },
+          "serviceId": { "type": "string", "nullable": true },
+          "category": { "type": "string", "nullable": true },
+          "domain": { "type": "string", "nullable": true },
+          "industry": { "type": "string", "nullable": true },
+          "industrySector": { "type": "string", "nullable": true },
+          "industrySubsector": { "type": "string", "nullable": true },
+          "technologies": { "type": "array", "items": { "type": "string" } },
+          "customerName": { "type": "string", "nullable": true },
+          "customerDetail": { "type": "string", "nullable": true },
+          "demoVideoUrl": { "type": "string", "nullable": true },
+          "portfolioUrl": { "type": "string", "nullable": true },
+          "customerReviewUrl": { "type": "string", "nullable": true },
+          "additionalLinks": { "type": "array", "items": { "type": "object", "properties": { "label": { "type": "string" }, "url": { "type": "string" } } } },
+          "documents": { "type": "array", "items": { "type": "object" } },
+          "emailScript": { "type": "string", "nullable": true },
+          "phoneScript": { "type": "string", "nullable": true },
+          "meetingScript": { "type": "string", "nullable": true },
+          "completedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "KnowledgeArticle": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "title": { "type": "string" },
+          "slug": { "type": "string" },
+          "content": { "type": "string" },
+          "category": { "type": "string", "nullable": true },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "sortOrder": { "type": "integer" },
+          "published": { "type": "boolean" },
+          "createdAt": { "type": "string", "format": "date-time" }
+        }
+      },
+      "NaicsSector": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "code": { "type": "string" },
+          "title": { "type": "string" },
+          "subsectors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": { "type": "string" },
+                "code": { "type": "string" },
+                "title": { "type": "string" }
+              }
+            }
+          }
+        }
+      },
+      "NotificationPreference": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "adminId": { "type": "string" },
+          "notificationEmail": { "type": "string", "nullable": true },
+          "newLeadCreated": { "type": "boolean" },
+          "emailSentToCustomer": { "type": "boolean" },
+          "customerResponse": { "type": "boolean" },
+          "customerPortalVisit": { "type": "boolean" },
+          "customerComment": { "type": "boolean" },
+          "leadStatusChange": { "type": "boolean" },
+          "leadAssigned": { "type": "boolean" },
+          "sowSigned": { "type": "boolean" },
+          "ndaSigned": { "type": "boolean" },
+          "taskCompleted": { "type": "boolean" }
+        }
+      },
+      "DashboardStats": {
+        "type": "object",
+        "properties": {
+          "admin": { "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" } } },
+          "stats": {
+            "type": "object",
+            "properties": {
+              "totalLeads": { "type": "integer" },
+              "myLeads": { "type": "integer" },
+              "newToday": { "type": "integer" },
+              "thisWeek": { "type": "integer" },
+              "activePipeline": { "type": "integer" },
+              "myTasks": { "type": "integer" },
+              "needsAttention": { "type": "integer" },
+              "unreadChats": { "type": "integer" }
+            }
+          },
+          "engagement": {
+            "type": "object",
+            "properties": {
+              "emailsOpened": { "type": "integer" },
+              "portalVisits": { "type": "integer" },
+              "comments": { "type": "integer" },
+              "replies": { "type": "integer" }
+            }
+          },
+          "needsAttention": { "type": "array", "items": { "type": "object" } },
+          "myTasks": { "type": "array", "items": { "$ref": "#/components/schemas/NextStep" } },
+          "statusDistribution": { "type": "object", "additionalProperties": { "type": "integer" } }
+        }
+      },
       "Error": {
         "type": "object",
         "properties": {
@@ -167,37 +641,2070 @@
       }
     }
   },
-  "security": [{ "bearerAuth": [] }],
+  "security": [{ "sessionAuth": [] }],
   "paths": {
-    "/api/v1/leads": {
+    "/api/auth": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Admin login",
+        "description": "Authenticate with username and password. Sets a session cookie on success.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["username", "password"],
+                "properties": {
+                  "username": { "type": "string" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "name": { "type": "string" } } } } }
+          },
+          "401": { "description": "Invalid credentials" }
+        }
+      },
+      "delete": {
+        "tags": ["Authentication"],
+        "summary": "Admin logout",
+        "description": "Clear the session cookie and log out.",
+        "responses": {
+          "200": {
+            "description": "Logout successful",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } }
+          }
+        }
+      }
+    },
+    "/api/leads": {
       "get": {
         "tags": ["Leads"],
         "summary": "List leads",
-        "description": "Returns a paginated list of leads with optional filters. Supports full-text search across customer name, email, company name, and job title.",
+        "description": "Returns a paginated list of leads with optional filters and sorting.",
         "parameters": [
-          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Page number (starts at 1)" },
-          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 }, "description": "Items per page (max 100)" },
-          { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search across name, email, company, job title (case-insensitive)" },
-          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["NEW", "SOW_READY", "SOW_SIGNED", "APP_FLOW_READY", "DESIGN_READY", "DESIGN_APPROVED", "BUILD_IN_PROGRESS", "BUILD_READY_FOR_REVIEW", "BUILD_SUBMITTED", "GO_LIVE", "LOST", "NO_RESPONSE", "ON_HOLD", "CANCELLED"] }, "description": "Filter by project status" },
-          { "name": "stage", "in": "query", "schema": { "type": "string", "enum": ["COLD", "WARM", "HOT", "ACTIVE", "CLOSED", "NEW", "CONTACTED", "RESPONDED", "MEETING_BOOKED", "QUALIFIED", "DISQUALIFIED", "NURTURE"] }, "description": "Filter by sales stage" },
-          { "name": "source", "in": "query", "schema": { "type": "string", "enum": ["MANUAL", "AGENT", "BARK", "LINKEDIN_SALES_NAV", "APOLLO", "LINKEDIN_COMPANY_PAGE", "REFERRAL", "WEBSITE", "COLD_OUTREACH", "EVENT", "OTHER"] }, "description": "Filter by lead source" },
-          { "name": "industry", "in": "query", "schema": { "type": "string" }, "description": "Filter by industry (partial match, case-insensitive)" },
-          { "name": "assignedTo", "in": "query", "schema": { "type": "string" }, "description": "Filter by assigned admin name (partial match). Use 'unassigned' to filter leads with no admin assigned." },
-          { "name": "sortBy", "in": "query", "schema": { "type": "string", "enum": ["updatedAt", "createdAt", "projectName", "customerName", "customerEmail", "source", "status", "stage", "assignedTo"], "default": "updatedAt" }, "description": "Sort by field (default: updatedAt)" },
-          { "name": "sortOrder", "in": "query", "schema": { "type": "string", "enum": ["asc", "desc"], "default": "desc" }, "description": "Sort direction (default: desc)" }
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 } },
+          { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search across name, email, company, job title" },
+          { "name": "status", "in": "query", "schema": { "type": "string" }, "description": "Filter by LeadStatus enum" },
+          { "name": "stage", "in": "query", "schema": { "type": "string" }, "description": "Filter by LeadStage enum" },
+          { "name": "source", "in": "query", "schema": { "type": "string" }, "description": "Filter by LeadSource enum" },
+          { "name": "industry", "in": "query", "schema": { "type": "string" }, "description": "Filter by industry (partial match)" },
+          { "name": "assignedTo", "in": "query", "schema": { "type": "string" }, "description": "'me', 'unassigned', admin ID, or 'all'" },
+          { "name": "sortBy", "in": "query", "schema": { "type": "string", "default": "updatedAt", "enum": ["updatedAt", "createdAt", "projectName", "customerName", "customerEmail", "source", "status", "stage", "assignedTo"] } },
+          { "name": "sortOrder", "in": "query", "schema": { "type": "string", "default": "desc", "enum": ["asc", "desc"] } }
         ],
         "responses": {
-          "200": {
-            "description": "Paginated lead list with assigned admin info",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LeadList" } } }
-          },
-          "401": { "description": "Unauthorized — invalid or missing Bearer token" }
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LeadList" } } } },
+          "401": { "description": "Unauthorized" }
         }
       },
       "post": {
         "tags": ["Leads"],
         "summary": "Create a new lead",
-        "description": "Creates a new lead with all supported fields. Only 4 fields are required: projectName, customerName, customerEmail, projectDescription. All other fields are optional and default to null/false.\n\n**Enum validation**: leadSource and leadStatus are validated — unknown values return 400.\n\n**NAICS auto-resolution**: If naicsSectorCode/naicsSubsectorCode are not provided but industry is, NAICS codes are automatically resolved from the industry text.\n\n**extractedDate**: Defaults to current timestamp if not provided.\n\n**Lead status**: All new leads are created with status=NEW. The stage field is set from leadStatus (defaults to COLD).",
+        "description": "Creates a lead. Auto-assigns to current admin and adds as watcher. Optionally sends welcome email and creates in Zoho CRM.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LeadCreate" } } }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Lead" } } } },
+          "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/leads/{id}": {
+      "get": {
+        "tags": ["Leads"],
+        "summary": "Get lead details",
+        "description": "Returns full lead data with notes, status history, emails, files, and watchers.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LeadDetail" } } } },
+          "404": { "description": "Lead not found" }
+        }
+      },
+      "put": {
+        "tags": ["Leads"],
+        "summary": "Update lead",
+        "description": "Update any lead fields. Changes are audit logged.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LeadCreate" } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Lead" } } } },
+          "404": { "description": "Lead not found" }
+        }
+      },
+      "delete": {
+        "tags": ["Leads"],
+        "summary": "Delete lead",
+        "description": "Permanently deletes a lead and all related data.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } },
+          "404": { "description": "Lead not found" }
+        }
+      }
+    },
+    "/api/leads/{id}/status": {
+      "patch": {
+        "tags": ["Lead Status"],
+        "summary": "Update lead status",
+        "description": "Changes lead status. Auto-enables doNotContact for closed statuses (LOST, NO_RESPONSE, ON_HOLD, CANCELLED). Optionally sends status update email to customer. Creates audit trail and notifies watchers.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["status"],
+                "properties": {
+                  "status": { "type": "string", "enum": ["NEW", "SOW_READY", "SOW_SIGNED", "APP_FLOW_READY", "DESIGN_READY", "DESIGN_APPROVED", "BUILD_IN_PROGRESS", "BUILD_READY_FOR_REVIEW", "BUILD_SUBMITTED", "GO_LIVE", "LOST", "NO_RESPONSE", "ON_HOLD", "CANCELLED"] },
+                  "sendEmail": { "type": "boolean", "description": "Send status update email to customer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "id": { "type": "string" }, "status": { "type": "string" }, "doNotContact": { "type": "boolean" } } } } } }
+        }
+      }
+    },
+    "/api/leads/{id}/assign": {
+      "put": {
+        "tags": ["Leads"],
+        "summary": "Assign lead to admin",
+        "description": "Reassign a lead to another admin user. Sends email notification and auto-adds as watcher.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["assignedToId"],
+                "properties": {
+                  "assignedToId": { "type": "string", "format": "uuid" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "id": { "type": "string" }, "assignedToId": { "type": "string" }, "assignedTo": { "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" }, "email": { "type": "string" } } } } } } } }
+        }
+      }
+    },
+    "/api/leads/{id}/watch": {
+      "get": {
+        "tags": ["Leads"],
+        "summary": "Get lead watchers",
+        "description": "Returns list of admins watching this lead.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "type": "object", "properties": { "id": { "type": "string" }, "name": { "type": "string" }, "email": { "type": "string" } } } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Leads"],
+        "summary": "Watch lead",
+        "description": "Subscribe current admin to lead update notifications.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "watching": { "type": "boolean" } } } } } }
+        }
+      },
+      "delete": {
+        "tags": ["Leads"],
+        "summary": "Unwatch lead",
+        "description": "Unsubscribe current admin from lead update notifications.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "watching": { "type": "boolean" } } } } } }
+        }
+      }
+    },
+    "/api/leads/{id}/audit": {
+      "get": {
+        "tags": ["Lead Status"],
+        "summary": "Get audit log",
+        "description": "Returns up to 100 most recent audit log entries for a lead.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/AuditLog" } } } } }
+        }
+      }
+    },
+    "/api/leads/{id}/notes": {
+      "post": {
+        "tags": ["Lead Notes & Tasks"],
+        "summary": "Add note",
+        "description": "Add an internal note to a lead. Notifies watchers.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["content"], "properties": { "content": { "type": "string" } } } } }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Note" } } } }
+        }
+      },
+      "put": {
+        "tags": ["Lead Notes & Tasks"],
+        "summary": "Edit note",
+        "description": "Edit an existing note. Only the note author can edit.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["noteId", "content"], "properties": { "noteId": { "type": "string" }, "content": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Note" } } } },
+          "403": { "description": "Not the note author" }
+        }
+      },
+      "delete": {
+        "tags": ["Lead Notes & Tasks"],
+        "summary": "Delete note",
+        "description": "Delete a note. Only the note author can delete.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "noteId", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } },
+          "403": { "description": "Not the note author" }
+        }
+      }
+    },
+    "/api/leads/{id}/next-steps": {
+      "get": {
+        "tags": ["Lead Notes & Tasks"],
+        "summary": "List next steps",
+        "description": "Returns all next steps for a lead, sorted by incomplete first, then by due date.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/NextStep" } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Lead Notes & Tasks"],
+        "summary": "Create next step",
+        "description": "Add a task/next step to a lead. Optionally assign to another admin (sends email notification).",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["content"],
+                "properties": {
+                  "content": { "type": "string" },
+                  "dueDate": { "type": "string", "format": "date-time" },
+                  "assignedToId": { "type": "string", "format": "uuid" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/NextStep" } } } }
+        }
+      },
+      "put": {
+        "tags": ["Lead Notes & Tasks"],
+        "summary": "Update next step",
+        "description": "Toggle completion or reassign a task.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["stepId"],
+                "properties": {
+                  "stepId": { "type": "string", "format": "uuid" },
+                  "completed": { "type": "boolean" },
+                  "assignedToId": { "type": "string", "format": "uuid" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/NextStep" } } } }
+        }
+      },
+      "delete": {
+        "tags": ["Lead Notes & Tasks"],
+        "summary": "Delete next step",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "stepId", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } }
+        }
+      }
+    },
+    "/api/leads/{id}/emails": {
+      "get": {
+        "tags": ["Lead Emails & Drafts"],
+        "summary": "Get email history",
+        "description": "Returns sent and received emails for a lead.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "sent": { "type": "array", "items": { "$ref": "#/components/schemas/SentEmail" } },
+                    "received": { "type": "array", "items": { "$ref": "#/components/schemas/ReceivedEmail" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Lead Emails & Drafts"],
+        "summary": "Send email",
+        "description": "Compose and send an email to the customer. Supports attachments, CC/BCC, templates, and email signature. Blocked if doNotContact is enabled.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["subject", "body"],
+                "properties": {
+                  "subject": { "type": "string" },
+                  "body": { "type": "string" },
+                  "templateId": { "type": "string" },
+                  "includeSignature": { "type": "boolean" },
+                  "cc": { "type": "string" },
+                  "bcc": { "type": "string" },
+                  "replyToEmailId": { "type": "string" },
+                  "replyToType": { "type": "string", "enum": ["sent", "received"] },
+                  "attachments": { "type": "array", "items": { "type": "string", "format": "binary" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SentEmail" } } } },
+          "403": { "description": "Do Not Contact is enabled" }
+        }
+      }
+    },
+    "/api/leads/{id}/welcome-email": {
+      "post": {
+        "tags": ["Lead Emails & Drafts"],
+        "summary": "Send welcome email",
+        "description": "Send or resend the welcome email to the customer. Creates a SentEmail record. Blocked if doNotContact is enabled.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } },
+          "403": { "description": "Do Not Contact is enabled" }
+        }
+      }
+    },
+    "/api/leads/{id}/drafts": {
+      "get": {
+        "tags": ["Lead Emails & Drafts"],
+        "summary": "List email drafts",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/EmailDraft" } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Lead Emails & Drafts"],
+        "summary": "Save email draft",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["body"],
+                "properties": {
+                  "subject": { "type": "string" },
+                  "body": { "type": "string" },
+                  "cc": { "type": "string" },
+                  "bcc": { "type": "string" },
+                  "status": { "type": "string", "enum": ["DRAFT", "APPROVED", "SCHEDULED", "CANCELLED"] },
+                  "scheduledAt": { "type": "string", "format": "date-time" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EmailDraft" } } } }
+        }
+      },
+      "put": {
+        "tags": ["Lead Emails & Drafts"],
+        "summary": "Update email draft",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["draftId"],
+                "properties": {
+                  "draftId": { "type": "string", "format": "uuid" },
+                  "subject": { "type": "string" },
+                  "body": { "type": "string" },
+                  "cc": { "type": "string" },
+                  "bcc": { "type": "string" },
+                  "status": { "type": "string", "enum": ["DRAFT", "APPROVED", "SCHEDULED", "CANCELLED"] },
+                  "scheduledAt": { "type": "string", "format": "date-time" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EmailDraft" } } } }
+        }
+      },
+      "delete": {
+        "tags": ["Lead Emails & Drafts"],
+        "summary": "Delete email draft",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "draftId", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } }
+        }
+      }
+    },
+    "/api/leads/{id}/nda": {
+      "get": {
+        "tags": ["Lead NDA"],
+        "summary": "Get NDA",
+        "description": "Returns the NDA for a lead, if one exists.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Nda" } } } },
+          "404": { "description": "No NDA found" }
+        }
+      },
+      "post": {
+        "tags": ["Lead NDA"],
+        "summary": "Generate NDA",
+        "description": "Generate an NDA document for the lead using the NDA template.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Nda" } } } }
+        }
+      },
+      "patch": {
+        "tags": ["Lead NDA"],
+        "summary": "Update NDA content",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["content"], "properties": { "content": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Nda" } } } }
+        }
+      }
+    },
+    "/api/leads/{id}/nda/send": {
+      "post": {
+        "tags": ["Lead NDA"],
+        "summary": "Send NDA to customer",
+        "description": "Email the NDA to the customer. Updates status to SENT. Blocked if doNotContact is enabled.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "id": { "type": "string" }, "status": { "type": "string" } } } } } },
+          "403": { "description": "Do Not Contact is enabled" }
+        }
+      }
+    },
+    "/api/leads/{id}/sow": {
+      "get": {
+        "tags": ["Lead SOW"],
+        "summary": "List SOWs",
+        "description": "Returns all SOW documents for a lead.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "includeDrafts", "in": "query", "schema": { "type": "boolean", "default": false } }
+        ],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ScopeOfWork" } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Lead SOW"],
+        "summary": "Upload or save SOW",
+        "description": "Upload a PDF/DOCX file or save AI-generated HTML content as a new SOW version.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "content": { "type": "string", "description": "HTML content for AI-generated SOWs" },
+                  "comments": { "type": "string" },
+                  "isDraft": { "type": "boolean" },
+                  "sowId": { "type": "string", "description": "Update existing SOW instead of creating new version" }
+                }
+              }
+            },
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": { "type": "string", "format": "binary", "description": "PDF or DOCX file" },
+                  "comments": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ScopeOfWork" } } } }
+        }
+      }
+    },
+    "/api/leads/{id}/sow/generate": {
+      "post": {
+        "tags": ["Lead SOW"],
+        "summary": "AI-generate SOW",
+        "description": "Generate SOW content using Claude AI. Returns a Server-Sent Events stream with generated HTML chunks.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "projectType": { "type": "string" },
+                  "timeline": { "type": "string" },
+                  "budgetRange": { "type": "string" },
+                  "techStack": { "type": "string" },
+                  "deliverables": { "type": "string" },
+                  "additionalNotes": { "type": "string" },
+                  "projectDescription": { "type": "string" },
+                  "templateId": { "type": "string", "description": "SOW template to follow" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SSE stream",
+            "content": { "text/event-stream": { "schema": { "type": "string" } } }
+          }
+        }
+      }
+    },
+    "/api/leads/{id}/sow/export-docx": {
+      "post": {
+        "tags": ["Lead SOW"],
+        "summary": "Export SOW as DOCX",
+        "description": "Export AI-generated SOW HTML content as a Word document.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["content"],
+                "properties": {
+                  "content": { "type": "string", "description": "HTML content to export" },
+                  "projectName": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "DOCX file download",
+            "content": { "application/vnd.openxmlformats-officedocument.wordprocessingml.document": { "schema": { "type": "string", "format": "binary" } } }
+          }
+        }
+      }
+    },
+    "/api/leads/{id}/sow/{sowId}/share": {
+      "post": {
+        "tags": ["Lead SOW"],
+        "summary": "Share SOW with customer",
+        "description": "Share a SOW with the customer via email. Optionally updates lead status to SOW_READY. Blocked if doNotContact is enabled.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "sowId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } },
+          "403": { "description": "Do Not Contact is enabled" }
+        }
+      }
+    },
+    "/api/leads/{id}/sow/{sowId}/comments": {
+      "get": {
+        "tags": ["Lead SOW"],
+        "summary": "List SOW comments",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "sowId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/SowComment" } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Lead SOW"],
+        "summary": "Reply to SOW comment",
+        "description": "Admin reply to a SOW comment. Sends email notification to customer.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "sowId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["content"], "properties": { "content": { "type": "string" } } } } }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SowComment" } } } }
+        }
+      }
+    },
+    "/api/leads/{id}/app-flows": {
+      "get": {
+        "tags": ["Lead App Flows"],
+        "summary": "List app flows",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/AppFlow" } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Lead App Flows"],
+        "summary": "Create app flow",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "flowType": { "type": "string", "enum": ["BASIC", "WIREFRAME"] },
+                  "nodes": { "type": "array", "items": { "type": "object" } },
+                  "edges": { "type": "array", "items": { "type": "object" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AppFlow" } } } }
+        }
+      }
+    },
+    "/api/leads/{id}/app-flows/generate": {
+      "post": {
+        "tags": ["Lead App Flows"],
+        "summary": "AI-generate app flow",
+        "description": "Generate app flow nodes/edges using Claude AI. Returns an SSE stream.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "appType": { "type": "string" },
+                  "flowType": { "type": "string", "enum": ["BASIC", "WIREFRAME"] },
+                  "additionalNotes": { "type": "string" },
+                  "projectDescription": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "SSE stream with generated flow JSON",
+            "content": { "text/event-stream": { "schema": { "type": "string" } } }
+          }
+        }
+      }
+    },
+    "/api/leads/{id}/app-flows/{flowId}": {
+      "get": {
+        "tags": ["Lead App Flows"],
+        "summary": "Get app flow",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "flowId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AppFlow" } } } }
+        }
+      },
+      "put": {
+        "tags": ["Lead App Flows"],
+        "summary": "Update app flow",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "flowId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "flowType": { "type": "string", "enum": ["BASIC", "WIREFRAME"] },
+                  "nodes": { "type": "array", "items": { "type": "object" } },
+                  "edges": { "type": "array", "items": { "type": "object" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AppFlow" } } } }
+        }
+      },
+      "delete": {
+        "tags": ["Lead App Flows"],
+        "summary": "Delete app flow",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "flowId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } }
+        }
+      }
+    },
+    "/api/leads/{id}/app-flows/{flowId}/share": {
+      "post": {
+        "tags": ["Lead App Flows"],
+        "summary": "Share app flow with customer",
+        "description": "Share an app flow with the customer via email. Optionally updates lead status to APP_FLOW_READY. Blocked if doNotContact is enabled.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "flowId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } },
+          "403": { "description": "Do Not Contact is enabled" }
+        }
+      }
+    },
+    "/api/leads/{id}/app-flows/{flowId}/comments": {
+      "get": {
+        "tags": ["Lead App Flows"],
+        "summary": "List app flow comments",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "flowId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/AppFlowComment" } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Lead App Flows"],
+        "summary": "Reply to app flow comment",
+        "description": "Admin reply to an app flow comment. Sends email to customer.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "flowId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["content"], "properties": { "content": { "type": "string" } } } } }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AppFlowComment" } } } }
+        }
+      }
+    },
+    "/api/leads/{id}/messages": {
+      "get": {
+        "tags": ["Lead Messages"],
+        "summary": "Get messages",
+        "description": "Returns all messages for a lead. Marks unread customer messages as read.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Message" } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Lead Messages"],
+        "summary": "Send message",
+        "description": "Send a message to the customer. Blocked if doNotContact is enabled.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["content"], "properties": { "content": { "type": "string" } } } } }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Message" } } } }
+        }
+      }
+    },
+    "/api/leads/{id}/files": {
+      "get": {
+        "tags": ["Lead Files"],
+        "summary": "List files",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/LeadFile" } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Lead Files"],
+        "summary": "Upload file",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": {
+                  "file": { "type": "string", "format": "binary" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LeadFile" } } } }
+        }
+      }
+    },
+    "/api/leads/{id}/files/{fileId}": {
+      "delete": {
+        "tags": ["Lead Files"],
+        "summary": "Delete file",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+          { "name": "fileId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } }
+        }
+      }
+    },
+    "/api/admin-users": {
+      "get": {
+        "tags": ["Admin Users"],
+        "summary": "List admin users",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/AdminUser" } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Admin Users"],
+        "summary": "Create admin user",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "email", "username", "password"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "email": { "type": "string", "format": "email" },
+                  "username": { "type": "string" },
+                  "password": { "type": "string" },
+                  "active": { "type": "boolean", "default": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminUser" } } } },
+          "400": { "description": "Username already exists" }
+        }
+      }
+    },
+    "/api/admin-users/{id}": {
+      "get": {
+        "tags": ["Admin Users"],
+        "summary": "Get admin user",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminUser" } } } }
+        }
+      },
+      "put": {
+        "tags": ["Admin Users"],
+        "summary": "Update admin user",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "email": { "type": "string" },
+                  "username": { "type": "string" },
+                  "password": { "type": "string" },
+                  "active": { "type": "boolean" },
+                  "emailSignature": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminUser" } } } }
+        }
+      }
+    },
+    "/api/admin-users/{id}/upload-picture": {
+      "post": {
+        "tags": ["Admin Users"],
+        "summary": "Upload profile picture",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": ["file"],
+                "properties": { "file": { "type": "string", "format": "binary" } }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "type": "object", "properties": { "filePath": { "type": "string" } } } } } }
+        }
+      }
+    },
+    "/api/admin-users/me": {
+      "get": {
+        "tags": ["Admin Users"],
+        "summary": "Get current admin profile",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AdminUser" } } } }
+        }
+      }
+    },
+    "/api/email-templates": {
+      "get": {
+        "tags": ["Email Templates"],
+        "summary": "List email templates",
+        "parameters": [
+          { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["system", "compose"] }, "description": "Filter by type: 'system' for system templates, 'compose' for user-created" }
+        ],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/EmailTemplate" } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Email Templates"],
+        "summary": "Create email template",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "subject", "body"],
+                "properties": {
+                  "title": { "type": "string" },
+                  "subject": { "type": "string" },
+                  "body": { "type": "string" },
+                  "tags": { "type": "array", "items": { "type": "string" } },
+                  "notes": { "type": "string" },
+                  "purpose": { "type": "string", "enum": ["WELCOME", "FOLLOW_UP", "REMINDER", "NOTIFICATION", "PROMOTIONAL", "OTHER"] },
+                  "industry": { "type": "string" },
+                  "naicsSectorCode": { "type": "string" },
+                  "naicsSubsectorCode": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EmailTemplate" } } } }
+        }
+      }
+    },
+    "/api/email-templates/{id}": {
+      "get": {
+        "tags": ["Email Templates"],
+        "summary": "Get email template",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EmailTemplate" } } } }
+        }
+      },
+      "put": {
+        "tags": ["Email Templates"],
+        "summary": "Update email template",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "subject": { "type": "string" },
+                  "body": { "type": "string" },
+                  "tags": { "type": "array", "items": { "type": "string" } },
+                  "notes": { "type": "string" },
+                  "purpose": { "type": "string" },
+                  "industry": { "type": "string" },
+                  "naicsSectorCode": { "type": "string" },
+                  "naicsSubsectorCode": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EmailTemplate" } } } },
+          "403": { "description": "Cannot delete system templates" }
+        }
+      },
+      "delete": {
+        "tags": ["Email Templates"],
+        "summary": "Delete email template",
+        "description": "System templates cannot be deleted.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } },
+          "403": { "description": "Cannot delete system templates" }
+        }
+      }
+    },
+    "/api/email-flows": {
+      "get": {
+        "tags": ["Email Flows"],
+        "summary": "List email flows",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/EmailFlow" } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Email Flows"],
+        "summary": "Create email flow",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EmailFlow" } } } }
+        }
+      }
+    },
+    "/api/email-flows/{id}": {
+      "get": {
+        "tags": ["Email Flows"],
+        "summary": "Get email flow",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EmailFlow" } } } }
+        }
+      },
+      "put": {
+        "tags": ["Email Flows"],
+        "summary": "Update email flow",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "nodes": { "type": "array", "items": { "type": "object" } },
+                  "edges": { "type": "array", "items": { "type": "object" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EmailFlow" } } } }
+        }
+      },
+      "delete": {
+        "tags": ["Email Flows"],
+        "summary": "Delete email flow",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } }
+        }
+      }
+    },
+    "/api/content": {
+      "get": {
+        "tags": ["Content"],
+        "summary": "List content",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Content" } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Content"],
+        "summary": "Create content",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "body"],
+                "properties": {
+                  "title": { "type": "string" },
+                  "body": { "type": "string" },
+                  "mediaUrl": { "type": "string" },
+                  "tags": { "type": "array", "items": { "type": "string" } },
+                  "platforms": { "type": "array", "items": { "type": "string", "enum": ["LINKEDIN", "FACEBOOK", "TIKTOK", "INSTAGRAM"] } },
+                  "status": { "type": "string", "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"], "default": "DRAFT" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Content" } } } }
+        }
+      }
+    },
+    "/api/content/{id}": {
+      "get": {
+        "tags": ["Content"],
+        "summary": "Get content",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Content" } } } }
+        }
+      },
+      "put": {
+        "tags": ["Content"],
+        "summary": "Update content",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "body": { "type": "string" },
+                  "mediaUrl": { "type": "string" },
+                  "tags": { "type": "array", "items": { "type": "string" } },
+                  "platforms": { "type": "array", "items": { "type": "string" } },
+                  "status": { "type": "string", "enum": ["DRAFT", "PUBLISHED", "ARCHIVED"] }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Content" } } } }
+        }
+      },
+      "delete": {
+        "tags": ["Content"],
+        "summary": "Delete content",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } }
+        }
+      }
+    },
+    "/api/content/upload": {
+      "post": {
+        "tags": ["Content"],
+        "summary": "Upload media file",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": { "type": "object", "properties": { "file": { "type": "string", "format": "binary" } } }
+            }
+          }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "type": "object", "properties": { "filePath": { "type": "string" } } } } } }
+        }
+      }
+    },
+    "/api/upload-image": {
+      "post": {
+        "tags": ["Content"],
+        "summary": "Upload image",
+        "description": "General-purpose image upload (max 5MB).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": { "type": "object", "properties": { "file": { "type": "string", "format": "binary" } } }
+            }
+          }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "type": "object", "properties": { "url": { "type": "string" } } } } } }
+        }
+      }
+    },
+    "/api/branding": {
+      "get": {
+        "tags": ["Branding"],
+        "summary": "Get branding config",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BrandingConfig" } } } }
+        }
+      },
+      "put": {
+        "tags": ["Branding"],
+        "summary": "Update branding config",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "companyName": { "type": "string" },
+                  "website": { "type": "string" },
+                  "primaryColor": { "type": "string" },
+                  "accentColor": { "type": "string" },
+                  "footerText": { "type": "string" },
+                  "copyrightText": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BrandingConfig" } } } }
+        }
+      }
+    },
+    "/api/branding/upload-logo": {
+      "post": {
+        "tags": ["Branding"],
+        "summary": "Upload company logo",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": { "type": "object", "properties": { "file": { "type": "string", "format": "binary" } } }
+            }
+          }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "type": "object", "properties": { "logoPath": { "type": "string" } } } } } }
+        }
+      }
+    },
+    "/api/branding/public": {
+      "get": {
+        "tags": ["Branding"],
+        "summary": "Get public branding config",
+        "description": "No authentication required. Used by customer portal.",
+        "security": [],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/BrandingConfig" } } } }
+        }
+      }
+    },
+    "/api/sow-templates": {
+      "get": {
+        "tags": ["SOW Templates"],
+        "summary": "List SOW templates",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/SowTemplate" } } } } }
+        }
+      },
+      "post": {
+        "tags": ["SOW Templates"],
+        "summary": "Create SOW template",
+        "description": "Supports both JSON and multipart form data (for file upload).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "content": { "type": "string", "description": "HTML content" },
+                  "industry": { "type": "string" },
+                  "projectType": { "type": "string" },
+                  "durationRange": { "type": "string" },
+                  "costRange": { "type": "string" },
+                  "isDefault": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SowTemplate" } } } }
+        }
+      }
+    },
+    "/api/sow-templates/{id}": {
+      "get": {
+        "tags": ["SOW Templates"],
+        "summary": "Get SOW template",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SowTemplate" } } } }
+        }
+      },
+      "put": {
+        "tags": ["SOW Templates"],
+        "summary": "Update SOW template",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "content": { "type": "string" },
+                  "industry": { "type": "string" },
+                  "projectType": { "type": "string" },
+                  "durationRange": { "type": "string" },
+                  "costRange": { "type": "string" },
+                  "isDefault": { "type": "boolean" },
+                  "removeFile": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SowTemplate" } } } }
+        }
+      },
+      "delete": {
+        "tags": ["SOW Templates"],
+        "summary": "Delete SOW template",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } }
+        }
+      }
+    },
+    "/api/portfolio/services": {
+      "get": {
+        "tags": ["Portfolio"],
+        "summary": "List portfolio services",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/PortfolioService" } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Portfolio"],
+        "summary": "Create portfolio service",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "emailScript": { "type": "string" },
+                  "phoneScript": { "type": "string" },
+                  "meetingScript": { "type": "string" },
+                  "documents": { "type": "array", "items": { "type": "object", "properties": { "name": { "type": "string" }, "url": { "type": "string" } } } },
+                  "urls": { "type": "array", "items": { "type": "object", "properties": { "label": { "type": "string" }, "url": { "type": "string" } } } },
+                  "sortOrder": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PortfolioService" } } } }
+        }
+      }
+    },
+    "/api/portfolio/services/{id}": {
+      "get": {
+        "tags": ["Portfolio"],
+        "summary": "Get portfolio service",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PortfolioService" } } } }
+        }
+      },
+      "put": {
+        "tags": ["Portfolio"],
+        "summary": "Update portfolio service",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "name": { "type": "string" }, "description": { "type": "string" }, "emailScript": { "type": "string" }, "phoneScript": { "type": "string" }, "meetingScript": { "type": "string" }, "documents": { "type": "array", "items": { "type": "object" } }, "urls": { "type": "array", "items": { "type": "object" } }, "sortOrder": { "type": "integer" } } } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PortfolioService" } } } }
+        }
+      },
+      "delete": {
+        "tags": ["Portfolio"],
+        "summary": "Delete portfolio service",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } }
+        }
+      }
+    },
+    "/api/portfolio/projects": {
+      "get": {
+        "tags": ["Portfolio"],
+        "summary": "List portfolio projects",
+        "parameters": [
+          { "name": "serviceId", "in": "query", "schema": { "type": "string", "format": "uuid" }, "description": "Filter by service" }
+        ],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/PortfolioProject" } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Portfolio"],
+        "summary": "Create portfolio project",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title"],
+                "properties": {
+                  "title": { "type": "string" },
+                  "description": { "type": "string" },
+                  "serviceId": { "type": "string" },
+                  "category": { "type": "string" },
+                  "domain": { "type": "string" },
+                  "industry": { "type": "string" },
+                  "industrySector": { "type": "string" },
+                  "industrySubsector": { "type": "string" },
+                  "technologies": { "type": "array", "items": { "type": "string" } },
+                  "customerName": { "type": "string" },
+                  "customerDetail": { "type": "string" },
+                  "demoVideoUrl": { "type": "string" },
+                  "portfolioUrl": { "type": "string" },
+                  "customerReviewUrl": { "type": "string" },
+                  "additionalLinks": { "type": "array", "items": { "type": "object", "properties": { "label": { "type": "string" }, "url": { "type": "string" } } } },
+                  "documents": { "type": "array", "items": { "type": "object" } },
+                  "emailScript": { "type": "string" },
+                  "phoneScript": { "type": "string" },
+                  "meetingScript": { "type": "string" },
+                  "completedAt": { "type": "string", "format": "date-time" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PortfolioProject" } } } }
+        }
+      }
+    },
+    "/api/portfolio/projects/{id}": {
+      "get": {
+        "tags": ["Portfolio"],
+        "summary": "Get portfolio project",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PortfolioProject" } } } }
+        }
+      },
+      "put": {
+        "tags": ["Portfolio"],
+        "summary": "Update portfolio project",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "title": { "type": "string" }, "description": { "type": "string" }, "serviceId": { "type": "string" }, "category": { "type": "string" }, "domain": { "type": "string" }, "industry": { "type": "string" }, "industrySector": { "type": "string" }, "industrySubsector": { "type": "string" }, "technologies": { "type": "array", "items": { "type": "string" } }, "customerName": { "type": "string" }, "customerDetail": { "type": "string" }, "demoVideoUrl": { "type": "string" }, "portfolioUrl": { "type": "string" }, "customerReviewUrl": { "type": "string" }, "additionalLinks": { "type": "array", "items": { "type": "object" } }, "documents": { "type": "array", "items": { "type": "object" } }, "emailScript": { "type": "string" }, "phoneScript": { "type": "string" }, "meetingScript": { "type": "string" }, "completedAt": { "type": "string", "format": "date-time" } } } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/PortfolioProject" } } } }
+        }
+      },
+      "delete": {
+        "tags": ["Portfolio"],
+        "summary": "Delete portfolio project",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } }
+        }
+      }
+    },
+    "/api/knowledge": {
+      "get": {
+        "tags": ["Knowledge Base"],
+        "summary": "List knowledge articles",
+        "parameters": [
+          { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Full-text search across title and content" },
+          { "name": "category", "in": "query", "schema": { "type": "string" }, "description": "Filter by category" }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "articles": { "type": "array", "items": { "$ref": "#/components/schemas/KnowledgeArticle" } },
+                    "categories": { "type": "array", "items": { "type": "string" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Knowledge Base"],
+        "summary": "Create knowledge article",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["title", "content"],
+                "properties": {
+                  "title": { "type": "string" },
+                  "slug": { "type": "string", "description": "Auto-generated from title if not provided" },
+                  "content": { "type": "string", "description": "Markdown content" },
+                  "category": { "type": "string" },
+                  "tags": { "type": "array", "items": { "type": "string" } },
+                  "sortOrder": { "type": "integer" },
+                  "published": { "type": "boolean", "default": true }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/KnowledgeArticle" } } } }
+        }
+      }
+    },
+    "/api/knowledge/{id}": {
+      "get": {
+        "tags": ["Knowledge Base"],
+        "summary": "Get knowledge article",
+        "description": "Supports lookup by ID or slug.",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Article ID or slug" }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/KnowledgeArticle" } } } }
+        }
+      },
+      "put": {
+        "tags": ["Knowledge Base"],
+        "summary": "Update knowledge article",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": { "type": "string" },
+                  "slug": { "type": "string" },
+                  "content": { "type": "string" },
+                  "category": { "type": "string" },
+                  "tags": { "type": "array", "items": { "type": "string" } },
+                  "sortOrder": { "type": "integer" },
+                  "published": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/KnowledgeArticle" } } } }
+        }
+      },
+      "delete": {
+        "tags": ["Knowledge Base"],
+        "summary": "Delete knowledge article",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } }
+        }
+      }
+    },
+    "/api/knowledge/seed": {
+      "post": {
+        "tags": ["Knowledge Base"],
+        "summary": "Seed default articles",
+        "description": "Seeds 12 default knowledge base articles. Idempotent — skips existing articles.",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "created": { "type": "integer" }, "skipped": { "type": "integer" }, "total": { "type": "integer" } } } } } }
+        }
+      }
+    },
+    "/api/naics": {
+      "get": {
+        "tags": ["NAICS"],
+        "summary": "List NAICS sectors and subsectors",
+        "description": "Returns all 20 NAICS 2022 sectors with their 96 subsectors.",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/NaicsSector" } } } } }
+        }
+      }
+    },
+    "/api/naics/seed": {
+      "post": {
+        "tags": ["NAICS"],
+        "summary": "Seed NAICS codes",
+        "description": "Seeds NAICS 2022 sectors and subsectors from naics-data.json.",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "sectorsCreated": { "type": "integer" }, "subsectorsCreated": { "type": "integer" } } } } } }
+        }
+      }
+    },
+    "/api/dashboard": {
+      "get": {
+        "tags": ["Dashboard & Activity"],
+        "summary": "Get dashboard stats",
+        "description": "Returns personalized dashboard statistics including lead counts, engagement metrics, tasks, needs attention items, and pipeline distribution.",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/DashboardStats" } } } }
+        }
+      }
+    },
+    "/api/activity": {
+      "get": {
+        "tags": ["Dashboard & Activity"],
+        "summary": "Get activity feed",
+        "description": "Returns unified activity feed (emails, status changes, notes, customer actions) with pagination.",
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 30 } },
+          { "name": "type", "in": "query", "schema": { "type": "string" }, "description": "Filter by activity type" }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "activities": { "type": "array", "items": { "type": "object" } },
+                    "pagination": {
+                      "type": "object",
+                      "properties": {
+                        "page": { "type": "integer" },
+                        "limit": { "type": "integer" },
+                        "hasMore": { "type": "boolean" },
+                        "total": { "type": "integer" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/messages": {
+      "get": {
+        "tags": ["Lead Messages"],
+        "summary": "Get all messages / unread count",
+        "description": "Returns conversations grouped by lead, or unread messages only.",
+        "parameters": [
+          { "name": "unread", "in": "query", "schema": { "type": "string", "enum": ["1"] }, "description": "Set to '1' to get unread messages only" }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "unreadCount": { "type": "integer" },
+                    "messages": { "type": "array", "items": { "$ref": "#/components/schemas/Message" } },
+                    "conversations": { "type": "array", "items": { "type": "object" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/track/{id}": {
+      "get": {
+        "tags": ["Tracking & Webhooks"],
+        "summary": "Email open tracking pixel",
+        "description": "Returns a 1x1 transparent GIF. Updates the SentEmail status to OPENED and triggers customer_response notification.",
+        "security": [],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "SentEmail ID" }],
+        "responses": {
+          "200": {
+            "description": "1x1 GIF pixel",
+            "content": { "image/gif": { "schema": { "type": "string", "format": "binary" } } }
+          }
+        }
+      }
+    },
+    "/api/webhooks/ses-inbound": {
+      "post": {
+        "tags": ["Tracking & Webhooks"],
+        "summary": "SES inbound email webhook",
+        "description": "Receives inbound email replies via AWS SES → SNS. Stores as ReceivedEmail and notifies watchers.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "description": "SNS notification payload" } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "status": { "type": "string", "enum": ["saved", "confirmed", "ignored", "no_lead_id", "duplicate", "lead_not_found"] }, "id": { "type": "string" } } } } } }
+        }
+      }
+    },
+    "/api/zoho/config": {
+      "get": {
+        "tags": ["Zoho CRM"],
+        "summary": "Get Zoho config",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "configured": { "type": "boolean" },
+                    "enabled": { "type": "boolean" },
+                    "dataCenter": { "type": "string" },
+                    "hasRefreshToken": { "type": "boolean" },
+                    "orgId": { "type": "string" },
+                    "clientId": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": ["Zoho CRM"],
+        "summary": "Update Zoho credentials",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "clientId": { "type": "string" },
+                  "clientSecret": { "type": "string" },
+                  "dataCenter": { "type": "string", "enum": ["US", "EU", "IN", "AU", "JP", "CA"] },
+                  "enabled": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Zoho CRM"],
+        "summary": "Authorize or test Zoho connection",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["action"],
+                "properties": {
+                  "action": { "type": "string", "enum": ["authorize", "test"] },
+                  "grantToken": { "type": "string", "description": "Required for 'authorize' action" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "message": { "type": "string" }, "orgId": { "type": "string" } } } } } }
+        }
+      }
+    },
+    "/api/zoho/status": {
+      "get": {
+        "tags": ["Zoho CRM"],
+        "summary": "Check Zoho integration status",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "enabled": { "type": "boolean" } } } } } }
+        }
+      }
+    },
+    "/api/zoho/search-lead": {
+      "get": {
+        "tags": ["Zoho CRM"],
+        "summary": "Search for lead in Zoho",
+        "description": "Search Zoho CRM by customer email. Auto-links if found.",
+        "parameters": [
+          { "name": "leadId", "in": "query", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "zohoEnabled": { "type": "boolean" }, "found": { "type": "boolean" }, "zohoLeadId": { "type": "string" }, "zohoUrl": { "type": "string" } } } } } }
+        }
+      }
+    },
+    "/api/zoho/create-lead": {
+      "post": {
+        "tags": ["Zoho CRM"],
+        "summary": "Create lead in Zoho",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["leadId"], "properties": { "leadId": { "type": "string", "format": "uuid" } } } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "zohoLeadId": { "type": "string" }, "zohoUrl": { "type": "string" }, "message": { "type": "string" } } } } } }
+        }
+      }
+    },
+    "/api/zoho/sync-lead": {
+      "post": {
+        "tags": ["Zoho CRM"],
+        "summary": "Bidirectional sync with Zoho",
+        "description": "Compares timestamps and syncs whichever is newer. Returns changed fields.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["leadId"], "properties": { "leadId": { "type": "string", "format": "uuid" } } } } }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "direction": { "type": "string", "enum": ["none", "portal_to_zoho", "zoho_to_portal"] },
+                    "message": { "type": "string" },
+                    "changes": { "type": "array", "items": { "type": "object" } },
+                    "zohoUrl": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/zoho/find-unlinked": {
+      "get": {
+        "tags": ["Zoho CRM"],
+        "summary": "Find unlinked leads",
+        "description": "Find Portal leads that exist in Zoho but aren't linked.",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "matches": { "type": "array", "items": { "type": "object" } }, "totalUnlinked": { "type": "integer" }, "totalMatched": { "type": "integer" } } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Zoho CRM"],
+        "summary": "Link lead to Zoho record",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["leadId", "zohoLeadId"], "properties": { "leadId": { "type": "string" }, "zohoLeadId": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } }
+        }
+      }
+    },
+    "/api/zoho/import-leads": {
+      "get": {
+        "tags": ["Zoho CRM"],
+        "summary": "List importable Zoho leads",
+        "description": "Fetch Zoho leads not in Portal.",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "leads": { "type": "array", "items": { "type": "object" } }, "totalZoho": { "type": "integer" }, "totalNew": { "type": "integer" } } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Zoho CRM"],
+        "summary": "Import lead from Zoho",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["zohoLeadId"], "properties": { "zohoLeadId": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "action": { "type": "string", "enum": ["linked", "imported"] }, "leadId": { "type": "string" }, "message": { "type": "string" } } } } } }
+        }
+      }
+    },
+    "/api/zoho/export-leads": {
+      "get": {
+        "tags": ["Zoho CRM"],
+        "summary": "List exportable leads",
+        "description": "List Portal leads not yet in Zoho.",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "leads": { "type": "array", "items": { "type": "object" } }, "total": { "type": "integer" } } } } } }
+        }
+      },
+      "post": {
+        "tags": ["Zoho CRM"],
+        "summary": "Export lead to Zoho",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "required": ["leadId"], "properties": { "leadId": { "type": "string", "format": "uuid" } } } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" }, "action": { "type": "string" }, "zohoLeadId": { "type": "string" }, "zohoUrl": { "type": "string" }, "message": { "type": "string" } } } } } }
+        }
+      }
+    },
+    "/api/notifications/preferences": {
+      "get": {
+        "tags": ["Notifications"],
+        "summary": "Get notification preferences",
+        "description": "Returns the current admin's notification preference toggles.",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/NotificationPreference" } } } }
+        }
+      },
+      "put": {
+        "tags": ["Notifications"],
+        "summary": "Update notification preferences",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "notificationEmail": { "type": "string", "format": "email" },
+                  "newLeadCreated": { "type": "boolean" },
+                  "emailSentToCustomer": { "type": "boolean" },
+                  "customerResponse": { "type": "boolean" },
+                  "customerPortalVisit": { "type": "boolean" },
+                  "customerComment": { "type": "boolean" },
+                  "leadStatusChange": { "type": "boolean" },
+                  "leadAssigned": { "type": "boolean" },
+                  "sowSigned": { "type": "boolean" },
+                  "ndaSigned": { "type": "boolean" },
+                  "taskCompleted": { "type": "boolean" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/NotificationPreference" } } } }
+        }
+      }
+    },
+    "/api/v1/leads": {
+      "get": {
+        "tags": ["External API (v1)"],
+        "summary": "List leads (external)",
+        "description": "Token-authenticated endpoint for external integrations.",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 } },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20, "maximum": 100 } },
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "schema": { "type": "string" } },
+          { "name": "stage", "in": "query", "schema": { "type": "string" } },
+          { "name": "source", "in": "query", "schema": { "type": "string" } },
+          { "name": "industry", "in": "query", "schema": { "type": "string" } },
+          { "name": "assignedTo", "in": "query", "schema": { "type": "string" } },
+          { "name": "sortBy", "in": "query", "schema": { "type": "string", "default": "updatedAt" } },
+          { "name": "sortOrder", "in": "query", "schema": { "type": "string", "default": "desc", "enum": ["asc", "desc"] } }
+        ],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/LeadList" } } } },
+          "401": { "description": "Unauthorized — invalid or missing Bearer token" }
+        }
+      },
+      "post": {
+        "tags": ["External API (v1)"],
+        "summary": "Create lead (external)",
+        "description": "Token-authenticated lead creation. NAICS codes auto-resolved from industry if not provided. extractedDate defaults to now.",
+        "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -219,34 +2726,19 @@
                     "projectName": "Acme Corp - CTO Opportunity",
                     "customerName": "Jane Smith",
                     "customerEmail": "jane@acme.com",
-                    "projectDescription": "Lead from Apollo.io. Interested in mobile app development for inventory management.",
+                    "projectDescription": "Lead from Apollo.io. Interested in mobile app development.",
                     "phone": "+1-555-0123",
                     "city": "San Francisco",
                     "zip": "94105",
-                    "linkedinUrl": "https://linkedin.com/in/janesmith",
-                    "apolloUrl": "https://app.apollo.io/#/people/jane-smith",
-                    "facebookUrl": "https://facebook.com/janesmith",
-                    "twitterUrl": "https://twitter.com/janesmith",
                     "jobTitle": "CTO",
                     "companyName": "Acme Corp",
                     "location": "San Francisco, CA",
                     "industry": "Software Development",
                     "companySize": "51-200",
                     "companyWebsite": "https://acme.com",
-                    "aboutCompany": "Acme Corp builds enterprise SaaS tools for project management.",
                     "leadSource": "APOLLO",
                     "leadStatus": "NEW",
-                    "extractedDate": "2026-04-04T14:30:00Z",
-                    "lastContactedDate": "2026-04-05T10:00:00Z",
-                    "leadScore": 75,
-                    "naicsSectorCode": "54",
-                    "naicsSubsectorCode": "541",
-                    "connectionRequestSent": true,
-                    "connectionAccepted": false,
-                    "initialMessageSent": true,
-                    "meetingBooked": false,
-                    "meetingDate": null,
-                    "responseReceived": false
+                    "leadScore": 75
                   }
                 }
               }
@@ -254,33 +2746,26 @@
           }
         },
         "responses": {
-          "201": {
-            "description": "Lead created successfully",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Lead" } } }
-          },
-          "400": {
-            "description": "Validation error — missing required fields, invalid email format, or invalid enum values",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
-          },
-          "401": { "description": "Unauthorized — invalid or missing Bearer token" }
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Lead" } } } },
+          "400": { "description": "Validation error", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } },
+          "401": { "description": "Unauthorized" }
         }
       }
     },
     "/api/v1/content": {
       "get": {
-        "tags": ["Content"],
-        "summary": "List all content",
+        "tags": ["External API (v1)"],
+        "summary": "List content (external)",
+        "security": [{ "bearerAuth": [] }],
         "responses": {
-          "200": {
-            "description": "Content list",
-            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Content" } } } }
-          },
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Content" } } } } },
           "401": { "description": "Unauthorized" }
         }
       },
       "post": {
-        "tags": ["Content"],
-        "summary": "Create new content",
+        "tags": ["External API (v1)"],
+        "summary": "Create content (external)",
+        "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
@@ -301,37 +2786,63 @@
           }
         },
         "responses": {
-          "201": {
-            "description": "Content created",
-            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Content" } } }
-          },
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Content" } } } },
           "400": { "description": "Validation error" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/v1/content/{id}": {
+      "get": {
+        "tags": ["External API (v1)"],
+        "summary": "Get content (external)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Content" } } } },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "put": {
+        "tags": ["External API (v1)"],
+        "summary": "Update content (external)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "type": "object", "properties": { "title": { "type": "string" }, "body": { "type": "string" }, "mediaUrl": { "type": "string" }, "tags": { "type": "array", "items": { "type": "string" } }, "platforms": { "type": "array", "items": { "type": "string" } }, "status": { "type": "string" } } } } }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Content" } } } },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "delete": {
+        "tags": ["External API (v1)"],
+        "summary": "Delete content (external)",
+        "security": [{ "bearerAuth": [] }],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } },
           "401": { "description": "Unauthorized" }
         }
       }
     },
     "/api/v1/content/upload": {
       "post": {
-        "tags": ["Content"],
-        "summary": "Upload media file",
+        "tags": ["External API (v1)"],
+        "summary": "Upload media (external)",
+        "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
           "content": {
             "multipart/form-data": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "file": { "type": "string", "format": "binary" }
-                }
-              }
+              "schema": { "type": "object", "properties": { "file": { "type": "string", "format": "binary" } } }
             }
           }
         },
         "responses": {
-          "200": {
-            "description": "File uploaded",
-            "content": { "application/json": { "schema": { "type": "object", "properties": { "filePath": { "type": "string" } } } } }
-          },
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "filePath": { "type": "string" } } } } } },
           "401": { "description": "Unauthorized" }
         }
       }
