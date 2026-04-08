@@ -247,6 +247,8 @@ enum EmailTemplatePurpose {
   REMINDER
   NOTIFICATION
   PROMOTIONAL
+  NURTURE
+  COLD_OUTREACH
   OTHER
 }
 
@@ -258,6 +260,7 @@ model EmailTemplate {
   tags      Json                 @default("[]")
   notes     String?              @db.Text @map("admin_notes")
   purpose   EmailTemplatePurpose @default(OTHER)
+  sendAfterDays Int?             @map("send_after_days")
   industry  String?
   naicsSectorCode    String?    @map("naics_sector_code")
   naicsSubsectorCode String?    @map("naics_subsector_code")

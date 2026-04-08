@@ -14,6 +14,8 @@ const PURPOSE_OPTIONS = [
   { value: "REMINDER", label: "Reminder" },
   { value: "NOTIFICATION", label: "Notification" },
   { value: "PROMOTIONAL", label: "Promotional" },
+  { value: "NURTURE", label: "Nurture" },
+  { value: "COLD_OUTREACH", label: "Cold Outreach" },
   { value: "OTHER", label: "Other" },
 ];
 
@@ -60,9 +62,11 @@ export default function EditEmailTemplatePage() {
   const [industry, setIndustry] = useState("");
   const [naicsSectorCode, setNaicsSectorCode] = useState("");
   const [naicsSubsectorCode, setNaicsSubsectorCode] = useState("");
+  const [sendAfterDays, setSendAfterDays] = useState<string>("");
   const [naicsSectors, setNaicsSectors] = useState<{ code: string; name: string; subsectors: { code: string; name: string }[] }[]>([]);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [cloning, setCloning] = useState(false);
   const [showTestEmail, setShowTestEmail] = useState(false);
 
   useEffect(() => {
@@ -80,6 +84,7 @@ export default function EditEmailTemplatePage() {
         setTags((data.tags || []).join(", "));
         setPurpose(data.purpose);
         setNotes(data.notes || "");
+        setSendAfterDays(data.sendAfterDays != null ? String(data.sendAfterDays) : "");
         setIndustry(data.industry || "");
         setNaicsSectorCode(data.naicsSectorCode || "");
         setNaicsSubsectorCode(data.naicsSubsectorCode || "");
@@ -107,6 +112,7 @@ export default function EditEmailTemplatePage() {
             .filter(Boolean),
           purpose,
           notes: notes.trim() || null,
+          sendAfterDays: sendAfterDays ? parseInt(sendAfterDays, 10) : null,
           industry: industry.trim() || null,
           naicsSectorCode: naicsSectorCode || null,
           naicsSubsectorCode: naicsSubsectorCode || null,
@@ -123,6 +129,38 @@ export default function EditEmailTemplatePage() {
       alert("Failed to update");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleClone() {
+    setCloning(true);
+    try {
+      const res = await fetch("/api/email-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `${title.trim()} (Copy)`,
+          subject: subject.trim(),
+          body,
+          tags: tags.split(",").map((t) => t.trim()).filter(Boolean),
+          purpose,
+          sendAfterDays: sendAfterDays ? parseInt(sendAfterDays, 10) : undefined,
+          notes: notes.trim() || undefined,
+          industry: industry.trim() || undefined,
+          naicsSectorCode: naicsSectorCode || undefined,
+          naicsSubsectorCode: naicsSubsectorCode || undefined,
+        }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        router.push(`/email-templates/${created.id}`);
+      } else {
+        alert("Failed to clone template");
+      }
+    } catch {
+      alert("Failed to clone template");
+    } finally {
+      setCloning(false);
     }
   }
 
@@ -189,6 +227,18 @@ export default function EditEmailTemplatePage() {
               </svg>
               Send Test
             </button>
+            {!template?.systemKey && (
+              <button
+                onClick={handleClone}
+                disabled={cloning}
+                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition flex items-center gap-1.5"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+                </svg>
+                {cloning ? "Cloning..." : "Clone"}
+              </button>
+            )}
             {!template?.systemKey && (
               <button
                 onClick={handleDelete}
@@ -263,7 +313,7 @@ export default function EditEmailTemplatePage() {
 
           <TemplateTags />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Purpose
@@ -279,6 +329,20 @@ export default function EditEmailTemplatePage() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Send After (Days) <span className="font-normal text-gray-400">(optional)</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={sendAfterDays}
+                onChange={(e) => setSendAfterDays(e.target.value)}
+                placeholder="e.g. 7"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+              />
             </div>
 
             <div>

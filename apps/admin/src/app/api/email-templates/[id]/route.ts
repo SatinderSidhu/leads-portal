@@ -33,13 +33,14 @@ export async function PUT(
     );
   }
 
-  const { title, subject, body: templateBody, tags, notes, purpose, industry, naicsSectorCode, naicsSubsectorCode } = body as {
+  const { title, subject, body: templateBody, tags, notes, purpose, sendAfterDays, industry, naicsSectorCode, naicsSubsectorCode } = body as {
     title?: string;
     subject?: string;
     body?: string;
     tags?: string[];
     notes?: string;
     purpose?: string;
+    sendAfterDays?: number | null;
     industry?: string;
     naicsSectorCode?: string;
     naicsSubsectorCode?: string;
@@ -68,6 +69,7 @@ export async function PUT(
         ...(tags !== undefined && { tags }),
         ...(notes !== undefined && { notes: notes?.trim() || null }),
         ...(purpose !== undefined && { purpose: purpose as EmailTemplatePurpose }),
+        ...(sendAfterDays !== undefined && { sendAfterDays: sendAfterDays }),
         ...(industry !== undefined && { industry: industry?.trim() || null }),
         ...(naicsSectorCode !== undefined && { naicsSectorCode: naicsSectorCode?.trim() || null }),
         ...(naicsSubsectorCode !== undefined && { naicsSubsectorCode: naicsSubsectorCode?.trim() || null }),

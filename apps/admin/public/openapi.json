@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Leads Portal API",
-    "version": "5.0.0",
+    "version": "5.1.0",
     "description": "Complete API documentation for the KITLabs Leads Portal.\n\n## Authentication\n\n### Internal APIs (Session-based)\nMost admin endpoints require an active session cookie obtained via `POST /api/auth`. Customer portal endpoints require a customer session via `POST /api/auth` on the customer portal.\n\n### External APIs (Token-based)\nEndpoints under `/api/v1/` require Bearer token authentication:\n```\nAuthorization: Bearer <your-api-token>\n```\n\n## Base URLs\n- Admin Portal (Production): `https://leadsportaladmin.kitlabs.us`\n- Customer Portal (Production): `https://leadsportal.kitlabs.us`\n- Admin Portal (Local): `http://localhost:3000`\n- Customer Portal (Local): `http://localhost:3001`",
     "contact": {
       "name": "KITLabs Inc",
@@ -445,7 +445,8 @@
           "body": { "type": "string" },
           "tags": { "type": "array", "items": { "type": "string" } },
           "notes": { "type": "string", "nullable": true },
-          "purpose": { "type": "string", "enum": ["WELCOME", "FOLLOW_UP", "REMINDER", "NOTIFICATION", "PROMOTIONAL", "OTHER"], "nullable": true },
+          "purpose": { "type": "string", "enum": ["WELCOME", "FOLLOW_UP", "REMINDER", "NOTIFICATION", "PROMOTIONAL", "NURTURE", "COLD_OUTREACH", "OTHER"], "nullable": true },
+          "sendAfterDays": { "type": "integer", "nullable": true, "description": "Send delay in days (e.g. 7 = send on Day 7)" },
           "industry": { "type": "string", "nullable": true },
           "naicsSectorCode": { "type": "string", "nullable": true },
           "naicsSubsectorCode": { "type": "string", "nullable": true },
@@ -1665,7 +1666,8 @@
                   "body": { "type": "string" },
                   "tags": { "type": "array", "items": { "type": "string" } },
                   "notes": { "type": "string" },
-                  "purpose": { "type": "string", "enum": ["WELCOME", "FOLLOW_UP", "REMINDER", "NOTIFICATION", "PROMOTIONAL", "OTHER"] },
+                  "purpose": { "type": "string", "enum": ["WELCOME", "FOLLOW_UP", "REMINDER", "NOTIFICATION", "PROMOTIONAL", "NURTURE", "COLD_OUTREACH", "OTHER"] },
+                  "sendAfterDays": { "type": "integer", "description": "Send delay in days" },
                   "industry": { "type": "string" },
                   "naicsSectorCode": { "type": "string" },
                   "naicsSubsectorCode": { "type": "string" }
@@ -1705,6 +1707,7 @@
                   "tags": { "type": "array", "items": { "type": "string" } },
                   "notes": { "type": "string" },
                   "purpose": { "type": "string" },
+                  "sendAfterDays": { "type": "integer", "nullable": true, "description": "Send delay in days" },
                   "industry": { "type": "string" },
                   "naicsSectorCode": { "type": "string" },
                   "naicsSubsectorCode": { "type": "string" }

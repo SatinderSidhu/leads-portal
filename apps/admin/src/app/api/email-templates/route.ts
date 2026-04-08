@@ -39,13 +39,14 @@ export async function POST(req: Request) {
     );
   }
 
-  const { title, subject, body: templateBody, tags, notes, purpose, industry, naicsSectorCode, naicsSubsectorCode } = body as {
+  const { title, subject, body: templateBody, tags, notes, purpose, sendAfterDays, industry, naicsSectorCode, naicsSubsectorCode } = body as {
     title?: string;
     subject?: string;
     body?: string;
     tags?: string[];
     notes?: string;
     purpose?: string;
+    sendAfterDays?: number;
     industry?: string;
     naicsSectorCode?: string;
     naicsSubsectorCode?: string;
@@ -73,6 +74,7 @@ export async function POST(req: Request) {
         tags: tags || [],
         notes: notes?.trim() || null,
         purpose: (purpose as EmailTemplatePurpose) || "OTHER",
+        sendAfterDays: sendAfterDays != null ? sendAfterDays : null,
         industry: industry?.trim() || null,
         naicsSectorCode: naicsSectorCode?.trim() || null,
         naicsSubsectorCode: naicsSubsectorCode?.trim() || null,

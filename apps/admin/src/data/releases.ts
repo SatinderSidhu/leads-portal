@@ -7,6 +7,20 @@ export interface Release {
 
 export const releases: Release[] = [
   {
+    version: "4.12",
+    date: "2026-04-08",
+    commitId: "pending",
+    changes: [
+      "Email templates: body preview snippet in list view (truncated 80 chars)",
+      "Email templates: 'Send After (Days)' field for timing (e.g. Day 7) — shown in list, flow builder nodes, and sidebar",
+      "Email templates: new Purpose categories — Nurture (indigo) and Cold Outreach (cyan)",
+      "Email templates: Clone/Duplicate button on list (copy icon) and edit page (Clone button in header)",
+      "Email templates: list table now shows Preview, Delay, and Clone columns",
+      "Flow builder: nodes display send delay badge (Day N) next to purpose badge",
+      "Flow builder: sidebar templates show send delay pill",
+    ],
+  },
+  {
     version: "4.11",
     date: "2026-04-08",
     commitId: "pending",

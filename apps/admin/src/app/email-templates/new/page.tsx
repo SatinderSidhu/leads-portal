@@ -14,6 +14,8 @@ const PURPOSE_OPTIONS = [
   { value: "REMINDER", label: "Reminder" },
   { value: "NOTIFICATION", label: "Notification" },
   { value: "PROMOTIONAL", label: "Promotional" },
+  { value: "NURTURE", label: "Nurture" },
+  { value: "COLD_OUTREACH", label: "Cold Outreach" },
   { value: "OTHER", label: "Other" },
 ];
 
@@ -28,6 +30,7 @@ export default function NewEmailTemplatePage() {
   const [industry, setIndustry] = useState("");
   const [naicsSectorCode, setNaicsSectorCode] = useState("");
   const [naicsSubsectorCode, setNaicsSubsectorCode] = useState("");
+  const [sendAfterDays, setSendAfterDays] = useState<string>("");
   const [naicsSectors, setNaicsSectors] = useState<{ code: string; name: string; subsectors: { code: string; name: string }[] }[]>([]);
   const [saving, setSaving] = useState(false);
   const [showTestEmail, setShowTestEmail] = useState(false);
@@ -56,6 +59,7 @@ export default function NewEmailTemplatePage() {
             .filter(Boolean),
           purpose,
           notes: notes.trim() || undefined,
+          sendAfterDays: sendAfterDays ? parseInt(sendAfterDays, 10) : undefined,
           industry: industry.trim() || undefined,
           naicsSectorCode: naicsSectorCode || undefined,
           naicsSubsectorCode: naicsSubsectorCode || undefined,
@@ -145,7 +149,7 @@ export default function NewEmailTemplatePage() {
 
           <TemplateTags />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Purpose
@@ -161,6 +165,20 @@ export default function NewEmailTemplatePage() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Send After (Days) <span className="font-normal text-gray-400">(optional)</span>
+              </label>
+              <input
+                type="number"
+                min="0"
+                value={sendAfterDays}
+                onChange={(e) => setSendAfterDays(e.target.value)}
+                placeholder="e.g. 7"
+                className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+              />
             </div>
 
             <div>

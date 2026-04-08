@@ -24,6 +24,8 @@ const PURPOSE_COLORS: Record<string, string> = {
   REMINDER: "border-yellow-400 bg-yellow-50 dark:bg-yellow-900/30",
   NOTIFICATION: "border-purple-400 bg-purple-50 dark:bg-purple-900/30",
   PROMOTIONAL: "border-pink-400 bg-pink-50 dark:bg-pink-900/30",
+  NURTURE: "border-indigo-400 bg-indigo-50 dark:bg-indigo-900/30",
+  COLD_OUTREACH: "border-cyan-400 bg-cyan-50 dark:bg-cyan-900/30",
   OTHER: "border-gray-400 bg-gray-50 dark:bg-gray-800",
 };
 
@@ -33,6 +35,8 @@ const PURPOSE_BADGE: Record<string, string> = {
   REMINDER: "bg-yellow-100 text-yellow-700",
   NOTIFICATION: "bg-purple-100 text-purple-700",
   PROMOTIONAL: "bg-pink-100 text-pink-700",
+  NURTURE: "bg-indigo-100 text-indigo-700",
+  COLD_OUTREACH: "bg-cyan-100 text-cyan-700",
   OTHER: "bg-gray-100 text-gray-700",
 };
 
@@ -42,6 +46,8 @@ const PURPOSE_LABELS: Record<string, string> = {
   REMINDER: "Reminder",
   NOTIFICATION: "Notification",
   PROMOTIONAL: "Promotional",
+  NURTURE: "Nurture",
+  COLD_OUTREACH: "Cold Outreach",
   OTHER: "Other",
 };
 
@@ -50,6 +56,7 @@ interface EmailTemplateItem {
   title: string;
   subject: string;
   purpose: string;
+  sendAfterDays: number | null;
 }
 
 interface EmailNodeData {
@@ -57,6 +64,7 @@ interface EmailNodeData {
   templateTitle: string;
   templateSubject: string;
   purpose: string;
+  sendAfterDays: number | null;
   [key: string]: unknown;
 }
 
@@ -73,11 +81,18 @@ function EmailNode({ data }: NodeProps<Node<EmailNodeData>>) {
       <div className="text-xs text-gray-500 dark:text-gray-400 mb-2 truncate">
         {data.templateSubject as string}
       </div>
-      <span
-        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${PURPOSE_BADGE[purpose] || PURPOSE_BADGE.OTHER}`}
-      >
-        {PURPOSE_LABELS[purpose] || purpose}
-      </span>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <span
+          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${PURPOSE_BADGE[purpose] || PURPOSE_BADGE.OTHER}`}
+        >
+          {PURPOSE_LABELS[purpose] || purpose}
+        </span>
+        {data.sendAfterDays != null && (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-orange-100 text-orange-700">
+            Day {data.sendAfterDays as number}
+          </span>
+        )}
+      </div>
       <Handle type="source" position={Position.Bottom} className="!bg-gray-400 !w-3 !h-3" />
     </div>
   );
@@ -141,6 +156,7 @@ export default function FlowBuilder({
           templateTitle: template.title,
           templateSubject: template.subject,
           purpose: template.purpose,
+          sendAfterDays: template.sendAfterDays,
         },
       };
       setNodes((nds) => [...nds, newNode]);
@@ -189,8 +205,11 @@ export default function FlowBuilder({
                 onClick={() => addTemplateNode(t)}
                 className="w-full text-left p-3 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition"
               >
-                <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate">
+                <div className="text-sm font-medium text-gray-800 dark:text-gray-200 truncate flex items-center gap-1.5">
                   {t.title}
+                  {t.sendAfterDays != null && (
+                    <span className="text-[10px] font-medium text-orange-600 bg-orange-50 dark:bg-orange-900/20 dark:text-orange-400 px-1.5 py-0.5 rounded-full shrink-0">Day {t.sendAfterDays}</span>
+                  )}
                 </div>
                 <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
                   {t.subject}

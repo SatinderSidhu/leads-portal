@@ -9,6 +9,8 @@ const PURPOSE_COLORS: Record<string, string> = {
   REMINDER: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
   NOTIFICATION: "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
   PROMOTIONAL: "bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300",
+  NURTURE: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300",
+  COLD_OUTREACH: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300",
   OTHER: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300",
 };
 
@@ -18,8 +20,14 @@ const PURPOSE_LABELS: Record<string, string> = {
   REMINDER: "Reminder",
   NOTIFICATION: "Notification",
   PROMOTIONAL: "Promotional",
+  NURTURE: "Nurture",
+  COLD_OUTREACH: "Cold Outreach",
   OTHER: "Other",
 };
+
+function stripHtml(html: string): string {
+  return html.replace(/<[^>]*>/g, "").replace(/&nbsp;/g, " ").replace(/\s+/g, " ").trim();
+}
 
 const SYSTEM_KEY_LABELS: Record<string, { label: string; description: string; tags: string[] }> = {
   system_welcome: { label: "Welcome Email", description: "Sent when a new lead is created or welcome email is triggered", tags: ["customerName", "projectName", "portalUrl"] },
@@ -40,6 +48,7 @@ interface EmailTemplate {
   subject: string;
   body: string;
   purpose: string;
+  sendAfterDays: number | null;
   tags: string[];
   systemKey: string | null;
   createdAt: string;
@@ -80,6 +89,33 @@ export default function EmailTemplatesListPage() {
   const [seeding, setSeeding] = useState(false);
   const [seedResult, setSeedResult] = useState<{ created: number; skipped: number } | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<EmailTemplate | null>(null);
+  const [cloning, setCloning] = useState<string | null>(null);
+
+  async function handleClone(tpl: EmailTemplate) {
+    setCloning(tpl.id);
+    try {
+      const res = await fetch("/api/email-templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: `${tpl.title} (Copy)`,
+          subject: tpl.subject,
+          body: tpl.body,
+          tags: tpl.tags,
+          purpose: tpl.purpose,
+          sendAfterDays: tpl.sendAfterDays,
+        }),
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setComposeTemplates((prev) => [created, ...prev]);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setCloning(null);
+    }
+  }
 
   useEffect(() => {
     Promise.all([
@@ -291,13 +327,18 @@ export default function EmailTemplatesListPage() {
                   <tr className="bg-gray-50 dark:bg-gray-700 border-b dark:border-gray-600">
                     <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Title</th>
                     <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Subject</th>
+                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider max-w-xs">Preview</th>
                     <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Purpose</th>
+                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Delay</th>
                     <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tags</th>
                     <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Created</th>
+                    <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {composeTemplates.map((template) => (
+                  {composeTemplates.map((template) => {
+                    const bodySnippet = stripHtml(template.body);
+                    return (
                     <tr
                       key={template.id}
                       className="hover:bg-gray-50 dark:hover:bg-gray-700 transition cursor-pointer"
@@ -305,10 +346,20 @@ export default function EmailTemplatesListPage() {
                     >
                       <td className="px-6 py-4 text-sm font-medium text-teal-600">{template.title}</td>
                       <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{template.subject}</td>
+                      <td className="px-6 py-4 text-xs text-gray-400 dark:text-gray-500 max-w-xs truncate" title={bodySnippet}>
+                        {bodySnippet.length > 80 ? bodySnippet.slice(0, 80) + "..." : bodySnippet || "—"}
+                      </td>
                       <td className="px-6 py-4">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${PURPOSE_COLORS[template.purpose] || "bg-gray-100 text-gray-800"}`}>
                           {PURPOSE_LABELS[template.purpose] || template.purpose}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">
+                        {template.sendAfterDays != null ? (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/20 px-2 py-0.5 rounded-full">
+                            Day {template.sendAfterDays}
+                          </span>
+                        ) : "—"}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap gap-1">
@@ -318,8 +369,21 @@ export default function EmailTemplatesListPage() {
                         </div>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{new Date(template.createdAt).toLocaleDateString()}</td>
+                      <td className="px-6 py-3">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleClone(template); }}
+                          disabled={cloning === template.id}
+                          className="p-1.5 rounded-lg text-gray-400 hover:text-teal-600 hover:bg-teal-50 dark:hover:text-teal-400 dark:hover:bg-teal-900/20 transition disabled:opacity-50"
+                          title="Clone template"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+                          </svg>
+                        </button>
+                      </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
