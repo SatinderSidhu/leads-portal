@@ -149,33 +149,318 @@ When a lead is set to a closed status (Lost, No Response, On Hold, Cancelled), t
 To re-enable communication, click **"Disable"** on the Do Not Contact banner.` },
 
   // Email System
-  { category: "Email System", sortOrder: 1, title: "Sending Emails to Customers", slug: "sending-emails", content: `# Sending Emails to Customers
+  { category: "Email System", sortOrder: 1, title: "Email Compose & Sending", slug: "email-compose-sending", content: `# Email Compose & Sending
 
-## Compose an Email
-1. Open the lead detail page
-2. Click **"Compose Email"** in the left column
-3. Fill in:
-   - **Subject**: The email subject line
-   - **Body**: Use the rich text editor (bold, italic, lists, links, images)
-   - **Template**: Optionally select an email template to pre-fill
-   - **CC/BCC**: Add additional recipients
-   - **Attachments**: Attach files
-   - **Include Signature**: Check to append your email signature
-4. Click **"Send"**
+The email compose section is located in the left column of the lead detail page. It provides a full-featured email editor with templates, attachments, CC/BCC, signatures, and reply threading.
 
-## Email Templates
-Go to **Email Templates** in the sidebar to create reusable compose templates. Only **compose templates** (user-created) appear in the template selector when composing emails — system templates are managed separately.
+## Composing a New Email
 
-Templates support merge tags:
-- \`{{customerName}}\`, \`{{projectName}}\`, \`{{phone}}\`, \`{{city}}\`, \`{{status}}\`, \`{{stage}}\`, \`{{source}}\`, \`{{dateCreated}}\`
+1. Open any lead's detail page
+2. Find the **"Send Email"** section in the left column
+3. Fill in the compose form:
+
+### Template Selector
+- A dropdown at the top lets you choose from your **compose templates** (system templates are not shown here)
+- Selecting a template **auto-fills** both the subject and body
+- Choose **"-- No template (blank) --"** to start from scratch
+- You can edit the auto-filled content before sending
+
+### Subject Line
+- Required field — every email needs a subject
+- When replying, the subject auto-fills with **"Re: [original subject]"**
+
+### Body (Rich Text Editor)
+- Full rich text editor with formatting toolbar
+- Supports: **bold**, *italic*, lists, links, images, headings, code blocks
+- Toggle between **Visual** and **Code** (HTML) mode
+- Body is required — you cannot send an empty email
+
+### CC/BCC
+- Click the **"CC/BCC"** button to reveal these fields
+- Enter email addresses separated by commas
+- CC recipients can see each other; BCC recipients are hidden
+
+### Attachments
+- Click the **attachment icon** to upload files
+- Supports **multiple files** at once
+- Limits: **10MB per file**, **25MB total**
+- Each attached file shows its name, size, and a **"Remove"** button
+- Files are sent as multipart form data
+
+### Email Signature
+- Check **"Include email signature"** to append your signature
+- Your signature is set in **My Profile** (sidebar → Profile)
+- A preview of your signature appears below the checkbox when enabled
+- The signature is appended server-side — it will look correct in the customer's inbox
+
+## Sending the Email
+
+Click **"Send Email"** (or **"Send Reply"** in reply mode). The system:
+1. Validates that subject and body are filled in
+2. Checks the **Do Not Contact** flag — if enabled, sending is blocked
+3. Sends the email via SMTP with:
+   - Your name as the display name (e.g., "Satinder Sidhu <leads@kitlabs.us>")
+   - A lead-specific Reply-To address for tracking inbound replies
+   - The tracking pixel for open detection
+   - An unsubscribe link at the bottom
+4. Logs the email in the conversation thread
+5. Notifies lead watchers (if notification preferences allow)
+
+## Replying to Emails
+
+1. In the email conversation thread, click **"Reply"** on any sent or received email
+2. A blue banner appears: **"Replying to: [subject]"**
+3. The original email is quoted in the body
+4. The template selector is hidden in reply mode
+5. Click **"Send Reply"** to send
+6. Click the banner link to switch back to regular compose
+
+## Email Preview
+
+Click **"Preview"** to see exactly how the email will look:
+- Opens a full-screen modal with the rendered HTML
+- Shows the merged subject line
+- Displays sample data banner with example customer/project names
+- Useful for checking formatting before sending
+
+## Email Conversation Thread
+
+All emails appear in a chronological thread in the left column:
+- **Sent emails** show: subject, body, status badge, attachments, sent date
+- **Received emails** show: sender, subject, body, received date
+- Status badges: **SENT** (gray), **OPENED** (green with timestamp), **FAILED** (red)
+- Attachments appear as clickable download links
+- Thread is collapsed by default (top 3 emails) — click **"Show all emails"** to expand
 
 ## Email Tracking
-- **Open tracking**: A tracking pixel is embedded in each email. When the customer opens it, you'll see "OPENED" status.
-- **Email history**: All emails (composed, welcome, NDA, SOW, App Flow) appear in the conversation thread.
+
+- A **1x1 tracking pixel** is embedded in every outgoing email
+- When the customer opens the email, the status changes to **OPENED** with a timestamp
+- Open events trigger a **customer_response** notification to watchers
+- All emails (composed, welcome, NDA, SOW, App Flow share) appear in the same thread
 
 ## Welcome Email
-- Sent automatically when creating a lead (if "Save and Inform Client" is clicked)
-- Can be resent anytime via the "Send Now" / "Resend" button next to "Welcome Email" status` },
+
+- Automatically sent when creating a lead (if "Save and Inform Client" is clicked)
+- Can be resent anytime via **"Send Now"** / **"Resend"** button
+- Uses the \`system_welcome\` template (customizable in Email Templates → System Templates)
+- Logged as a SentEmail record in the conversation thread
+
+## Do Not Contact
+
+When the Do Not Contact flag is enabled on a lead:
+- The **Send Email** button is disabled
+- Welcome email send/resend is hidden
+- A red banner explains why sending is blocked
+- Disable Do Not Contact from the banner to re-enable email` },
+
+  { category: "Email System", sortOrder: 5, title: "Creating Email Templates", slug: "creating-email-templates", content: `# Creating Email Templates
+
+Email templates are reusable email formats that save time when sending similar emails to different leads. The system has two types of templates: **Compose Templates** (user-created) and **System Templates** (automated).
+
+## Compose vs System Templates
+
+### Compose Templates
+- Created by admins for manual email composition
+- Shown in the template dropdown when composing emails on lead detail
+- Shown in the email flow builder as draggable nodes
+- Can be created, edited, and deleted freely
+- Found in: **Email Templates** → **Compose Templates** tab
+
+### System Templates
+- Used by the system for automated emails (welcome, status update, NDA ready, etc.)
+- **NOT** shown in the email compose dropdown or flow builder
+- Can be edited (subject/body) but **cannot be deleted**
+- Found in: **Email Templates** → **System Templates** tab
+
+## Creating a New Compose Template
+
+1. Go to **Email Templates** in the sidebar
+2. Click **"+ New Template"**
+3. Fill in the template form:
+
+### Required Fields
+- **Template Name**: Internal reference name (not shown to customers). Use descriptive names like "Follow-up after demo" or "Cold outreach - SaaS companies"
+- **Subject**: The email subject line. Supports merge tags (e.g., \`{{projectName}} — Next Steps\`)
+- **Body**: The email content. Use the rich text editor for formatting. Toggle between Visual and HTML Code mode
+
+### Optional Fields
+- **Purpose**: Categorize the template — Welcome, Follow Up, Reminder, Notification, Promotional, or Other. This adds a color-coded badge for quick identification:
+  - **Welcome** = Green
+  - **Follow Up** = Blue
+  - **Reminder** = Yellow
+  - **Notification** = Purple
+  - **Promotional** = Pink
+  - **Other** = Gray
+- **Tags**: Comma-separated tags for organizing templates (e.g., "saas, cold-outreach, enterprise")
+- **Industry**: Freeform text describing the target industry (e.g., "Healthcare", "FinTech")
+- **Industry Sector (NAICS)**: Select a 2-digit NAICS sector from the dropdown (e.g., "54 — Professional Services")
+- **Industry Subsector (NAICS)**: Cascading dropdown that filters based on the selected sector
+- **Admin Notes**: Internal notes about when/how to use this template
+
+4. Click **"Create Template"**
+
+## Merge Tags
+
+Insert these placeholders in your subject or body — they'll be replaced with actual lead data when composing:
+
+| Tag | Replaced With |
+|-----|--------------|
+| \`{{customerName}}\` | Customer's full name |
+| \`{{projectName}}\` | Project name |
+| \`{{phone}}\` | Customer's phone number |
+| \`{{city}}\` | Customer's city |
+| \`{{status}}\` | Current lead status |
+| \`{{stage}}\` | Current lead stage |
+| \`{{source}}\` | Lead source |
+| \`{{dateCreated}}\` | Lead creation date |
+
+**Example subject:** \`{{projectName}} — Project Update\`
+**Example body:** \`Hi {{customerName}}, I wanted to follow up on {{projectName}}...\`
+
+## Editing a Template
+
+1. Go to **Email Templates** → **Compose Templates** tab
+2. Click any template row to open it
+3. Make your changes
+4. Click **"Save"**
+
+## Deleting a Template
+
+1. Open the template you want to delete
+2. Click **"Delete"** (red button at top)
+3. Confirm the deletion
+
+**Note:** System templates cannot be deleted. The delete button is hidden for system templates.
+
+## Testing a Template
+
+1. Open any template (new or existing)
+2. Click **"Send Test"** in the header
+3. A test email is sent to your admin email address
+4. Check your inbox to verify formatting
+
+## Using Templates in Email Compose
+
+1. On the lead detail page, open the compose form
+2. Select a template from the **Template** dropdown
+3. The subject and body auto-fill with the template content
+4. Merge tags are replaced with the lead's actual data
+5. Edit as needed, then send
+
+## Template List View
+
+The Compose Templates tab shows a table with:
+- **Title**: Template name (clickable to edit)
+- **Subject**: Email subject line
+- **Purpose**: Color-coded badge
+- **Tags**: Tag pills
+- **Created**: Creation date
+
+Templates are sorted newest first.` },
+
+  { category: "Email System", sortOrder: 6, title: "Email Flow Builder", slug: "email-flow-builder", content: `# Email Flow Builder
+
+The Email Flow Builder lets you create visual email automation flows — sequence diagrams showing which emails to send and in what order based on customer responses.
+
+## What Are Email Flows?
+
+Email flows are visual diagrams that map out email sequences. Each node represents an email template, and edges (arrows) represent the path between emails based on customer actions (e.g., "Customer accepts", "No response after 3 days").
+
+Think of flows as blueprints for your email campaigns — they help you plan and visualize multi-step communication strategies.
+
+## Creating a New Flow
+
+1. Go to **Email Flows** in the sidebar
+2. Click **"+ New Flow"**
+3. Enter a **Flow Name** (required) and optional **Description**
+4. Click **"Create Flow & Open Builder"**
+
+## The Flow Builder Interface
+
+### Sidebar (Template Panel)
+- Located on the left side of the screen
+- Shows all your **compose templates** (system templates are excluded)
+- Each template displays its **title** and **subject line**
+- Toggle the sidebar with the **"Templates" / "Hide Panel"** button
+
+### Canvas (Center Area)
+- The main workspace where you build your flow
+- Grid background for alignment
+- **Zoom controls** in the bottom-left corner
+- **Mini-map** in the bottom-right for navigation in large flows
+- Drag to pan, scroll to zoom
+
+## Building a Flow
+
+### Adding Email Nodes
+1. Click any template in the sidebar
+2. A new node appears on the canvas representing that email
+3. Each node shows:
+   - **Template name** (title)
+   - **Subject line** (smaller text below)
+   - **Purpose badge** (color-coded: green, blue, yellow, purple, pink, gray)
+   - **Connection handles** (gray dots) at top and bottom
+
+### Connecting Nodes (Edges)
+1. Hover over the **bottom handle** of a node (the gray dot at the bottom)
+2. Click and drag to the **top handle** of another node
+3. A prompt appears asking for an **edge label** — this describes the condition:
+   - Examples: "Customer opens email", "No response after 3 days", "Customer clicks CTA"
+4. The connection is drawn as a smooth line with the label
+
+### Editing Edge Labels
+- **Double-click** any edge/connection to edit its label
+- Enter the new label and press OK
+
+### Rearranging Nodes
+- Drag any node to reposition it on the canvas
+- Nodes snap to the grid for alignment
+- Edges automatically adjust to follow the nodes
+
+## Flow Node Colors
+
+Nodes are color-coded by the template's **purpose**:
+| Purpose | Border Color | Background |
+|---------|-------------|------------|
+| Welcome | Green | Light green |
+| Follow Up | Blue | Light blue |
+| Reminder | Yellow | Light yellow |
+| Notification | Purple | Light purple |
+| Promotional | Pink | Light pink |
+| Other | Gray | Light gray |
+
+## Saving a Flow
+
+1. Click **"Save Flow"** (top-right, green button)
+2. The button shows **"Saving..."** while in progress
+3. All nodes (positions, template data) and edges (connections, labels) are saved
+4. The flow persists and can be reopened later
+
+## Editing Flow Details
+
+- Click the **flow name** in the header to edit it
+- Click **"Done"** to confirm the name change
+- The description can also be edited inline
+
+## Deleting a Flow
+
+1. Open the flow in the builder
+2. Click **"Delete Flow"** (red button, top-right)
+3. Confirm the deletion
+
+## How Flows Connect to Email Compose
+
+When you've set up email flows, the lead detail page can show **"Recommended Next Email"** suggestions based on which emails have already been sent and what flows define as the next step. Clicking a recommendation auto-loads the template into the compose form.
+
+## Tips for Building Effective Flows
+
+- **Start with your welcome email** as the first node
+- **Branch for different scenarios**: customer responds vs. no response
+- **Label edges clearly** so any admin can understand the flow at a glance
+- **Use purpose categories** to color-code different types of emails
+- **Keep flows focused** — one flow per campaign or lead stage works best
+- **Reuse templates** — the same template can appear in multiple flows` },
 
   // SOW
   { category: "SOW & Documents", sortOrder: 1, title: "Creating a Scope of Work", slug: "creating-sow", content: `# Creating a Scope of Work (SOW)
@@ -383,30 +668,94 @@ The **Live Chat** item in the sidebar shows a red badge with unread count, updat
 ## Do Not Contact
 If a lead has Do Not Contact enabled, the admin reply input is disabled.` },
 
-  // Email Drafts
-  { category: "Email System", sortOrder: 2, title: "Email Drafts", slug: "email-drafts", content: `# Email Drafts
+  // Email Drafts & Scheduling
+  { category: "Email System", sortOrder: 2, title: "Email Drafts & Scheduling", slug: "email-drafts", content: `# Email Drafts & Scheduling
 
-Save email drafts to compose later without sending.
+The draft system lets you compose emails now and send them later. You can save multiple drafts per lead, track their status, and schedule them for future sending.
 
 ## Saving a Draft
+
 1. Open the lead detail page
-2. Click **"Compose Email"**
-3. Write your subject and body
-4. Click **"Save Draft"** instead of Send
+2. Open the compose form (**"Send Email"** section)
+3. Write your **subject** and **body** (optionally select a template, add CC/BCC)
+4. Click **"Save Draft"** (gray button) instead of Send
+5. The draft is saved and appears in the drafts list below the compose form
 
-## Managing Drafts
-- Drafts appear as **amber cards** below the Compose Email button
-- Click **"Edit"** to load a draft back into the compose form
-- Click **"Delete"** to discard a draft
-- You can save **multiple drafts** per lead
+You can save **multiple drafts** per lead — there's no limit.
 
-## Sending a Draft
-1. Click "Edit" on a draft
-2. The subject, body, CC, and BCC are restored
-3. Make any final changes
-4. Click **"Send"** to send it
+## Draft Cards
 
-When editing a saved draft, the button changes to **"Update Draft"**.` },
+Each saved draft appears as a color-coded card below the compose form:
+
+### Card Information
+- **Subject line** (or "(no subject)" if blank)
+- **Status badge** with color indicator
+- **Created by** and **last updated** timestamp
+- **Scheduled time** (if status is Scheduled, shown with a clock icon)
+
+### Status Colors
+| Status | Color | Meaning |
+|--------|-------|---------|
+| **Draft** | Amber/Yellow | Work in progress, not ready to send |
+| **Approved** | Green | Reviewed and approved, ready to send |
+| **Scheduled** | Blue | Set to be sent at a specific date/time |
+| **Cancelled** | Gray | Cancelled, will not be sent |
+
+## Changing Draft Status
+
+Each draft card has an inline **status dropdown**. Click it to change the status:
+- **Draft** → Approved (when content is finalized)
+- **Draft** → Scheduled (when you want to set a send time)
+- **Approved** → Scheduled (ready to send at a specific time)
+- **Scheduled** → Cancelled (changed your mind)
+- Any status → Draft (back to editing)
+
+## Scheduling an Email
+
+1. Save a draft with your email content
+2. Change the draft status to **"Scheduled"** via the dropdown
+3. A **date/time picker** appears on the card
+4. Select the date and time you want the email to be sent
+5. The minimum time is the current moment — you can't schedule in the past
+6. The scheduled time appears on the card with a blue clock icon
+
+**Note:** The scheduling system stores the scheduled time. The actual sending mechanism uses these scheduled drafts for processing.
+
+## Editing a Draft
+
+1. Find the draft in the drafts list
+2. Click **"Edit"** on the draft card
+3. The draft's content loads into the compose form:
+   - Subject, body, CC, and BCC are all restored
+   - The compose button changes to **"Update Draft"**
+4. Make your changes
+5. Click **"Update Draft"** to save changes, or **"Send"** to send immediately
+
+## Previewing a Draft
+
+Click the **preview toggle** on any draft card to expand an inline preview of the email content without loading it into the compose form. Click again to collapse.
+
+## Deleting a Draft
+
+1. Click **"Delete"** on the draft card
+2. Confirm the deletion
+3. The draft is permanently removed
+
+## Draft Workflow Example
+
+Here's a typical workflow for a scheduled follow-up:
+
+1. **Tuesday**: Open lead, compose follow-up email, click **"Save Draft"**
+2. **Wednesday**: Review the draft, make edits, change status to **"Approved"**
+3. **Thursday**: Change status to **"Scheduled"**, pick Friday 9:00 AM
+4. **Friday 9:00 AM**: Email is ready to be sent
+
+## Tips
+
+- Use drafts as a **staging area** for important emails — write now, review later
+- **Multiple drafts** per lead lets you prepare different emails for different scenarios
+- The **Approved** status is useful for team workflows where one person drafts and another approves
+- Change to **Cancelled** instead of deleting if you want to keep a record of the draft` },
 
   // NAICS
   { category: "Lead Management", sortOrder: 4, title: "NAICS Industry Classification", slug: "naics-classification", content: `# NAICS Industry Classification
