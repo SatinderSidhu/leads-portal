@@ -14,6 +14,7 @@ interface Preferences {
   leadAssigned: boolean;
   sowSigned: boolean;
   ndaSigned: boolean;
+  taskCompleted: boolean;
 }
 
 const NOTIFICATION_TYPES: { key: keyof Omit<Preferences, "notificationEmail">; label: string; description: string }[] = [
@@ -26,6 +27,7 @@ const NOTIFICATION_TYPES: { key: keyof Omit<Preferences, "notificationEmail">; l
   { key: "leadAssigned", label: "Lead Assigned to You", description: "When a lead is assigned or reassigned to you" },
   { key: "sowSigned", label: "SOW Signed", description: "When a customer signs the Scope of Work" },
   { key: "ndaSigned", label: "NDA Signed", description: "When a customer signs the NDA" },
+  { key: "taskCompleted", label: "Task Completed", description: "When a task you assigned or were assigned is completed" },
 ];
 
 const defaults: Preferences = {
@@ -39,6 +41,7 @@ const defaults: Preferences = {
   leadAssigned: true,
   sowSigned: true,
   ndaSigned: true,
+  taskCompleted: true,
 };
 
 export default function NotificationSettingsPage() {
@@ -65,6 +68,7 @@ export default function NotificationSettingsPage() {
         leadAssigned: prefsData.leadAssigned ?? true,
         sowSigned: prefsData.sowSigned ?? true,
         ndaSigned: prefsData.ndaSigned ?? true,
+        taskCompleted: prefsData.taskCompleted ?? true,
       });
       setAdminEmail(meData.email || "");
       setLoading(false);

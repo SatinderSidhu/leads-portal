@@ -3127,42 +3127,46 @@ export default function LeadDetailPage() {
                 </div>
               )}
 
-              {/* Add Next Step */}
-              <div className="flex gap-3 items-end">
-                <div className="flex-1">
-                  <input
-                    type="text"
-                    value={nextStepContent}
-                    onChange={(e) => setNextStepContent(e.target.value)}
-                    placeholder="Add a next step..."
-                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm"
-                    onKeyDown={(e) => { if (e.key === "Enter" && nextStepContent.trim()) handleAddNextStep(); }}
-                  />
-                </div>
-                <input
-                  type="date"
-                  value={nextStepDueDate}
-                  onChange={(e) => setNextStepDueDate(e.target.value)}
-                  className="px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm w-40"
-                  title="Due date (optional)"
+              {/* Add Next Step — 2-row layout */}
+              <div className="space-y-2 border-t border-gray-100 dark:border-gray-700 pt-3">
+                {/* Row 1: Description textarea */}
+                <textarea
+                  value={nextStepContent}
+                  onChange={(e) => setNextStepContent(e.target.value)}
+                  placeholder="Describe the next step..."
+                  rows={1}
+                  className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-blue-50 dark:focus:bg-blue-900/10 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm resize-none overflow-hidden"
+                  style={{ minHeight: "40px" }}
+                  onInput={(e) => { const t = e.target as HTMLTextAreaElement; t.style.height = "auto"; t.style.height = t.scrollHeight + "px"; }}
+                  onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && nextStepContent.trim()) { e.preventDefault(); handleAddNextStep(); } }}
                 />
-                <select
-                  value={nextStepAssignee}
-                  onChange={(e) => setNextStepAssignee(e.target.value)}
-                  className="px-2 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-white bg-white dark:bg-gray-700 w-36"
-                  title="Assign to"
-                >
-                  {adminUsers.filter(u => u.active).map((u) => (
-                    <option key={u.id} value={u.id}>{u.name}{u.id === currentAdminId ? " (me)" : ""}</option>
-                  ))}
-                </select>
-                <button
-                  onClick={handleAddNextStep}
-                  disabled={!nextStepContent.trim() || nextStepAdding}
-                  className="bg-[#01358d] text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-[#012a70] disabled:opacity-50 disabled:cursor-not-allowed transition whitespace-nowrap"
-                >
-                  {nextStepAdding ? "Adding..." : "Add Step"}
-                </button>
+                {/* Row 2: Due date, assignee, add button */}
+                <div className="flex gap-2 items-center">
+                  <input
+                    type="date"
+                    value={nextStepDueDate}
+                    onChange={(e) => setNextStepDueDate(e.target.value)}
+                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-xs w-36"
+                    title="Due date (optional)"
+                  />
+                  <select
+                    value={nextStepAssignee}
+                    onChange={(e) => setNextStepAssignee(e.target.value)}
+                    className="px-2 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-xs text-gray-900 dark:text-white bg-white dark:bg-gray-700 flex-1 min-w-0"
+                    title="Assign to"
+                  >
+                    {adminUsers.filter(u => u.active).map((u) => (
+                      <option key={u.id} value={u.id}>{u.name}{u.id === currentAdminId ? " (me)" : ""}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleAddNextStep}
+                    disabled={!nextStepContent.trim() || nextStepAdding}
+                    className="bg-[#01358d] text-white px-4 py-2 rounded-lg text-xs font-medium hover:bg-[#012a70] disabled:opacity-50 disabled:cursor-not-allowed transition whitespace-nowrap"
+                  >
+                    {nextStepAdding ? "Adding..." : "Add Step"}
+                  </button>
+                </div>
               </div>
             </div>
 

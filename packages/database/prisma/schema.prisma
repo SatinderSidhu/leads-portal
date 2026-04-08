@@ -496,6 +496,7 @@ model NextStep {
   completed     Boolean    @default(false)
   completedAt   DateTime?  @map("completed_at")
   createdBy     String?    @map("created_by")
+  assignedById  String?    @map("assigned_by_id")
   assignedToId  String?    @map("assigned_to_id")
   assignedTo    AdminUser? @relation("AssignedTasks", fields: [assignedToId], references: [id], onDelete: SetNull)
   createdAt     DateTime   @default(now()) @map("created_at")
@@ -614,6 +615,7 @@ model NotificationPreference {
   leadAssigned          Boolean  @default(true) @map("lead_assigned")
   sowSigned             Boolean  @default(true) @map("sow_signed")
   ndaSigned             Boolean  @default(true) @map("nda_signed")
+  taskCompleted         Boolean  @default(true) @map("task_completed")
 
   updatedAt             DateTime @updatedAt @map("updated_at")
 

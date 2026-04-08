@@ -28,6 +28,7 @@ export async function GET() {
       leadAssigned: true,
       sowSigned: true,
       ndaSigned: true,
+      taskCompleted: true,
       updatedAt: new Date(),
     };
   }

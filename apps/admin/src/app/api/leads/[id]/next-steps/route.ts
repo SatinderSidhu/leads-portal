@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getAdminSession } from "../../../../../lib/session";
 import { logAudit } from "../../../../../lib/audit";
 import { sendNotification } from "../../../../../lib/notify";
+import { getSystemEmailContent } from "../../../../../lib/email";
 
 export async function GET(
   _req: Request,
@@ -50,6 +51,7 @@ export async function POST(
       content: content.trim(),
       dueDate: dueDate ? new Date(dueDate) : null,
       createdBy: session.name,
+      assignedById: session.id,
       assignedToId: assignedToId || session.id,
     },
     include: {
@@ -63,21 +65,22 @@ export async function POST(
 
   logAudit(id, "Task Created", `"${content.trim().slice(0, 80)}" assigned to ${assigneeName}${dueDateStr}`, session.name).catch(() => {});
 
-  // Send notification to assignee if different from creator
+  // Send notification to assignee if different from creator (using system template)
   if (assignedToId && assignedToId !== session.id) {
+    const adminUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
+    const dueDateLabel = dueDate ? new Date(dueDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "No due date";
+    const { subject: taskSubj, html: taskBody } = await getSystemEmailContent("system_task_assigned", {
+      projectName: lead.projectName,
+      assignedBy: session.name,
+      taskContent: content.trim(),
+      dueDate: dueDateLabel,
+      leadUrl: `${adminUrl}/leads/${id}`,
+    }, `Task Assigned: ${lead.projectName}`, `<p><strong>${session.name}</strong> assigned you a task on <strong>${lead.projectName}</strong>: ${content.trim()}</p>`);
     sendNotification({
       event: "lead_assigned",
       leadId: id,
-      subject: `Task Assigned: ${lead.projectName}`,
-      body: `
-        <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
-          <strong>${session.name}</strong> assigned you a task on <strong>${lead.projectName}</strong>:
-        </p>
-        <div style="background: white; border-left: 4px solid #01358d; padding: 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
-          <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 0;">${content.trim()}</p>
-          ${dueDate ? `<p style="color: #666; font-size: 13px; margin: 8px 0 0;">Due: ${new Date(dueDate).toLocaleDateString()}</p>` : ""}
-        </div>
-      `,
+      subject: taskSubj,
+      body: taskBody,
       excludeAdminId: session.id,
     }).catch(() => {});
   }
@@ -125,29 +128,74 @@ export async function PUT(
     },
   });
 
+  const lead = await prisma.lead.findUnique({ where: { id }, select: { projectName: true } });
+  const adminUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
+
   if (completed !== undefined) {
     logAudit(id, "Task " + (updated.completed ? "Completed" : "Reopened"), step.content.slice(0, 100), session.name).catch(() => {});
+
+    // Notify both assignedTo and assignedBy on task completion
+    if (updated.completed && lead) {
+      const { subject: compSubj, html: compBody } = await getSystemEmailContent("system_task_completed", {
+        projectName: lead.projectName,
+        completedBy: session.name,
+        taskContent: step.content,
+        leadUrl: `${adminUrl}/leads/${id}`,
+      }, `Task Completed: ${lead.projectName}`, `<p><strong>${session.name}</strong> completed a task on <strong>${lead.projectName}</strong>: ${step.content.slice(0, 100)}</p>`);
+
+      // Notify assignedTo (if not the person completing)
+      if (step.assignedToId && step.assignedToId !== session.id) {
+        sendNotification({
+          event: "task_completed",
+          leadId: id,
+          subject: compSubj,
+          body: compBody,
+          excludeAdminId: session.id,
+        }).catch(() => {});
+      }
+      // Notify assignedBy (if different from both completer and assignedTo)
+      if (step.assignedById && step.assignedById !== session.id && step.assignedById !== step.assignedToId) {
+        // Direct email to assignedBy
+        try {
+          const assigner = await prisma.adminUser.findUnique({ where: { id: step.assignedById }, select: { email: true } });
+          if (assigner) {
+            const pref = await prisma.notificationPreference.findUnique({ where: { adminId: step.assignedById } });
+            if (!pref || pref.taskCompleted !== false) {
+              const { transporter, getFromAddress } = await import("../../../../../lib/email");
+              await transporter.sendMail({
+                from: getFromAddress(),
+                to: pref?.notificationEmail || assigner.email,
+                subject: compSubj,
+                html: `<div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">${compBody}<div style="text-align: center; margin: 30px 0;"><a href="${adminUrl}/leads/${id}" style="display: inline-block; background: #01358d; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-size: 15px; font-weight: 600;">View Lead</a></div></div>`,
+              });
+            }
+          }
+        } catch (e) {
+          console.error("[Task Completed] Failed to notify assigner:", e);
+        }
+      }
+    }
   }
 
-  // If reassigned, notify new assignee
+  // If reassigned, notify new assignee + update assignedBy
   if (assignedToId !== undefined && assignedToId !== step.assignedToId) {
-    const lead = await prisma.lead.findUnique({ where: { id }, select: { projectName: true } });
+    // Update assignedById to current user
+    await prisma.nextStep.update({ where: { id: stepId }, data: { assignedById: session.id } }).catch(() => {});
+
     const assigneeName = updated.assignedTo?.name || "Unknown";
     logAudit(id, "Task Reassigned", `"${step.content.slice(0, 80)}" reassigned to ${assigneeName}`, session.name).catch(() => {});
 
     if (assignedToId !== session.id && lead) {
+      const dueDateLabel = step.dueDate ? new Date(step.dueDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "No due date";
+      const { subject: taskSubj, html: taskBody } = await getSystemEmailContent("system_task_assigned", {
+        projectName: lead.projectName, assignedBy: session.name,
+        taskContent: step.content, dueDate: dueDateLabel, leadUrl: `${adminUrl}/leads/${id}`,
+      }, `Task Assigned: ${lead.projectName}`, `<p><strong>${session.name}</strong> assigned you a task: ${step.content.slice(0, 100)}</p>`);
       sendNotification({
         event: "lead_assigned",
         leadId: id,
-        subject: `Task Assigned: ${lead.projectName}`,
-        body: `
-          <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
-            <strong>${session.name}</strong> assigned you a task on <strong>${lead.projectName}</strong>:
-          </p>
-          <div style="background: white; border-left: 4px solid #01358d; padding: 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
-            <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 0;">${step.content}</p>
-          </div>
-        `,
+        subject: taskSubj,
+        body: taskBody,
         excludeAdminId: session.id,
       }).catch(() => {});
     }

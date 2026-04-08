@@ -609,12 +609,15 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - Recent Activity feed with "View All Activity" link
 
 ## Task Assignment
-- `assignedToId` FK on NextStep model (to AdminUser)
+- `assignedToId` FK on NextStep model (to AdminUser), `assignedById` tracks who assigned the task
 - Tasks default to current admin but can be assigned to any active admin
 - Assignment dropdown in "Add Step" form and inline reassign on each task
 - Email notification sent to assignee when task is created or reassigned
 - Tasks show in "My Tasks" section on dashboard (pending, overdue highlighted)
-- Audit logged: "Task Created", "Task Reassigned", "Task Completed", "Task Deleted"
+- Audit logged: "Task Created", "Task Reassigned", "Task Completed", "Task Reopened", "Task Deleted"
+- Task emails use system templates (`system_task_assigned`, `system_task_completed`) — admin can customize via Email Templates > System Templates
+- On completion: both assignedTo and assignedBy are notified (respects `taskCompleted` notification preference)
+- `taskCompleted` notification event added (10th preference in Communications settings)
 
 ## Admin Portal Navigation
 - **Collapsible sidebar**: expanded (w-56), collapsed (w-16 icons only), hover-expand when collapsed

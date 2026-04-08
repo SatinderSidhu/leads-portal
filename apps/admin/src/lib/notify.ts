@@ -10,7 +10,8 @@ export type NotificationEvent =
   | "lead_status_change"
   | "lead_assigned"
   | "sow_signed"
-  | "nda_signed";
+  | "nda_signed"
+  | "task_completed";
 
 // Map event names to NotificationPreference column names
 const EVENT_TO_PREF_KEY: Record<NotificationEvent, string> = {
@@ -23,6 +24,7 @@ const EVENT_TO_PREF_KEY: Record<NotificationEvent, string> = {
   lead_assigned: "leadAssigned",
   sow_signed: "sowSigned",
   nda_signed: "ndaSigned",
+  task_completed: "taskCompleted",
 };
 
 interface NotifyParams {

@@ -7,9 +7,22 @@ export interface Release {
 
 export const releases: Release[] = [
   {
-    version: "4.7",
+    version: "4.8",
     date: "2026-04-07",
     commitId: "pending",
+    changes: [
+      "Next Steps: tracks who assigned each task (assignedById field)",
+      "Next Steps: task completion notifies both assignedTo and assignedBy via email",
+      "Next Steps: 2-row form layout with auto-expanding textarea (changes bg on focus)",
+      "Next Steps: system email templates for task assigned + task completed (admin-editable)",
+      "Communications: new 'Task Completed' notification preference (10th toggle)",
+      "Task completion and reopening logged to audit trail",
+    ],
+  },
+  {
+    version: "4.7",
+    date: "2026-04-07",
+    commitId: "d3edb05",
     changes: [
       "Email templates: 'Template Name' label with '(internal reference)' hint",
       "Email templates: Industry text field for categorizing templates",
