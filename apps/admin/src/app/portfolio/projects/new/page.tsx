@@ -34,7 +34,7 @@ function NewProjectForm() {
 
   useEffect(() => {
     fetch("/api/portfolio/services").then((r) => r.json()).then((d) => setServices(Array.isArray(d) ? d : []));
-    fetch("/api/naics").then((r) => r.json()).then((d) => { if (d.sectors) setNaicsSectors(d.sectors); });
+    fetch("/api/naics").then((r) => r.json()).then((d) => { if (Array.isArray(d)) setNaicsSectors(d); }).catch(() => {});
   }, []);
 
   useEffect(() => {

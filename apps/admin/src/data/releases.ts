@@ -7,9 +7,18 @@ export interface Release {
 
 export const releases: Release[] = [
   {
+    version: "4.10",
+    date: "2026-04-08",
+    commitId: "pending",
+    changes: [
+      "Fix: NAICS dropdowns not loading in portfolio projects and email templates (API returns array, not object)",
+      "Fix: Admin login page logo broken (middleware was redirecting static image files to /login)",
+    ],
+  },
+  {
     version: "4.9",
     date: "2026-04-07",
-    commitId: "pending",
+    commitId: "3aa110b",
     changes: [
       "Email drafts: multiple drafts per lead (no more single-draft restriction)",
       "Email drafts: status field — Draft, Approved, Scheduled, Cancelled",

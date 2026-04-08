@@ -33,7 +33,7 @@ export default function NewEmailTemplatePage() {
   const [showTestEmail, setShowTestEmail] = useState(false);
 
   useEffect(() => {
-    fetch("/api/naics").then((r) => r.json()).then((d) => { if (d.sectors) setNaicsSectors(d.sectors); }).catch(() => {});
+    fetch("/api/naics").then((r) => r.json()).then((d) => { if (Array.isArray(d)) setNaicsSectors(d); }).catch(() => {});
   }, []);
 
   const isValid = title.trim() && subject.trim() && body.trim() && body !== "<p></p>";

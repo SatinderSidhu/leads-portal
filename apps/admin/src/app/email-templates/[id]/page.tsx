@@ -66,7 +66,7 @@ export default function EditEmailTemplatePage() {
   const [showTestEmail, setShowTestEmail] = useState(false);
 
   useEffect(() => {
-    fetch("/api/naics").then((r) => r.json()).then((d) => { if (d.sectors) setNaicsSectors(d.sectors); }).catch(() => {});
+    fetch("/api/naics").then((r) => r.json()).then((d) => { if (Array.isArray(d)) setNaicsSectors(d); }).catch(() => {});
   }, []);
 
   useEffect(() => {
