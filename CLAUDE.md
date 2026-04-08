@@ -651,9 +651,9 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - **Audit logged**: "SOW Comment Reply", "App Flow Comment Reply"
 
 ## Email Drafts
-- **EmailDraft** model: leadId, subject, body, cc, bcc, createdBy, timestamps
+- **EmailDraft** model: leadId, subject, body, cc, bcc, status (DRAFT/APPROVED/SCHEDULED/CANCELLED), scheduledAt, createdBy, timestamps
 - Save Draft / Update Draft button next to Send in compose form
-- Drafts list shown as amber cards below Compose Email button
+- Drafts list shown as color-coded cards (amber=Draft, green=Approved, blue=Scheduled, gray=Cancelled) with inline status dropdown, preview toggle, edit/delete actions, and datetime picker for scheduled emails
 - Click draft to load into compose form, multiple drafts per lead
 - CRUD API: `GET/POST/PUT/DELETE /api/leads/[id]/drafts`
 

@@ -7,9 +7,23 @@ export interface Release {
 
 export const releases: Release[] = [
   {
-    version: "4.8",
+    version: "4.9",
     date: "2026-04-07",
     commitId: "pending",
+    changes: [
+      "Email drafts: multiple drafts per lead (no more single-draft restriction)",
+      "Email drafts: status field — Draft, Approved, Scheduled, Cancelled",
+      "Email drafts: color-coded cards (amber/green/blue/gray) by status",
+      "Email drafts: inline status dropdown to change status directly from the list",
+      "Email drafts: datetime picker for scheduling (appears when status is Scheduled)",
+      "Email drafts: inline preview toggle to see email content without opening editor",
+      "Email drafts: edit and delete actions with confirmation",
+    ],
+  },
+  {
+    version: "4.8",
+    date: "2026-04-07",
+    commitId: "1777f21",
     changes: [
       "Next Steps: tracks who assigned each task (assignedById field)",
       "Next Steps: task completion notifies both assignedTo and assignedBy via email",

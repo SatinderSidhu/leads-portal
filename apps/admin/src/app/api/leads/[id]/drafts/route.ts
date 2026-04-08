@@ -2,6 +2,8 @@ import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { getAdminSession } from "../../../../../lib/session";
 
+const VALID_STATUSES = ["DRAFT", "APPROVED", "SCHEDULED", "CANCELLED"];
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -25,6 +27,7 @@ export async function POST(
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
+  const status = VALID_STATUSES.includes(body.status) ? body.status : "DRAFT";
 
   const draft = await prisma.emailDraft.create({
     data: {
@@ -33,6 +36,8 @@ export async function POST(
       body: body.body || "",
       cc: body.cc?.trim() || null,
       bcc: body.bcc?.trim() || null,
+      status,
+      scheduledAt: status === "SCHEDULED" && body.scheduledAt ? new Date(body.scheduledAt) : null,
       createdBy: session.name,
     },
   });
@@ -48,20 +53,30 @@ export async function PUT(
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const { draftId, subject, body, cc, bcc } = await req.json();
+  const { draftId, subject, body, cc, bcc, status, scheduledAt } = await req.json();
   if (!draftId) return NextResponse.json({ error: "draftId required" }, { status: 400 });
 
   const draft = await prisma.emailDraft.findFirst({ where: { id: draftId, leadId: id } });
   if (!draft) return NextResponse.json({ error: "Draft not found" }, { status: 404 });
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data: any = {};
+  if (subject !== undefined) data.subject = subject.trim();
+  if (body !== undefined) data.body = body;
+  if (cc !== undefined) data.cc = cc?.trim() || null;
+  if (bcc !== undefined) data.bcc = bcc?.trim() || null;
+  if (status !== undefined && VALID_STATUSES.includes(status)) {
+    data.status = status;
+    // Clear scheduledAt if not scheduled
+    if (status !== "SCHEDULED") data.scheduledAt = null;
+  }
+  if (scheduledAt !== undefined) {
+    data.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
+  }
+
   const updated = await prisma.emailDraft.update({
     where: { id: draftId },
-    data: {
-      ...(subject !== undefined && { subject: subject.trim() }),
-      ...(body !== undefined && { body }),
-      ...(cc !== undefined && { cc: cc?.trim() || null }),
-      ...(bcc !== undefined && { bcc: bcc?.trim() || null }),
-    },
+    data,
   });
 
   return NextResponse.json(updated);

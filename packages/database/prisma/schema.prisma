@@ -300,16 +300,18 @@ model Message {
 }
 
 model EmailDraft {
-  id        String   @id @default(uuid())
-  leadId    String   @map("lead_id")
-  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  subject   String   @default("")
-  body      String   @db.Text @default("")
-  cc        String?  @db.Text
-  bcc       String?  @db.Text
-  createdBy String?  @map("created_by")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id          String    @id @default(uuid())
+  leadId      String    @map("lead_id")
+  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  subject     String    @default("")
+  body        String    @db.Text @default("")
+  cc          String?   @db.Text
+  bcc         String?   @db.Text
+  status      String    @default("DRAFT")
+  scheduledAt DateTime? @map("scheduled_at")
+  createdBy   String?   @map("created_by")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
   @@map("email_drafts")
 }

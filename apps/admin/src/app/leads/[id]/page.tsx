@@ -331,7 +331,8 @@ export default function LeadDetailPage() {
   const [composeTemplateId, setComposeTemplateId] = useState("");
   const [composeSending, setComposeSending] = useState(false);
   // Draft state
-  const [drafts, setDrafts] = useState<{ id: string; subject: string; body: string; cc: string | null; bcc: string | null; createdBy: string | null; updatedAt: string }[]>([]);
+  const [drafts, setDrafts] = useState<{ id: string; subject: string; body: string; cc: string | null; bcc: string | null; status: string; scheduledAt: string | null; createdBy: string | null; updatedAt: string }[]>([]);
+  const [previewDraftId, setPreviewDraftId] = useState<string | null>(null);
   const [activeDraftId, setActiveDraftId] = useState<string | null>(null);
   const [draftSaving, setDraftSaving] = useState(false);
 
@@ -1242,7 +1243,7 @@ export default function LeadDetailPage() {
         await fetch(`/api/leads/${lead.id}/drafts`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ draftId: activeDraftId, subject: composeSubject, body: composeBody, cc: composeCc, bcc: composeBcc }),
+          body: JSON.stringify({ draftId: activeDraftId, subject: composeSubject, body: composeBody, cc: composeCc, bcc: composeBcc, status: "DRAFT" }),
         });
       } else {
         // Create new draft
@@ -2228,22 +2229,121 @@ export default function LeadDetailPage() {
                 )}
               </div>
 
-              {/* Drafts */}
+              {/* Drafts List */}
               {!composeOpen && drafts.length > 0 && (
                 <div className="mt-3 space-y-2">
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Drafts ({drafts.length})</p>
-                  {drafts.map((draft) => (
-                    <div key={draft.id} className="flex items-center justify-between p-2.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                      <div className="min-w-0 flex-1 cursor-pointer" onClick={() => handleLoadDraft(draft)}>
-                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{draft.subject || "(no subject)"}</p>
-                        <p className="text-xs text-gray-500">{draft.createdBy} — {new Date(draft.updatedAt).toLocaleString()}</p>
-                      </div>
-                      <div className="flex gap-1.5 flex-shrink-0 ml-2">
-                        <button onClick={() => handleLoadDraft(draft)} className="text-xs text-amber-700 dark:text-amber-300 hover:underline">Edit</button>
-                        <button onClick={() => handleDeleteDraft(draft.id)} className="text-xs text-red-500 hover:underline">Delete</button>
-                      </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Drafts ({drafts.length})</p>
+                    <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                      <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> Draft
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block ml-1" /> Approved
+                      <span className="w-2 h-2 rounded-full bg-blue-400 inline-block ml-1" /> Scheduled
+                      <span className="w-2 h-2 rounded-full bg-gray-400 inline-block ml-1" /> Cancelled
                     </div>
-                  ))}
+                  </div>
+                  {drafts.map((draft) => {
+                    const statusColors: Record<string, string> = {
+                      DRAFT: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800",
+                      APPROVED: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800",
+                      SCHEDULED: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800",
+                      CANCELLED: "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 opacity-60",
+                    };
+                    const badgeColors: Record<string, string> = {
+                      DRAFT: "bg-amber-100 text-amber-700 dark:bg-amber-800 dark:text-amber-300",
+                      APPROVED: "bg-emerald-100 text-emerald-700 dark:bg-emerald-800 dark:text-emerald-300",
+                      SCHEDULED: "bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300",
+                      CANCELLED: "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400",
+                    };
+                    return (
+                      <div key={draft.id} className={`rounded-xl border p-3 transition-all ${statusColors[draft.status] || statusColors.DRAFT}`}>
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{draft.subject || "(no subject)"}</p>
+                              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${badgeColors[draft.status] || badgeColors.DRAFT}`}>
+                                {draft.status}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-gray-500">{draft.createdBy} — {new Date(draft.updatedAt).toLocaleString()}</p>
+                            {draft.status === "SCHEDULED" && draft.scheduledAt && (
+                              <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5 flex items-center gap-1">
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+                                Scheduled: {new Date(draft.scheduledAt).toLocaleString()}
+                              </p>
+                            )}
+                          </div>
+                          {/* Status dropdown */}
+                          <select
+                            value={draft.status}
+                            onChange={async (e) => {
+                              const newStatus = e.target.value;
+                              if (newStatus === "SCHEDULED") {
+                                // Will be set when user picks datetime
+                                await fetch(`/api/leads/${lead.id}/drafts`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draftId: draft.id, status: newStatus }) });
+                              } else {
+                                await fetch(`/api/leads/${lead.id}/drafts`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draftId: draft.id, status: newStatus, scheduledAt: null }) });
+                              }
+                              fetchDrafts();
+                            }}
+                            className="text-[10px] px-1.5 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 outline-none cursor-pointer"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <option value="DRAFT">Draft</option>
+                            <option value="APPROVED">Approved</option>
+                            <option value="SCHEDULED">Scheduled</option>
+                            <option value="CANCELLED">Cancelled</option>
+                          </select>
+                        </div>
+                        {/* Schedule datetime picker (shown when status is SCHEDULED) */}
+                        {draft.status === "SCHEDULED" && (
+                          <div className="mb-2 flex items-center gap-2">
+                            <input
+                              type="datetime-local"
+                              defaultValue={draft.scheduledAt ? new Date(new Date(draft.scheduledAt).getTime() - new Date(draft.scheduledAt).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""}
+                              onChange={async (e) => {
+                                if (e.target.value) {
+                                  await fetch(`/api/leads/${lead.id}/drafts`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draftId: draft.id, scheduledAt: new Date(e.target.value).toISOString() }) });
+                                  fetchDrafts();
+                                }
+                              }}
+                              className="text-xs px-2 py-1.5 border border-blue-300 dark:border-blue-700 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                              min={new Date().toISOString().slice(0, 16)}
+                            />
+                          </div>
+                        )}
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-700/50">
+                          <button onClick={() => handleLoadDraft(draft)} className="text-[10px] font-medium text-gray-600 dark:text-gray-400 hover:text-[#01358d] dark:hover:text-blue-400 transition flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
+                            Edit
+                          </button>
+                          <button onClick={() => setPreviewDraftId(previewDraftId === draft.id ? null : draft.id)} className="text-[10px] font-medium text-gray-600 dark:text-gray-400 hover:text-[#01358d] dark:hover:text-blue-400 transition flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                            {previewDraftId === draft.id ? "Hide" : "Preview"}
+                          </button>
+                          <button onClick={() => { if (confirm("Delete this draft?")) handleDeleteDraft(draft.id); }} className="text-[10px] font-medium text-red-500 hover:text-red-700 transition flex items-center gap-1 ml-auto">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                            Delete
+                          </button>
+                        </div>
+                        {/* Inline Preview */}
+                        {previewDraftId === draft.id && (
+                          <div className="mt-2 border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden bg-white dark:bg-gray-900">
+                            <div className="px-3 py-1.5 bg-gray-50 dark:bg-gray-800 text-[10px] text-gray-500 border-b border-gray-100 dark:border-gray-700">
+                              Subject: <span className="text-gray-900 dark:text-white font-medium">{draft.subject || "(no subject)"}</span>
+                            </div>
+                            <div className="p-3 max-h-48 overflow-y-auto">
+                              {draft.body ? (
+                                <div className="text-xs text-gray-700 dark:text-gray-300 prose prose-xs dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: draft.body }} />
+                              ) : (
+                                <p className="text-xs text-gray-400 italic">No content</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
