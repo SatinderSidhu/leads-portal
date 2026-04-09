@@ -7,6 +7,20 @@ export interface Release {
 
 export const releases: Release[] = [
   {
+    version: "4.14",
+    date: "2026-04-09",
+    commitId: "pending",
+    changes: [
+      "Contact Lists: static lists (manually curated) and dynamic lists (rule-based auto-updating)",
+      "Dynamic list filter rule builder with AND/OR logic and 12 filter field types",
+      "Suppression lists — members excluded from all sequence enrollments",
+      "One-click bulk enrollment of entire list into a Smart Sequence",
+      "New 'Added to list' enrollment trigger for Smart Sequences (auto-enroll on list join)",
+      "Enrollment decoupling: list membership changes don't affect active sequence enrollments",
+      "2 new Prisma models (ContactList, ListMembership), 2 new enums, 5 API routes, 3 admin pages",
+    ],
+  },
+  {
     version: "4.13",
     date: "2026-04-08",
     commitId: "pending",

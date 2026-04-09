@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Leads Portal API",
-    "version": "5.1.0",
+    "version": "5.2.0",
     "description": "Complete API documentation for the KITLabs Leads Portal.\n\n## Authentication\n\n### Internal APIs (Session-based)\nMost admin endpoints require an active session cookie obtained via `POST /api/auth`. Customer portal endpoints require a customer session via `POST /api/auth` on the customer portal.\n\n### External APIs (Token-based)\nEndpoints under `/api/v1/` require Bearer token authentication:\n```\nAuthorization: Bearer <your-api-token>\n```\n\n## Base URLs\n- Admin Portal (Production): `https://leadsportaladmin.kitlabs.us`\n- Customer Portal (Production): `https://leadsportal.kitlabs.us`\n- Admin Portal (Local): `http://localhost:3000`\n- Customer Portal (Local): `http://localhost:3001`",
     "contact": {
       "name": "KITLabs Inc",
@@ -44,7 +44,8 @@
     { "name": "Notifications", "description": "Notification preferences" },
     { "name": "Tracking & Webhooks", "description": "Email open tracking and inbound email webhooks" },
     { "name": "External API (v1)", "description": "Token-authenticated external API for leads and content" },
-    { "name": "Smart Sequences", "description": "Form-driven email nurture sequences" }
+    { "name": "Smart Sequences", "description": "Form-driven email nurture sequences" },
+    { "name": "Contact Lists", "description": "Static and dynamic contact lists with sequence enrollment integration" }
   ],
   "components": {
     "securitySchemes": {
@@ -642,7 +643,8 @@
           "name": { "type": "string" },
           "goal": { "type": "string", "enum": ["BOOK_MEETING", "GET_REPLY", "DRIVE_PURCHASE", "NURTURE_ONLY"] },
           "status": { "type": "string", "enum": ["DRAFT", "ACTIVE", "PAUSED"] },
-          "enrollmentTrigger": { "type": "string", "enum": ["MANUAL", "STAGE_CHANGE", "LEAD_CREATED"] },
+          "enrollmentTrigger": { "type": "string", "enum": ["MANUAL", "STAGE_CHANGE", "LEAD_CREATED", "ADDED_TO_LIST"] },
+          "triggerListId": { "type": "string", "format": "uuid", "nullable": true, "description": "ContactList ID for ADDED_TO_LIST trigger" },
           "triggerConfig": { "type": "object", "nullable": true },
           "audienceTags": { "type": "array", "items": { "type": "string" }, "nullable": true },
           "exitConditions": { "type": "object", "nullable": true },
@@ -688,6 +690,40 @@
           "exitReason": { "type": "string", "nullable": true },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" },
+          "lead": { "$ref": "#/components/schemas/Lead" }
+        }
+      },
+      "ContactList": {
+        "type": "object",
+        "description": "A static or dynamic contact list",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "type": { "type": "string", "enum": ["STATIC", "DYNAMIC"] },
+          "description": { "type": "string", "nullable": true },
+          "isSuppression": { "type": "boolean" },
+          "filters": { "type": "object", "nullable": true, "description": "Filter rules for dynamic lists (JSON with logic, conditions)" },
+          "lastRefreshedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "_count": {
+            "type": "object",
+            "properties": {
+              "members": { "type": "integer" }
+            }
+          }
+        }
+      },
+      "ListMembership": {
+        "type": "object",
+        "description": "A contact's membership in a list",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "listId": { "type": "string", "format": "uuid" },
+          "leadId": { "type": "string", "format": "uuid" },
+          "source": { "type": "string", "enum": ["MANUAL", "RULE", "IMPORT"] },
+          "addedBy": { "type": "string", "nullable": true },
+          "addedAt": { "type": "string", "format": "date-time" },
           "lead": { "$ref": "#/components/schemas/Lead" }
         }
       },
@@ -2930,7 +2966,7 @@
                 "properties": {
                   "name": { "type": "string" },
                   "goal": { "type": "string", "enum": ["BOOK_MEETING", "GET_REPLY", "DRIVE_PURCHASE", "NURTURE_ONLY"] },
-                  "enrollmentTrigger": { "type": "string", "enum": ["MANUAL", "STAGE_CHANGE", "LEAD_CREATED"] },
+                  "enrollmentTrigger": { "type": "string", "enum": ["MANUAL", "STAGE_CHANGE", "LEAD_CREATED", "ADDED_TO_LIST"] },
                   "triggerConfig": { "type": "object" },
                   "audienceTags": { "type": "array", "items": { "type": "string" } },
                   "exitConditions": { "type": "object" },
@@ -2969,7 +3005,7 @@
                   "name": { "type": "string" },
                   "goal": { "type": "string", "enum": ["BOOK_MEETING", "GET_REPLY", "DRIVE_PURCHASE", "NURTURE_ONLY"] },
                   "status": { "type": "string", "enum": ["DRAFT", "ACTIVE", "PAUSED"] },
-                  "enrollmentTrigger": { "type": "string", "enum": ["MANUAL", "STAGE_CHANGE", "LEAD_CREATED"] },
+                  "enrollmentTrigger": { "type": "string", "enum": ["MANUAL", "STAGE_CHANGE", "LEAD_CREATED", "ADDED_TO_LIST"] },
                   "triggerConfig": { "type": "object" },
                   "exitConditions": { "type": "object" },
                   "reEnrollAfterDays": { "type": "integer" }
@@ -3166,6 +3202,233 @@
         "responses": {
           "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "processed": { "type": "integer" }, "sent": { "type": "integer" }, "errors": { "type": "integer" } } } } } },
           "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/lists": {
+      "get": {
+        "tags": ["Contact Lists"],
+        "summary": "List contact lists",
+        "description": "Returns all contact lists. Supports filtering by type and searching by name.",
+        "parameters": [
+          { "name": "type", "in": "query", "schema": { "type": "string", "enum": ["STATIC", "DYNAMIC"] }, "description": "Filter by list type" },
+          { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search by list name" }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of contact lists",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ContactList" } } } }
+          },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Contact Lists"],
+        "summary": "Create a contact list",
+        "description": "Create a new static or dynamic contact list. Dynamic lists include filter rules.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "type"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "type": { "type": "string", "enum": ["STATIC", "DYNAMIC"] },
+                  "description": { "type": "string" },
+                  "isSuppression": { "type": "boolean" },
+                  "filters": { "type": "object", "description": "Filter rules for dynamic lists (logic: AND/OR, conditions array)" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ContactList" } } }
+          },
+          "400": { "description": "Validation error" },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/lists/{id}": {
+      "get": {
+        "tags": ["Contact Lists"],
+        "summary": "Get a contact list",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Contact list with member count",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ContactList" } } }
+          },
+          "404": { "description": "Not found" }
+        }
+      },
+      "put": {
+        "tags": ["Contact Lists"],
+        "summary": "Update a contact list",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "description": { "type": "string" },
+                  "isSuppression": { "type": "boolean" },
+                  "filters": { "type": "object" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ContactList" } } } },
+          "404": { "description": "Not found" }
+        }
+      },
+      "delete": {
+        "tags": ["Contact Lists"],
+        "summary": "Delete a contact list",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": { "description": "Deleted" },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/lists/{id}/members": {
+      "get": {
+        "tags": ["Contact Lists"],
+        "summary": "List members of a contact list",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of memberships with lead details",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ListMembership" } } } }
+          },
+          "404": { "description": "Not found" }
+        }
+      },
+      "post": {
+        "tags": ["Contact Lists"],
+        "summary": "Add members to a contact list",
+        "description": "Add one or more leads to a static list. Triggers auto-enrollment for sequences with ADDED_TO_LIST trigger.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["leadIds"],
+                "properties": {
+                  "leadIds": { "type": "array", "items": { "type": "string", "format": "uuid" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Members added",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "added": { "type": "integer" }, "skipped": { "type": "integer" }, "enrolled": { "type": "integer" } } } } }
+          },
+          "400": { "description": "Cannot manually add to dynamic list" },
+          "404": { "description": "Not found" }
+        }
+      },
+      "delete": {
+        "tags": ["Contact Lists"],
+        "summary": "Remove members from a contact list",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["leadIds"],
+                "properties": {
+                  "leadIds": { "type": "array", "items": { "type": "string", "format": "uuid" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Members removed",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "removed": { "type": "integer" } } } } }
+          },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/lists/{id}/refresh": {
+      "post": {
+        "tags": ["Contact Lists"],
+        "summary": "Refresh dynamic list membership",
+        "description": "Re-evaluates filter rules for a dynamic list, adding new matches and removing non-matches.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "responses": {
+          "200": {
+            "description": "Refresh results",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "added": { "type": "integer" }, "removed": { "type": "integer" }, "total": { "type": "integer" }, "lastRefreshedAt": { "type": "string", "format": "date-time" } } } } }
+          },
+          "400": { "description": "Not a dynamic list" },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/lists/{id}/enroll": {
+      "post": {
+        "tags": ["Contact Lists"],
+        "summary": "Bulk enroll list members into a sequence",
+        "description": "Enrolls all eligible members of the list into the specified sequence. Skips DNC contacts and members of suppression lists.",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["sequenceId"],
+                "properties": {
+                  "sequenceId": { "type": "string", "format": "uuid" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Enrollment results",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "enrolled": { "type": "integer" }, "skippedDnc": { "type": "integer" }, "skippedSuppressed": { "type": "integer" }, "skippedAlreadyEnrolled": { "type": "integer" } } } } }
+          },
+          "400": { "description": "Suppression list cannot enroll" },
+          "404": { "description": "Not found" }
         }
       }
     }

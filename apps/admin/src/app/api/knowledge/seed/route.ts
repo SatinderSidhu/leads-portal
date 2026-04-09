@@ -1272,6 +1272,84 @@ The sequence processor runs on a schedule and:
 4. Sends the email with tracking pixel
 5. Advances the contact to the next step
 6. Calculates the next send time based on the next step's wait value` },
+
+  { category: "Email System", sortOrder: 8, title: "Contact Lists", slug: "contact-lists", content: `# Contact Lists
+
+Contact Lists let you organize contacts into named groups for targeted communication, sequence enrollment, and pipeline management.
+
+## Two List Types
+
+### Static Lists
+- Manually curated — you add and remove contacts by hand
+- Best for: specific campaigns, conference attendees, one-off sends
+- Contacts are added via search, paste emails, or import
+
+### Dynamic (Smart) Lists
+- Rule-based — auto-updates as contacts change
+- Best for: ongoing pipelines, auto-enrollment in sequences
+- Membership computed from filter rules and refreshed on demand
+
+## Creating a Static List
+
+1. Go to **Contact Lists** in the sidebar
+2. Click **"+ New List"** and select **Static**
+3. Enter a name and optional description
+4. Click **"Create Static List"**
+5. On the detail page, click **"+ Add Contacts"** to search and select leads
+
+## Creating a Dynamic List
+
+1. Click **"+ New List"** and select **Dynamic**
+2. Enter a name
+3. Build filter rules using the rule builder:
+   - Choose a field (Industry, Job Title, Lead Stage, Source, Location, etc.)
+   - Choose an operator (is, is not, contains, is one of, etc.)
+   - Enter a value
+   - Add more rules with AND/OR logic
+4. Click **"Preview Count"** to see how many contacts match
+5. Click **"Create Dynamic List"** — membership is computed immediately
+
+### Available Filter Fields
+Industry, Job Title, Company Name, Company Size, Lead Stage, Lead Source, Location, City, NAICS Sector, Do Not Contact, Lead Score, Date Added, Last Contacted
+
+## Suppression Lists
+
+Check **"Suppression List"** when creating any list. Members of suppression lists:
+- Cannot be enrolled in any sequence (via list trigger or bulk enrollment)
+- Are immediately exited from active sequences if added to the suppression list
+- Show a red "Suppression" badge in the lists index
+
+## Enrolling a List in a Sequence
+
+### One-Click Bulk Enrollment
+1. Open any list's detail page
+2. Go to the **Sequences** tab
+3. Click **"Enroll List in Sequence"**
+4. Select a sequence and confirm
+5. All eligible contacts are enrolled (DNC and suppressed contacts are skipped)
+
+### Automatic Enrollment via Trigger
+1. Create a Smart Sequence
+2. Set the enrollment trigger to **"Added to list"**
+3. Select the list
+4. Any contact added to that list (or matching a dynamic list's rules) is automatically enrolled
+
+## The Decoupling Rule
+
+Once a contact is enrolled in a sequence, changes to list membership do **not** affect the sequence. If a contact drops off a dynamic list (e.g., their stage changes), they stay in the sequence until a sequence exit condition is met (replied, booked, unsubscribed).
+
+The only exception: Do Not Contact immediately removes contacts from all active sequences.
+
+## Managing List Members
+
+### Static Lists
+- Add contacts via search modal on the detail page
+- Remove contacts with the "Remove" link per row
+
+### Dynamic Lists
+- Membership is read-only (computed from filter rules)
+- Click **"Refresh"** to re-evaluate rules and update membership
+- New matches are added, non-matches are removed` },
 ];
 
 export async function POST() {

@@ -106,9 +106,11 @@ leads-portal/
 | KnowledgeArticle | knowledge_articles | Knowledge base articles (title, slug, content, category, tags, published) |
 | Content | content | Social media content posts |
 | CustomerUser | customer_users | Customer portal users (email, name, password, leadIds) |
-| SmartSequence | smart_sequences | Email nurture sequences (name, goal, status, enrollment trigger, exit conditions, re-enroll cooldown) |
+| SmartSequence | smart_sequences | Email nurture sequences (name, goal, status, enrollment trigger, exit conditions, re-enroll cooldown, triggerListId FK) |
 | SequenceStep | sequence_steps | Steps in a sequence (stepOrder, templateId FK, wait value/unit, branching condition, goToStepOrder, exitOnCondition) |
 | SequenceEnrollment | sequence_enrollments | Contacts enrolled in sequences (leadId, currentStepOrder, status, lastAction, nextSendAt, exitReason) |
+| ContactList | contact_lists | Static or dynamic contact lists (name, type, description, isSuppression, filters JSON, lastRefreshedAt) |
+| ListMembership | list_memberships | Join table for list members (listId FK, leadId FK, source, addedBy, addedAt). @@unique([listId, leadId]) |
 
 ### Key Enums
 - `LeadSource`: MANUAL, AGENT, BARK, LINKEDIN_SALES_NAV, APOLLO, LINKEDIN_COMPANY_PAGE, REFERRAL, WEBSITE, COLD_OUTREACH, EVENT, OTHER
@@ -120,7 +122,9 @@ leads-portal/
 - `EmailTemplatePurpose`: WELCOME, FOLLOW_UP, REMINDER, NOTIFICATION, PROMOTIONAL, NURTURE, COLD_OUTREACH, OTHER
 - `SequenceGoal`: BOOK_MEETING, GET_REPLY, DRIVE_PURCHASE, NURTURE_ONLY
 - `SequenceStatus`: DRAFT, ACTIVE, PAUSED
-- `EnrollmentTrigger`: MANUAL, STAGE_CHANGE, LEAD_CREATED
+- `ListType`: STATIC, DYNAMIC
+- `MembershipSource`: MANUAL, RULE, IMPORT
+- `EnrollmentTrigger`: MANUAL, STAGE_CHANGE, LEAD_CREATED, ADDED_TO_LIST
 - `WaitUnit`: HOURS, DAYS, WEEKS
 - `StepCondition`: ALWAYS, OPENED, NOT_OPENED, CLICKED, NOT_CLICKED, REPLIED, NOT_REPLIED
 - `EnrollmentStatus`: ACTIVE, PAUSED, COMPLETED, EXITED, REMOVED
@@ -154,6 +158,9 @@ leads-portal/
 | `/sequences` | Smart Sequences list — form-driven email sequence builder |
 | `/sequences/new` | Create sequence (name, goal, trigger, exit conditions) |
 | `/sequences/[id]` | Sequence detail with 4 tabs (Steps, Contacts, Preview, Performance) |
+| `/lists` | Contact Lists index — search, type filter toggle (All/Static/Dynamic), suppression badges |
+| `/lists/new` | Create list — type selector, name, description, suppression toggle, dynamic filter rule builder |
+| `/lists/[id]` | List detail with 3 tabs (Contacts, Sequences, Settings) |
 | `/content` | Content management |
 | `/content/new` | Create content |
 | `/content/[id]` | Edit content |
@@ -244,6 +251,11 @@ leads-portal/
 - `PUT /api/sequences/[id]/enrollments/[enrollmentId]` — Pause/resume/remove/advance enrolled contact
 - `GET /api/sequences/[id]/performance` — Sequence performance metrics
 - `POST /api/sequences/process` — Cron processor (sends emails, advances steps)
+- `GET/POST /api/lists` — List/create contact lists (filter by type, search by name)
+- `GET/PUT/DELETE /api/lists/[id]` — Contact list CRUD
+- `GET/POST/DELETE /api/lists/[id]/members` — List/add/remove members (with auto-enroll for triggered sequences)
+- `POST /api/lists/[id]/refresh` — Refresh dynamic list membership (evaluates filters, syncs members)
+- `POST /api/lists/[id]/enroll` — Bulk enroll all list members into a sequence (with DNC + suppression checks)
 - `GET /api/naics` — List all NAICS sectors with subsectors
 - `POST /api/naics/seed` — Seed NAICS 2022 codes (20 sectors, 96 subsectors)
 - `GET/POST /api/knowledge` — Knowledge base articles (search, category filter)
@@ -336,6 +348,7 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 | `apps/customer/src/lib/preview-token.ts` | `generatePreviewToken()`, `isValidPreviewToken()` — Preview token validation |
 | `apps/customer/src/lib/generate-pdf.ts` | `downloadNdaPdf()`, `downloadSowPdf()` — jsPDF generation |
 | `apps/admin/src/lib/sequence-utils.ts` | Sequence helper utilities (preview text generation, step condition labels, enrollment processing) |
+| `apps/admin/src/lib/list-utils.ts` | `buildPrismaWhereFromFilters()` — converts dynamic list filter rules to Prisma where clauses; filter field/operator constants for 12 fields |
 | `packages/database/src/index.ts` | Singleton `PrismaClient` export |
 
 ## Key Components
@@ -648,7 +661,7 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - **Sticky breadcrumb bar** at top showing current page path (auto-generated from URL)
 - **AdminShell** layout wrapper in root layout — wraps all pages except /login
 - Pages no longer have individual headers/nav — sidebar handles all navigation
-- Nav groups: Dashboard/Leads/Activity/Portfolio, Templates (Email, SOW, Flows, Smart Sequences, Content), NAICS Codes, Knowledge Base, Settings (Branding, Zoho, Notifications), Users (Admin Users, Profile)
+- Nav groups: Dashboard/Leads/Activity/Portfolio, Templates (Email, SOW, Flows, Smart Sequences, Contact Lists, Content), NAICS Codes, Knowledge Base, Settings (Branding, Zoho, Notifications), Users (Admin Users, Profile)
 
 ## Live Chat / Secure Messaging
 - **Message** model: leadId, content, senderName, senderType (admin/customer), readAt for read receipts
@@ -693,6 +706,20 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - Sequences can only be deleted when in DRAFT or PAUSED status; activation requires at least one step
 - Sidebar nav: "Smart Sequences" under Templates group after Email Flows
 - 8 API routes, 3 admin pages (/sequences list, /sequences/new, /sequences/[id] with 4 tabs)
+
+## Contact Lists
+- Two list types: **Static** (manually curated — add/remove contacts by hand) and **Dynamic** (rule-based — auto-updates as contacts change)
+- **ContactList** model: name, type (STATIC/DYNAMIC), description, isSuppression boolean, filters JSON (for dynamic lists), lastRefreshedAt
+- **ListMembership** model: listId FK, leadId FK, source (MANUAL/RULE/IMPORT), addedBy, addedAt. `@@unique([listId, leadId])`
+- **Dynamic list filter rule builder**: AND/OR logic between conditions, 12 filter fields (industry, jobTitle, companyName, companySize, stage, source, location, city, doNotContact, leadScore, createdAt, lastContactedDate), operators (is, is_not, contains, is_one_of, is_before, is_after, is_within_last)
+- **Suppression lists**: `isSuppression` flag blocks enrollment in all sequences; members of suppression lists cannot be enrolled via list trigger or bulk enrollment
+- **Enrollment trigger integration**: SmartSequence model extended with `triggerListId` FK to ContactList; EnrollmentTrigger enum extended with `ADDED_TO_LIST` value — contacts added to a list (or matching dynamic rules) are auto-enrolled in triggered sequences
+- **Enrollment decoupling rule**: once enrolled, list membership changes do not affect active sequence enrollments; only Do Not Contact immediately removes contacts from all active sequences
+- **Bulk enrollment**: one-click enroll all list members into a selected sequence (DNC + suppression checks applied)
+- **Dynamic list refresh**: `POST /api/lists/[id]/refresh` re-evaluates filter rules, adds new matches, removes non-matches
+- **list-utils.ts**: `buildPrismaWhereFromFilters()` converts filter rules to Prisma where clauses; exports filter field definitions and operator constants
+- Sidebar nav: "Contact Lists" under Templates group after Smart Sequences
+- 5 API routes, 3 admin pages (/lists index with type filter + search, /lists/new with static/dynamic selector + filter builder, /lists/[id] with Contacts/Sequences/Settings tabs)
 
 ## NAICS Industry Classification
 - **NaicsSector** (20 sectors) + **NaicsSubsector** (96 subsectors) models from NAICS 2022
