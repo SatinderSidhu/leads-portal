@@ -19,7 +19,7 @@ export async function POST(
       return NextResponse.json({ error: "Only dynamic lists can be refreshed" }, { status: 400 });
     }
 
-    const filters = list.filters as FilterRule[];
+    const filters = list.filters as unknown as FilterRule[];
     const where = buildPrismaWhereFromFilters(filters);
 
     // Find all matching leads
