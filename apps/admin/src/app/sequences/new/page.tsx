@@ -12,6 +12,7 @@ const GOAL_OPTIONS = [
 
 const TRIGGER_OPTIONS = [
   { value: "MANUAL", label: "Manual — enroll contacts by hand" },
+  { value: "ADDED_TO_LIST", label: "Added to list — auto-enroll when contact joins a list" },
   { value: "STAGE_CHANGE", label: "Stage changes — auto-enroll when lead stage changes" },
   { value: "LEAD_CREATED", label: "New lead created — auto-enroll new leads" },
 ];
@@ -34,10 +35,17 @@ export default function NewSequencePage() {
   const [trigger, setTrigger] = useState("MANUAL");
   const [fromStage, setFromStage] = useState("");
   const [toStage, setToStage] = useState("");
+  const [triggerListId, setTriggerListId] = useState("");
+  const [lists, setLists] = useState<{ id: string; name: string; type: string }[]>([]);
   const [audienceTags, setAudienceTags] = useState("");
   const [exitConditions, setExitConditions] = useState<string[]>(["REPLIED"]);
   const [reEnrollDays, setReEnrollDays] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Load lists when ADDED_TO_LIST trigger is selected
+  useState(() => {
+    fetch("/api/lists").then((r) => r.json()).then((d) => { if (Array.isArray(d)) setLists(d); }).catch(() => {});
+  });
 
   function toggleExit(value: string) {
     setExitConditions((prev) =>
@@ -51,7 +59,9 @@ export default function NewSequencePage() {
     try {
       const triggerConfig = trigger === "STAGE_CHANGE"
         ? { fromStage, toStage }
-        : {};
+        : trigger === "ADDED_TO_LIST"
+          ? { listId: triggerListId }
+          : {};
 
       const res = await fetch("/api/sequences", {
         method: "POST",
@@ -61,6 +71,7 @@ export default function NewSequencePage() {
           goal,
           enrollmentTrigger: trigger,
           triggerConfig,
+          triggerListId: trigger === "ADDED_TO_LIST" ? triggerListId : null,
           audienceTags: audienceTags.split(",").map((t) => t.trim()).filter(Boolean),
           exitConditions,
           reEnrollAfterDays: reEnrollDays ? parseInt(reEnrollDays, 10) : null,
@@ -139,6 +150,17 @@ export default function NewSequencePage() {
                 {STAGE_OPTIONS.map((s) => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
               </select>
             </div>
+          </div>
+        )}
+
+        {trigger === "ADDED_TO_LIST" && (
+          <div className="pl-4 border-l-2 border-indigo-200 dark:border-indigo-800">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Select List</label>
+            <select value={triggerListId} onChange={(e) => setTriggerListId(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700">
+              <option value="">Select a list...</option>
+              {lists.map((l) => <option key={l.id} value={l.id}>{l.name} ({l.type})</option>)}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Contacts added to this list will be automatically enrolled in the sequence.</p>
           </div>
         )}
 

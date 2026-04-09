@@ -32,11 +32,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { name, goal, enrollmentTrigger, triggerConfig, audienceTags, exitConditions, reEnrollAfterDays } = body as {
+  const { name, goal, enrollmentTrigger, triggerConfig, triggerListId, audienceTags, exitConditions, reEnrollAfterDays } = body as {
     name?: string;
     goal?: string;
     enrollmentTrigger?: string;
     triggerConfig?: Prisma.InputJsonValue;
+    triggerListId?: string | null;
     audienceTags?: Prisma.InputJsonValue;
     exitConditions?: Prisma.InputJsonValue;
     reEnrollAfterDays?: number;
@@ -59,6 +60,7 @@ export async function POST(req: Request) {
         audienceTags: audienceTags || [],
         exitConditions: exitConditions || [],
         reEnrollAfterDays: reEnrollAfterDays ?? null,
+        triggerListId: triggerListId || null,
         createdBy: session.name,
       },
     });

@@ -154,6 +154,7 @@ model Lead {
   nextSteps            NextStep[]
   auditLogs            AuditLog[]
   sequenceEnrollments  SequenceEnrollment[]
+  listMemberships      ListMembership[]
 
   @@map("leads")
 }
@@ -706,6 +707,7 @@ enum EnrollmentTrigger {
   MANUAL
   STAGE_CHANGE
   LEAD_CREATED
+  ADDED_TO_LIST
 }
 
 enum WaitUnit {
@@ -754,6 +756,9 @@ model SmartSequence {
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
 
+  triggerListId     String?           @map("trigger_list_id")
+  triggerList        ContactList?     @relation(fields: [triggerListId], references: [id], onDelete: SetNull)
+
   steps       SequenceStep[]
   enrollments SequenceEnrollment[]
 
@@ -797,4 +802,50 @@ model SequenceEnrollment {
 
   @@unique([sequenceId, leadId])
   @@map("sequence_enrollments")
+}
+
+// ── Contact Lists ────────────────────────────────────────
+
+enum ListType {
+  STATIC
+  DYNAMIC
+}
+
+enum MembershipSource {
+  MANUAL
+  RULE
+  IMPORT
+}
+
+model ContactList {
+  id              String     @id @default(uuid())
+  name            String
+  type            ListType
+  description     String?    @db.Text
+  isSuppression   Boolean    @default(false) @map("is_suppression")
+  filters         Json       @default("[]")
+  lastRefreshedAt DateTime?  @map("last_refreshed_at")
+  createdBy       String?    @map("created_by")
+  updatedBy       String?    @map("updated_by")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  members            ListMembership[]
+  triggeredSequences SmartSequence[]
+
+  @@map("contact_lists")
+}
+
+model ListMembership {
+  id       String           @id @default(uuid())
+  listId   String           @map("list_id")
+  list     ContactList      @relation(fields: [listId], references: [id], onDelete: Cascade)
+  leadId   String           @map("lead_id")
+  lead     Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  source   MembershipSource @default(MANUAL)
+  addedBy  String?          @map("added_by")
+  addedAt  DateTime         @default(now()) @map("added_at")
+
+  @@unique([listId, leadId])
+  @@map("list_memberships")
 }
