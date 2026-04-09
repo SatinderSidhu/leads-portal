@@ -151,8 +151,9 @@ model Lead {
   appFlows        AppFlow[]
   watchers        LeadWatcher[]
   customerVisits  CustomerVisit[]
-  nextSteps       NextStep[]
-  auditLogs       AuditLog[]
+  nextSteps            NextStep[]
+  auditLogs            AuditLog[]
+  sequenceEnrollments  SequenceEnrollment[]
 
   @@map("leads")
 }
@@ -270,7 +271,8 @@ model EmailTemplate {
   createdAt DateTime             @default(now()) @map("created_at")
   updatedAt DateTime             @updatedAt @map("updated_at")
 
-  sentEmails SentEmail[]
+  sentEmails    SentEmail[]
+  sequenceSteps SequenceStep[]
 
   @@map("email_templates")
 }
@@ -683,4 +685,116 @@ model SocialAccount {
 
   @@unique([provider, providerId])
   @@map("social_accounts")
+}
+
+// ── Smart Sequences ──────────────────────────────────────
+
+enum SequenceGoal {
+  BOOK_MEETING
+  GET_REPLY
+  DRIVE_PURCHASE
+  NURTURE_ONLY
+}
+
+enum SequenceStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+}
+
+enum EnrollmentTrigger {
+  MANUAL
+  STAGE_CHANGE
+  LEAD_CREATED
+}
+
+enum WaitUnit {
+  HOURS
+  DAYS
+  WEEKS
+}
+
+enum StepCondition {
+  ALWAYS
+  OPENED
+  NOT_OPENED
+  CLICKED
+  NOT_CLICKED
+  REPLIED
+  NOT_REPLIED
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  EXITED
+  REMOVED
+}
+
+enum ContactAction {
+  NONE
+  OPENED
+  CLICKED
+  REPLIED
+}
+
+model SmartSequence {
+  id                String            @id @default(uuid())
+  name              String
+  goal              SequenceGoal
+  status            SequenceStatus    @default(DRAFT)
+  enrollmentTrigger EnrollmentTrigger @default(MANUAL) @map("enrollment_trigger")
+  triggerConfig     Json              @default("{}") @map("trigger_config")
+  audienceTags      Json              @default("[]") @map("audience_tags")
+  exitConditions    Json              @default("[]") @map("exit_conditions")
+  reEnrollAfterDays Int?              @map("re_enroll_after_days")
+  createdBy         String?           @map("created_by")
+  updatedBy         String?           @map("updated_by")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
+
+  steps       SequenceStep[]
+  enrollments SequenceEnrollment[]
+
+  @@map("smart_sequences")
+}
+
+model SequenceStep {
+  id              String         @id @default(uuid())
+  sequenceId      String         @map("sequence_id")
+  sequence        SmartSequence  @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  stepOrder       Int            @map("step_order")
+  templateId      String         @map("template_id")
+  template        EmailTemplate  @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  waitValue       Int            @default(1) @map("wait_value")
+  waitUnit        WaitUnit       @default(DAYS) @map("wait_unit")
+  condition       StepCondition  @default(ALWAYS)
+  goToStepOrder   Int?           @map("go_to_step_order")
+  exitOnCondition StepCondition? @map("exit_on_condition")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  @@unique([sequenceId, stepOrder])
+  @@map("sequence_steps")
+}
+
+model SequenceEnrollment {
+  id               String           @id @default(uuid())
+  sequenceId       String           @map("sequence_id")
+  sequence         SmartSequence    @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  leadId           String           @map("lead_id")
+  lead             Lead             @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  currentStepOrder Int              @default(1) @map("current_step_order")
+  status           EnrollmentStatus @default(ACTIVE)
+  enrolledAt       DateTime         @default(now()) @map("enrolled_at")
+  lastEmailSentAt  DateTime?        @map("last_email_sent_at")
+  lastAction       ContactAction    @default(NONE) @map("last_action")
+  nextSendAt       DateTime?        @map("next_send_at")
+  exitReason       String?          @map("exit_reason")
+  createdAt        DateTime         @default(now()) @map("created_at")
+  updatedAt        DateTime         @updatedAt @map("updated_at")
+
+  @@unique([sequenceId, leadId])
+  @@map("sequence_enrollments")
 }
