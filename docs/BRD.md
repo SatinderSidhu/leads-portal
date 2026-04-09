@@ -4,7 +4,7 @@
 
 | Field | Detail |
 |-------|--------|
-| Document Version | 1.9 |
+| Document Version | 2.0 |
 | Last Updated | April 8, 2026 |
 | Status | Active |
 
@@ -1148,6 +1148,7 @@ _This section will be updated as new features are planned and developed._
 | 4.4 | April 5, 2026 | Editable system email templates (10 system-triggered emails now stored as customizable templates in DB, admin can edit subject/body via RichTextEditor with merge tag support, Compose/System tabs on Email Templates page, templates cannot be deleted, fallback to hardcoded defaults) | — |
 | 4.12 | April 8, 2026 | Email template enhancements: body preview in list view, Send After Days timing field, two new purpose categories (Nurture, Cold Outreach), clone/duplicate template feature on list and edit pages. Flow builder shows send delay on nodes and sidebar | — |
 | 4.11 | April 8, 2026 | Email template type separation: system templates excluded from email compose and flow builder (only compose templates shown). Comprehensive API documentation update (OpenAPI v5.0 with all 90+ endpoints) | — |
+| 4.13 | April 8, 2026 | Smart Sequences: form-driven email sequence builder (alternative to canvas flow builder). Sequence header with goal, enrollment trigger, exit conditions. Step card builder with drag-to-reorder, structured delay (hours/days/weeks), branching conditions (opened/clicked/replied). Contact enrollment with per-step tracking, pause/resume/remove/advance. Plain-language preview mode. Performance dashboard with drop-off funnel. Cron-driven sequence processor for automated email sending | — |
 | 4.10 | April 8, 2026 | Bugfix: NAICS dropdowns not loading in portfolio projects and email templates, admin login logo broken due to middleware redirect | — |
 | 4.9 | April 7, 2026 | Email draft scheduling: multiple drafts per lead, draft statuses (Draft/Approved/Scheduled/Cancelled) with color-coded cards, datetime picker for scheduled emails, inline preview, edit/delete actions. Foundation for future automated email sending | — |
 | 4.8 | April 7, 2026 | Next Steps enhancements: tracks who assigned each task (assignedBy), task completion notifies both assignedTo and assignedBy, new "Task Completed" notification preference in Communications settings, system email templates for task assigned/completed (admin-editable), 2-row UI with auto-expanding description textarea | — |

@@ -7,6 +7,21 @@ export interface Release {
 
 export const releases: Release[] = [
   {
+    version: "4.13",
+    date: "2026-04-08",
+    commitId: "pending",
+    changes: [
+      "Smart Sequences: form-driven email sequence builder (alternative to canvas flow builder)",
+      "Sequence header: name, goal (4 types), enrollment trigger (manual/stage change/new lead), exit conditions, re-enrollment cooldown",
+      "Step card builder: drag-to-reorder, template selector, structured delay (hours/days/weeks), branching conditions (7 types), go-to step, step-level exit",
+      "Contact enrollment: search + multi-select, per-contact tracking (step, action, next send), pause/resume/advance/remove",
+      "Preview tab: plain-language timeline of sequence logic",
+      "Performance tab: summary cards (enrolled/active/completed/exited/conversion) + per-step drop-off funnel",
+      "Sequence processor: cron-driven endpoint for automated email sending with exit condition checking",
+      "3 new Prisma models (SmartSequence, SequenceStep, SequenceEnrollment), 7 new enums, 8 API routes",
+    ],
+  },
+  {
     version: "4.12",
     date: "2026-04-08",
     commitId: "pending",

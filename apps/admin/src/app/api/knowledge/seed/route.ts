@@ -1156,6 +1156,122 @@ The live chat widget appears on the customer portal as a floating chat bubble in
 
 - When a customer sends a message: admin watchers + assigned admin get an email
 - When an admin replies: customer gets an email notification` },
+
+  { category: "Email System", sortOrder: 7, title: "Smart Sequences", slug: "smart-sequences", content: `# Smart Sequences
+
+Smart Sequences is a form-driven email sequence builder — an alternative to the canvas-based Email Flow Builder. It's designed for the most common use case: timed, multi-step email nurture sequences.
+
+## Why Smart Sequences?
+
+| Feature | Canvas Flow Builder | Smart Sequences |
+|---------|-------------------|-----------------|
+| Setup time | 10–20 minutes | 2–5 minutes |
+| Mobile friendly | No | Yes |
+| Delay configuration | Free text on edges | Structured (number + unit) |
+| Branching conditions | Opened / not opened | Opened, clicked, replied + more |
+| Enrollment trigger | Not present | Built-in |
+| Exit conditions | Not present | Built-in |
+| Contact tracking | No | Per-step tracking |
+| Preview mode | No | Plain-language summary |
+| Performance dashboard | No | Built-in per sequence |
+
+## Creating a Sequence
+
+1. Go to **Smart Sequences** in the sidebar
+2. Click **"+ New Sequence"**
+3. Fill in:
+   - **Name**: e.g. "B2B SaaS Lead Nurture"
+   - **Goal**: Book a Meeting, Get a Reply, Drive a Purchase, or Nurture Only
+   - **Enrollment Trigger**: Manual, Stage Changes, or New Lead Created
+   - **Exit Conditions**: Check which events should remove contacts (replied, booked meeting, unsubscribed)
+   - **Re-enroll After Days**: Optional cooldown before a contact can re-enter
+4. Click **"Create Sequence & Add Steps"**
+
+## Building Steps
+
+Each step is a card with:
+- **Send Template**: Select a compose email template
+- **Wait**: Number + unit (hours, days, weeks) — how long to wait before sending
+- **Then — If**: Branching condition (Always, If opened, If clicked, If replied, etc.)
+- **Go to**: Next step (default) or skip to a specific step number
+- **Step-level exit**: Optional — exit the sequence if a condition is met at this step
+
+### Drag to Reorder
+Grab the drag handle on any step card and drag it to a new position. Steps are automatically renumbered.
+
+### Tips
+- Set the first step's wait to 0 to send immediately on enrollment
+- Use "If clicked" as your primary engagement signal — it's more reliable than "If opened"
+- Add a step-level exit condition on the final step to catch late converters
+
+## Enrolling Contacts
+
+1. Go to the **Contacts** tab on any sequence
+2. Click **"+ Enroll Contacts"**
+3. Search for leads by name, email, or company
+4. Check the leads you want to enroll
+5. Click **"Enroll"**
+
+Contacts with Do Not Contact enabled are automatically skipped. Each contact can only be enrolled once per sequence.
+
+## Managing Enrolled Contacts
+
+On the Contacts tab, each enrolled contact shows:
+- Current step number
+- Last action (opened, clicked, replied, no action)
+- Next scheduled send date
+- Status (Active, Paused, Completed, Exited, Removed)
+
+**Actions per contact:**
+- **Pause**: Temporarily stop the sequence for this contact
+- **Resume**: Continue from where they left off
+- **Advance**: Skip to the next step
+- **Remove**: Remove from the sequence with a reason
+
+## Preview Mode
+
+The **Preview** tab shows a plain-language summary of your sequence logic:
+
+> Day 0: Send 'The Challenge Leaders Don't See Coming'
+> Day 7: Wait 7 days → send 'Is This the Bottleneck?'
+> Day 14: Wait 7 days, if clicked → send 'What Changed When We Stepped In'
+> Exit: If contact replies → remove from sequence
+
+This is useful for reviewing the flow without reading individual step cards.
+
+## Performance Dashboard
+
+The **Performance** tab shows:
+- **Summary cards**: Total Enrolled, Active, Completed, Exited, Removed, Paused, Conversion Rate
+- **Drop-off funnel**: Per-step table showing how many contacts reached each step and the drop-off percentage between steps
+
+## Sequence Statuses
+
+| Status | Meaning |
+|--------|---------|
+| **Draft** | Being configured, no emails sent |
+| **Active** | Running — enrolled contacts will receive emails on schedule |
+| **Paused** | Temporarily stopped — no emails sent, contacts keep their position |
+
+- You can only delete Draft or Paused sequences
+- Activate requires at least one step
+
+## Exit Conditions
+
+When any exit condition is met, the contact is automatically removed:
+- **Contact replied** to any email in the sequence
+- **Contact booked a meeting** (clicked booking link)
+- **Contact unsubscribed** or marked as Do Not Contact
+
+## How Automated Sending Works
+
+The sequence processor runs on a schedule and:
+1. Finds contacts whose next send time has passed
+2. Checks exit conditions (replied? unsubscribed?)
+3. Evaluates the step's branching condition
+4. Sends the email with tracking pixel
+5. Advances the contact to the next step
+6. Calculates the next send time based on the next step's wait value` },
 ];
 
 export async function POST() {

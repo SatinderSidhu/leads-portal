@@ -43,7 +43,8 @@
     { "name": "Zoho CRM", "description": "Zoho CRM integration and sync" },
     { "name": "Notifications", "description": "Notification preferences" },
     { "name": "Tracking & Webhooks", "description": "Email open tracking and inbound email webhooks" },
-    { "name": "External API (v1)", "description": "Token-authenticated external API for leads and content" }
+    { "name": "External API (v1)", "description": "Token-authenticated external API for leads and content" },
+    { "name": "Smart Sequences", "description": "Form-driven email nurture sequences" }
   ],
   "components": {
     "securitySchemes": {
@@ -631,6 +632,63 @@
           "needsAttention": { "type": "array", "items": { "type": "object" } },
           "myTasks": { "type": "array", "items": { "$ref": "#/components/schemas/NextStep" } },
           "statusDistribution": { "type": "object", "additionalProperties": { "type": "integer" } }
+        }
+      },
+      "SmartSequence": {
+        "type": "object",
+        "description": "Email nurture sequence",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "name": { "type": "string" },
+          "goal": { "type": "string", "enum": ["BOOK_MEETING", "GET_REPLY", "DRIVE_PURCHASE", "NURTURE_ONLY"] },
+          "status": { "type": "string", "enum": ["DRAFT", "ACTIVE", "PAUSED"] },
+          "enrollmentTrigger": { "type": "string", "enum": ["MANUAL", "STAGE_CHANGE", "LEAD_CREATED"] },
+          "triggerConfig": { "type": "object", "nullable": true },
+          "audienceTags": { "type": "array", "items": { "type": "string" }, "nullable": true },
+          "exitConditions": { "type": "object", "nullable": true },
+          "reEnrollAfterDays": { "type": "integer", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "_count": {
+            "type": "object",
+            "properties": {
+              "steps": { "type": "integer" },
+              "enrollments": { "type": "integer" }
+            }
+          }
+        }
+      },
+      "SequenceStep": {
+        "type": "object",
+        "description": "A step in an email sequence",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "sequenceId": { "type": "string", "format": "uuid" },
+          "stepOrder": { "type": "integer" },
+          "templateId": { "type": "string", "format": "uuid" },
+          "waitValue": { "type": "integer" },
+          "waitUnit": { "type": "string", "enum": ["HOURS", "DAYS", "WEEKS"] },
+          "condition": { "type": "string", "enum": ["ALWAYS", "OPENED", "NOT_OPENED", "CLICKED", "NOT_CLICKED", "REPLIED", "NOT_REPLIED"] },
+          "goToStepOrder": { "type": "integer", "nullable": true },
+          "exitOnCondition": { "type": "boolean" },
+          "template": { "$ref": "#/components/schemas/EmailTemplate" }
+        }
+      },
+      "SequenceEnrollment": {
+        "type": "object",
+        "description": "A contact enrolled in a sequence",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "sequenceId": { "type": "string", "format": "uuid" },
+          "leadId": { "type": "string", "format": "uuid" },
+          "currentStepOrder": { "type": "integer" },
+          "status": { "type": "string", "enum": ["ACTIVE", "PAUSED", "COMPLETED", "EXITED", "REMOVED"] },
+          "lastAction": { "type": "string", "enum": ["NONE", "OPENED", "CLICKED", "REPLIED"] },
+          "nextSendAt": { "type": "string", "format": "date-time", "nullable": true },
+          "exitReason": { "type": "string", "nullable": true },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "lead": { "$ref": "#/components/schemas/Lead" }
         }
       },
       "Error": {
@@ -2846,6 +2904,267 @@
         },
         "responses": {
           "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "filePath": { "type": "string" } } } } } },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/sequences": {
+      "get": {
+        "tags": ["Smart Sequences"],
+        "summary": "List all sequences",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/SmartSequence" } } } } },
+          "401": { "description": "Unauthorized" }
+        }
+      },
+      "post": {
+        "tags": ["Smart Sequences"],
+        "summary": "Create a sequence",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["name", "goal"],
+                "properties": {
+                  "name": { "type": "string" },
+                  "goal": { "type": "string", "enum": ["BOOK_MEETING", "GET_REPLY", "DRIVE_PURCHASE", "NURTURE_ONLY"] },
+                  "enrollmentTrigger": { "type": "string", "enum": ["MANUAL", "STAGE_CHANGE", "LEAD_CREATED"] },
+                  "triggerConfig": { "type": "object" },
+                  "audienceTags": { "type": "array", "items": { "type": "string" } },
+                  "exitConditions": { "type": "object" },
+                  "reEnrollAfterDays": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SmartSequence" } } } },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/sequences/{id}": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+      "get": {
+        "tags": ["Smart Sequences"],
+        "summary": "Get sequence by ID",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SmartSequence" } } } },
+          "404": { "description": "Not found" }
+        }
+      },
+      "put": {
+        "tags": ["Smart Sequences"],
+        "summary": "Update sequence (name, goal, status, trigger, exit conditions)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": { "type": "string" },
+                  "goal": { "type": "string", "enum": ["BOOK_MEETING", "GET_REPLY", "DRIVE_PURCHASE", "NURTURE_ONLY"] },
+                  "status": { "type": "string", "enum": ["DRAFT", "ACTIVE", "PAUSED"] },
+                  "enrollmentTrigger": { "type": "string", "enum": ["MANUAL", "STAGE_CHANGE", "LEAD_CREATED"] },
+                  "triggerConfig": { "type": "object" },
+                  "exitConditions": { "type": "object" },
+                  "reEnrollAfterDays": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SmartSequence" } } } },
+          "404": { "description": "Not found" }
+        }
+      },
+      "delete": {
+        "tags": ["Smart Sequences"],
+        "summary": "Delete sequence (only DRAFT or PAUSED)",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "success": { "type": "boolean" } } } } } },
+          "400": { "description": "Cannot delete active sequence" },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/sequences/{id}/steps": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+      "get": {
+        "tags": ["Smart Sequences"],
+        "summary": "List steps for a sequence",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/SequenceStep" } } } } },
+          "404": { "description": "Not found" }
+        }
+      },
+      "post": {
+        "tags": ["Smart Sequences"],
+        "summary": "Batch save steps (replaces all steps)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["steps"],
+                "properties": {
+                  "steps": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["stepOrder", "templateId", "waitValue", "waitUnit"],
+                      "properties": {
+                        "stepOrder": { "type": "integer" },
+                        "templateId": { "type": "string", "format": "uuid" },
+                        "waitValue": { "type": "integer" },
+                        "waitUnit": { "type": "string", "enum": ["HOURS", "DAYS", "WEEKS"] },
+                        "condition": { "type": "string", "enum": ["ALWAYS", "OPENED", "NOT_OPENED", "CLICKED", "NOT_CLICKED", "REPLIED", "NOT_REPLIED"] },
+                        "goToStepOrder": { "type": "integer", "nullable": true },
+                        "exitOnCondition": { "type": "boolean" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "count": { "type": "integer" } } } } } },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/sequences/{id}/preview": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+      "get": {
+        "tags": ["Smart Sequences"],
+        "summary": "Plain-language preview of sequence logic",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "lines": { "type": "array", "items": { "type": "string" } } } } } } },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/sequences/{id}/enrollments": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+      "get": {
+        "tags": ["Smart Sequences"],
+        "summary": "List enrolled contacts",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/SequenceEnrollment" } } } } },
+          "404": { "description": "Not found" }
+        }
+      },
+      "post": {
+        "tags": ["Smart Sequences"],
+        "summary": "Enroll contacts in sequence",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["leadIds"],
+                "properties": {
+                  "leadIds": { "type": "array", "items": { "type": "string", "format": "uuid" } }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "enrolled": { "type": "integer" }, "skipped": { "type": "integer" } } } } } },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/sequences/{id}/enrollments/{enrollmentId}": {
+      "parameters": [
+        { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+        { "name": "enrollmentId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }
+      ],
+      "put": {
+        "tags": ["Smart Sequences"],
+        "summary": "Update enrollment (pause, resume, remove, advance)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["action"],
+                "properties": {
+                  "action": { "type": "string", "enum": ["pause", "resume", "remove", "advance"] },
+                  "reason": { "type": "string", "description": "Reason for removal (when action=remove)" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SequenceEnrollment" } } } },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/sequences/{id}/performance": {
+      "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } }],
+      "get": {
+        "tags": ["Smart Sequences"],
+        "summary": "Sequence performance metrics and drop-off funnel",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "summary": {
+                      "type": "object",
+                      "properties": {
+                        "totalEnrolled": { "type": "integer" },
+                        "active": { "type": "integer" },
+                        "completed": { "type": "integer" },
+                        "exited": { "type": "integer" },
+                        "removed": { "type": "integer" },
+                        "paused": { "type": "integer" },
+                        "conversionRate": { "type": "number" }
+                      }
+                    },
+                    "funnel": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "stepOrder": { "type": "integer" },
+                          "templateName": { "type": "string" },
+                          "reached": { "type": "integer" },
+                          "dropOff": { "type": "number" }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": { "description": "Not found" }
+        }
+      }
+    },
+    "/api/sequences/process": {
+      "post": {
+        "tags": ["Smart Sequences"],
+        "summary": "Process sequences (cron endpoint: sends due emails, advances steps)",
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "processed": { "type": "integer" }, "sent": { "type": "integer" }, "errors": { "type": "integer" } } } } } },
           "401": { "description": "Unauthorized" }
         }
       }

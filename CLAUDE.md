@@ -106,6 +106,9 @@ leads-portal/
 | KnowledgeArticle | knowledge_articles | Knowledge base articles (title, slug, content, category, tags, published) |
 | Content | content | Social media content posts |
 | CustomerUser | customer_users | Customer portal users (email, name, password, leadIds) |
+| SmartSequence | smart_sequences | Email nurture sequences (name, goal, status, enrollment trigger, exit conditions, re-enroll cooldown) |
+| SequenceStep | sequence_steps | Steps in a sequence (stepOrder, templateId FK, wait value/unit, branching condition, goToStepOrder, exitOnCondition) |
+| SequenceEnrollment | sequence_enrollments | Contacts enrolled in sequences (leadId, currentStepOrder, status, lastAction, nextSendAt, exitReason) |
 
 ### Key Enums
 - `LeadSource`: MANUAL, AGENT, BARK, LINKEDIN_SALES_NAV, APOLLO, LINKEDIN_COMPANY_PAGE, REFERRAL, WEBSITE, COLD_OUTREACH, EVENT, OTHER
@@ -115,6 +118,13 @@ leads-portal/
 - `NdaStatus`: GENERATED, SENT, SIGNED
 - `SentEmailStatus`: SENT, OPENED, FAILED
 - `EmailTemplatePurpose`: WELCOME, FOLLOW_UP, REMINDER, NOTIFICATION, PROMOTIONAL, NURTURE, COLD_OUTREACH, OTHER
+- `SequenceGoal`: BOOK_MEETING, GET_REPLY, DRIVE_PURCHASE, NURTURE_ONLY
+- `SequenceStatus`: DRAFT, ACTIVE, PAUSED
+- `EnrollmentTrigger`: MANUAL, STAGE_CHANGE, LEAD_CREATED
+- `WaitUnit`: HOURS, DAYS, WEEKS
+- `StepCondition`: ALWAYS, OPENED, NOT_OPENED, CLICKED, NOT_CLICKED, REPLIED, NOT_REPLIED
+- `EnrollmentStatus`: ACTIVE, PAUSED, COMPLETED, EXITED, REMOVED
+- `ContactAction`: NONE, OPENED, CLICKED, REPLIED
 
 ## Admin Portal Pages
 
@@ -141,6 +151,9 @@ leads-portal/
 | `/email-flows` | Flow builder list |
 | `/email-flows/new` | Create flow |
 | `/email-flows/[id]` | Edit flow |
+| `/sequences` | Smart Sequences list — form-driven email sequence builder |
+| `/sequences/new` | Create sequence (name, goal, trigger, exit conditions) |
+| `/sequences/[id]` | Sequence detail with 4 tabs (Steps, Contacts, Preview, Performance) |
 | `/content` | Content management |
 | `/content/new` | Create content |
 | `/content/[id]` | Edit content |
@@ -223,6 +236,14 @@ leads-portal/
 - `GET/PUT/DELETE /api/portfolio/projects/[id]` — Project CRUD
 - `GET/POST /api/leads/[id]/messages` — Secure messaging with customer (list/send, marks as read)
 - `GET/POST/PUT/DELETE /api/leads/[id]/drafts` — Email draft management per lead
+- `GET/POST /api/sequences` — List/create smart sequences
+- `GET/PUT/DELETE /api/sequences/[id]` — Sequence CRUD
+- `GET/POST /api/sequences/[id]/steps` — List/batch save sequence steps
+- `GET /api/sequences/[id]/preview` — Plain-language sequence summary
+- `GET/POST /api/sequences/[id]/enrollments` — List/enroll contacts in sequence
+- `PUT /api/sequences/[id]/enrollments/[enrollmentId]` — Pause/resume/remove/advance enrolled contact
+- `GET /api/sequences/[id]/performance` — Sequence performance metrics
+- `POST /api/sequences/process` — Cron processor (sends emails, advances steps)
 - `GET /api/naics` — List all NAICS sectors with subsectors
 - `POST /api/naics/seed` — Seed NAICS 2022 codes (20 sectors, 96 subsectors)
 - `GET/POST /api/knowledge` — Knowledge base articles (search, category filter)
@@ -314,6 +335,7 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 | `apps/admin/src/lib/preview-token.ts` | `generatePreviewToken()` — HMAC-based preview token for admin impersonation |
 | `apps/customer/src/lib/preview-token.ts` | `generatePreviewToken()`, `isValidPreviewToken()` — Preview token validation |
 | `apps/customer/src/lib/generate-pdf.ts` | `downloadNdaPdf()`, `downloadSowPdf()` — jsPDF generation |
+| `apps/admin/src/lib/sequence-utils.ts` | Sequence helper utilities (preview text generation, step condition labels, enrollment processing) |
 | `packages/database/src/index.ts` | Singleton `PrismaClient` export |
 
 ## Key Components
@@ -626,7 +648,7 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - **Sticky breadcrumb bar** at top showing current page path (auto-generated from URL)
 - **AdminShell** layout wrapper in root layout — wraps all pages except /login
 - Pages no longer have individual headers/nav — sidebar handles all navigation
-- Nav groups: Dashboard/Leads/Activity/Portfolio, Templates (Email, SOW, Flows, Content), NAICS Codes, Knowledge Base, Settings (Branding, Zoho, Notifications), Users (Admin Users, Profile)
+- Nav groups: Dashboard/Leads/Activity/Portfolio, Templates (Email, SOW, Flows, Smart Sequences, Content), NAICS Codes, Knowledge Base, Settings (Branding, Zoho, Notifications), Users (Admin Users, Profile)
 
 ## Live Chat / Secure Messaging
 - **Message** model: leadId, content, senderName, senderType (admin/customer), readAt for read receipts
@@ -657,6 +679,20 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - Drafts list shown as color-coded cards (amber=Draft, green=Approved, blue=Scheduled, gray=Cancelled) with inline status dropdown, preview toggle, edit/delete actions, and datetime picker for scheduled emails
 - Click draft to load into compose form, multiple drafts per lead
 - CRUD API: `GET/POST/PUT/DELETE /api/leads/[id]/drafts`
+
+## Smart Sequences
+- Form-driven email sequence builder — alternative to canvas-based Email Flow Builder, optimized for timed multi-step email nurture sequences
+- **SmartSequence** model: name, goal (BOOK_MEETING/GET_REPLY/DRIVE_PURCHASE/NURTURE_ONLY), status (DRAFT/ACTIVE/PAUSED), enrollment trigger (MANUAL/STAGE_CHANGE/LEAD_CREATED), triggerConfig JSON, audienceTags JSON, exitConditions JSON, reEnrollAfterDays
+- **SequenceStep** model: stepOrder, templateId (FK to EmailTemplate), waitValue + waitUnit (HOURS/DAYS/WEEKS), condition (ALWAYS/OPENED/NOT_OPENED/CLICKED/NOT_CLICKED/REPLIED/NOT_REPLIED), goToStepOrder, exitOnCondition boolean
+- **SequenceEnrollment** model: leadId, currentStepOrder, status (ACTIVE/PAUSED/COMPLETED/EXITED/REMOVED), lastAction (NONE/OPENED/CLICKED/REPLIED), nextSendAt, exitReason
+- **Step builder**: drag-to-reorder step cards, each with template selector, structured delay (number + unit), branching condition, go-to step, step-level exit condition
+- **Contact enrollment**: search leads by name/email/company, multi-select, per-contact tracking (current step, last action, next send time), pause/resume/advance/remove actions
+- **Preview tab**: plain-language timeline summary of sequence logic (e.g. "Day 0: Send 'Template Name'")
+- **Performance tab**: summary cards (enrolled/active/completed/exited/removed/conversion rate) + per-step drop-off funnel table
+- **Sequence processor**: cron-driven `POST /api/sequences/process` endpoint — finds due contacts, checks exit conditions, evaluates branching, sends emails with tracking, advances to next step
+- Sequences can only be deleted when in DRAFT or PAUSED status; activation requires at least one step
+- Sidebar nav: "Smart Sequences" under Templates group after Email Flows
+- 8 API routes, 3 admin pages (/sequences list, /sequences/new, /sequences/[id] with 4 tabs)
 
 ## NAICS Industry Classification
 - **NaicsSector** (20 sectors) + **NaicsSubsector** (96 subsectors) models from NAICS 2022
