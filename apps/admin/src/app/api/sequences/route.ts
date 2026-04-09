@@ -1,5 +1,5 @@
 import { prisma } from "@leads-portal/database";
-import type { SequenceGoal, EnrollmentTrigger } from "@prisma/client";
+import type { SequenceGoal, EnrollmentTrigger, Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getAdminSession } from "../../../lib/session";
 
@@ -36,9 +36,9 @@ export async function POST(req: Request) {
     name?: string;
     goal?: string;
     enrollmentTrigger?: string;
-    triggerConfig?: Record<string, unknown>;
-    audienceTags?: string[];
-    exitConditions?: string[];
+    triggerConfig?: Prisma.InputJsonValue;
+    audienceTags?: Prisma.InputJsonValue;
+    exitConditions?: Prisma.InputJsonValue;
     reEnrollAfterDays?: number;
   };
 

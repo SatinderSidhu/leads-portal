@@ -1,5 +1,5 @@
 import { prisma } from "@leads-portal/database";
-import type { SequenceGoal, SequenceStatus, EnrollmentTrigger } from "@prisma/client";
+import type { SequenceGoal, SequenceStatus, EnrollmentTrigger, Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getAdminSession } from "../../../../lib/session";
 
@@ -50,9 +50,9 @@ export async function PUT(
     goal?: string;
     status?: string;
     enrollmentTrigger?: string;
-    triggerConfig?: Record<string, unknown>;
-    audienceTags?: string[];
-    exitConditions?: string[];
+    triggerConfig?: Prisma.InputJsonValue;
+    audienceTags?: Prisma.InputJsonValue;
+    exitConditions?: Prisma.InputJsonValue;
     reEnrollAfterDays?: number | null;
   };
 
