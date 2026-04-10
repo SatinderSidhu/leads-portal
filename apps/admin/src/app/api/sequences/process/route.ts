@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { calculateNextSendAt, checkStepCondition } from "../../../../lib/sequence-utils";
 import { mergeTags } from "../../../../lib/template-merge";
+import { rewriteLinksForTracking } from "../../../../lib/click-track-utils";
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -287,12 +288,14 @@ export async function POST(req: Request) {
 
       // STEP 3: Actually send the email
       try {
-        const trackingPixel = `<img src="${process.env.NEXT_PUBLIC_ADMIN_URL || "https://leadsportaladmin.kitlabs.us"}/api/track/${sentEmailId}" width="1" height="1" style="display:none" />`;
+        const adminUrl = process.env.NEXT_PUBLIC_ADMIN_URL || "https://leadsportaladmin.kitlabs.us";
+        const trackingPixel = `<img src="${adminUrl}/api/track/${sentEmailId}" width="1" height="1" style="display:none" />`;
+        const clickTrackedBody = rewriteLinksForTracking(emailBody, sentEmailId, adminUrl);
         await transporter.sendMail({
           from: `"KITLabs" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
           to: lead.customerEmail,
           subject: emailSubject,
-          html: emailBody + trackingPixel,
+          html: clickTrackedBody + trackingPixel,
         });
         sent++;
       } catch (emailError) {

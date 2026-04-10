@@ -315,10 +315,16 @@ model EmailDraft {
   bcc         String?   @db.Text
   status      String    @default("DRAFT")
   scheduledAt DateTime? @map("scheduled_at")
+  lockedUntil DateTime? @map("locked_until")
+  retryCount  Int       @default(0) @map("retry_count")
+  failureReason String? @map("failure_reason")
+  sentAt      DateTime? @map("sent_at")
+  sentEmailId String?   @map("sent_email_id")
   createdBy   String?   @map("created_by")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
+  @@index([status, scheduledAt, lockedUntil])
   @@map("email_drafts")
 }
 
@@ -330,6 +336,7 @@ model SentEmail {
   body           String          @db.Text
   status         SentEmailStatus @default(SENT)
   openedAt       DateTime?       @map("opened_at")
+  clickedAt      DateTime?       @map("clicked_at")
   sentBy         String?         @map("sent_by")
   cc             String?         @db.Text
   bcc            String?         @db.Text
@@ -875,4 +882,21 @@ model ListMembership {
 
   @@unique([listId, leadId])
   @@map("list_memberships")
+}
+
+// ── System Health (singleton table for cron heartbeat) ──────────────
+
+model SystemHealth {
+  id                                 String    @id @default("singleton")
+  lastSequenceProcessAt              DateTime? @map("last_sequence_process_at")
+  lastSequenceProcessResult          Json?     @map("last_sequence_process_result")
+  lastDraftProcessAt                 DateTime? @map("last_draft_process_at")
+  lastDraftProcessResult             Json?     @map("last_draft_process_result")
+  lastArchiveAt                      DateTime? @map("last_archive_at")
+  lastArchiveResult                  Json?     @map("last_archive_result")
+  sequenceProcessConsecutiveFailures Int       @default(0) @map("sequence_process_consecutive_failures")
+  draftProcessConsecutiveFailures    Int       @default(0) @map("draft_process_consecutive_failures")
+  updatedAt                          DateTime  @updatedAt @map("updated_at")
+
+  @@map("system_health")
 }

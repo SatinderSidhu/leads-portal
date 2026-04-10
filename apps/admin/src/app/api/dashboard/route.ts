@@ -191,5 +191,30 @@ export async function GET() {
       leadStatus: t.lead.status,
     })),
     statusDistribution,
+    systemHealth: await getSystemHealthSummary(),
   });
+}
+
+async function getSystemHealthSummary() {
+  try {
+    const health = await prisma.systemHealth.findUnique({ where: { id: "singleton" } });
+    if (!health) return null;
+
+    const now = Date.now();
+    function status(lastAt: Date | null, windowSec: number): string {
+      if (!lastAt) return "never";
+      const age = (now - lastAt.getTime()) / 1000;
+      if (age < windowSec) return "healthy";
+      if (age < windowSec * 5) return "warning";
+      return "critical";
+    }
+
+    return {
+      sequence: { lastTickAt: health.lastSequenceProcessAt, status: status(health.lastSequenceProcessAt, 120), failures: health.sequenceProcessConsecutiveFailures },
+      draft: { lastTickAt: health.lastDraftProcessAt, status: status(health.lastDraftProcessAt, 600), failures: health.draftProcessConsecutiveFailures },
+      archive: { lastTickAt: health.lastArchiveAt },
+    };
+  } catch {
+    return null;
+  }
 }

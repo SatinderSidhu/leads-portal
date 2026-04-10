@@ -52,6 +52,18 @@ export async function PATCH(
     logAudit(id, "Do Not Contact Enabled", `Auto-enabled due to status change to ${status}`, adminName).catch(() => {});
   }
 
+  // Auto-enroll in STAGE_CHANGE-triggered sequences (non-blocking)
+  if (!autoDoNotContact) {
+    import("../../../../../lib/enrollment-utils").then(({ processAutoEnrollmentTriggers }) => {
+      processAutoEnrollmentTriggers({
+        trigger: "STAGE_CHANGE",
+        leadId: id,
+        fromStage: previousStatus,
+        toStage: status,
+      }).catch(() => {});
+    }).catch(() => {});
+  }
+
   // Block email if doNotContact
   if (sendEmail && updatedLead.doNotContact) {
     logAudit(id, "Status Changed", `${previousStatus} → ${status}`, session?.name).catch(() => {});

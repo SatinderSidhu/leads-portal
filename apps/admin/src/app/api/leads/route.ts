@@ -156,6 +156,11 @@ export async function POST(req: Request) {
 
   logAudit(lead.id, "Lead Created", `Project: ${lead.projectName}, Customer: ${lead.customerName}`, adminName).catch(() => {});
 
+  // Auto-enroll in LEAD_CREATED-triggered sequences
+  import("../../../lib/enrollment-utils").then(({ processAutoEnrollmentTriggers }) => {
+    processAutoEnrollmentTriggers({ trigger: "LEAD_CREATED", leadId: lead.id }).catch(() => {});
+  }).catch(() => {});
+
   if (body.sendEmail) {
     try {
       const { subject, html } = await sendWelcomeEmail(lead, session ? { name: session.name } : undefined);

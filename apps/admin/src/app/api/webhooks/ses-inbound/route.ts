@@ -109,7 +109,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid message" }, { status: 400 });
   }
 
-  // Only process received emails
+  // Handle different notification types
+  if (notification.notificationType === "Bounce") {
+    return handleBounce(notification);
+  }
+  if (notification.notificationType === "Complaint") {
+    return handleComplaint(notification);
+  }
   if (notification.notificationType !== "Received") {
     console.log(`[SES Inbound] Ignoring notification type: ${notification.notificationType}`);
     return NextResponse.json({ status: "ignored" });
@@ -227,5 +233,81 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error("[SES Inbound] Failed to save email:", err);
     return NextResponse.json({ error: "Failed to save" }, { status: 500 });
+  }
+}
+
+// ── Bounce/Complaint Handlers ───────────────────────────────────────
+
+async function handleBounce(notification: SesNotification) {
+  try {
+    const bounce = (notification as unknown as { bounce: { bounceType: string; bouncedRecipients: { emailAddress: string }[] } }).bounce;
+    if (!bounce) return NextResponse.json({ status: "ignored" });
+
+    const isHardBounce = bounce.bounceType === "Permanent";
+    const emails = bounce.bouncedRecipients?.map((r) => r.emailAddress) || [];
+
+    console.log(`[SES Bounce] ${bounce.bounceType} bounce for: ${emails.join(", ")}`);
+
+    if (isHardBounce) {
+      for (const email of emails) {
+        await markDoNotContact(email, "Hard bounce detected");
+      }
+    }
+    // Soft bounces: the sequence processor's retry counter handles these naturally
+
+    return NextResponse.json({ status: "bounce_processed", type: bounce.bounceType, emails });
+  } catch (err) {
+    console.error("[SES Bounce] Handler error:", err);
+    return NextResponse.json({ status: "bounce_error" }, { status: 500 });
+  }
+}
+
+async function handleComplaint(notification: SesNotification) {
+  try {
+    const complaint = (notification as unknown as { complaint: { complainedRecipients: { emailAddress: string }[] } }).complaint;
+    if (!complaint) return NextResponse.json({ status: "ignored" });
+
+    const emails = complaint.complainedRecipients?.map((r) => r.emailAddress) || [];
+
+    console.log(`[SES Complaint] Spam complaint from: ${emails.join(", ")}`);
+
+    for (const email of emails) {
+      await markDoNotContact(email, "Spam complaint received");
+    }
+
+    return NextResponse.json({ status: "complaint_processed", emails });
+  } catch (err) {
+    console.error("[SES Complaint] Handler error:", err);
+    return NextResponse.json({ status: "complaint_error" }, { status: 500 });
+  }
+}
+
+async function markDoNotContact(email: string, reason: string) {
+  // Find all leads with this email
+  const leads = await prisma.lead.findMany({
+    where: { customerEmail: email },
+    select: { id: true, doNotContact: true },
+  });
+
+  for (const lead of leads) {
+    if (lead.doNotContact) continue;
+
+    // Set doNotContact
+    await prisma.lead.update({
+      where: { id: lead.id },
+      data: { doNotContact: true },
+    });
+
+    // Exit all active sequence enrollments
+    await prisma.sequenceEnrollment.updateMany({
+      where: { leadId: lead.id, status: "ACTIVE" },
+      data: { status: "EXITED", exitReason: reason, nextSendAt: null, lockedUntil: null },
+    });
+
+    // Audit log
+    const { logAudit } = await import("../../../../lib/audit");
+    logAudit(lead.id, "Do Not Contact Enabled", reason, "System (SES)").catch(() => {});
+
+    console.log(`[SES] ${reason}: lead ${lead.id} (${email}) marked doNotContact, sequences exited`);
   }
 }

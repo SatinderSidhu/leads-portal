@@ -24,7 +24,7 @@ interface Lead {
 export function getUnsubscribeFooter(customerEmail: string, leadId: string): string {
   const customerPortalUrl = process.env.CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us";
   const unsubUrl = `${customerPortalUrl}/unsubscribe?email=${encodeURIComponent(customerEmail)}&leadId=${encodeURIComponent(leadId)}`;
-  return `<div style="text-align: center; padding-top: 20px; margin-top: 20px; border-top: 1px solid #eee;"><p style="color: #999; font-size: 11px; margin: 0;">If you no longer wish to receive these emails, you can <a href="${unsubUrl}" style="color: #999; text-decoration: underline;">unsubscribe here</a>.</p></div>`;
+  return `<div style="text-align: center; padding-top: 20px; margin-top: 20px; border-top: 1px solid #eee;"><p style="color: #999; font-size: 11px; margin: 0;">If you no longer wish to receive these emails, you can <a href="${unsubUrl}" data-no-track style="color: #999; text-decoration: underline;">unsubscribe here</a>.</p></div>`;
 }
 
 /**
