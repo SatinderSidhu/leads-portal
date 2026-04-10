@@ -2,6 +2,7 @@ import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import nodemailer from "nodemailer";
 import { calculateNextSendAt, checkStepCondition } from "../../../../lib/sequence-utils";
+import { mergeTags } from "../../../../lib/template-merge";
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -10,12 +11,26 @@ const transporter = nodemailer.createTransport({
   auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS },
 });
 
+const BATCH_SIZE = 50;
+const LOCK_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+const SEND_PACING_MS = 80; // ~14/sec — under SES sustained rate
+const MAX_RETRIES = 5;
+const RETRY_BACKOFF_MS = 10 * 60 * 1000; // 10 minutes
+
+function isDuplicateKeyError(e: unknown): boolean {
+  return (
+    typeof e === "object" &&
+    e !== null &&
+    "code" in e &&
+    (e as { code: string }).code === "P2002"
+  );
+}
+
 export async function POST(req: Request) {
   // Auth via CRON_SECRET or admin session
   const authHeader = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    // Fall back to session auth for manual triggers
     const { getAdminSession } = await import("../../../../lib/session");
     const session = await getAdminSession();
     if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -24,27 +39,63 @@ export async function POST(req: Request) {
   try {
     const now = new Date();
 
-    // Find enrollments ready to process
-    const enrollments = await prisma.sequenceEnrollment.findMany({
-      where: {
-        status: "ACTIVE",
-        nextSendAt: { lte: now },
-      },
-      include: {
-        lead: { select: { id: true, customerName: true, customerEmail: true, projectName: true, doNotContact: true } },
-        sequence: {
-          include: {
-            steps: { orderBy: { stepOrder: "asc" }, include: { template: true } },
+    // ── Phase 1: Atomically claim a batch of enrollments ──
+    const enrollments = await prisma.$transaction(async (tx) => {
+      const claimed = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id FROM sequence_enrollments
+        WHERE status = 'ACTIVE'
+          AND next_send_at <= ${now}
+          AND (locked_until IS NULL OR locked_until < ${now})
+          AND retry_count < ${MAX_RETRIES}
+        ORDER BY next_send_at ASC
+        LIMIT ${BATCH_SIZE}
+        FOR UPDATE SKIP LOCKED
+      `;
+
+      if (claimed.length === 0) return [];
+
+      const lockUntil = new Date(Date.now() + LOCK_DURATION_MS);
+      const claimedIds = claimed.map((c) => c.id);
+
+      await tx.sequenceEnrollment.updateMany({
+        where: { id: { in: claimedIds } },
+        data: { lockedUntil: lockUntil },
+      });
+
+      return tx.sequenceEnrollment.findMany({
+        where: { id: { in: claimedIds } },
+        include: {
+          lead: {
+            select: {
+              id: true,
+              customerName: true,
+              customerEmail: true,
+              projectName: true,
+              doNotContact: true,
+              phone: true,
+              city: true,
+              status: true,
+              stage: true,
+              source: true,
+              dateCreated: true,
+              companyName: true,
+              jobTitle: true,
+            },
+          },
+          sequence: {
+            include: {
+              steps: { orderBy: { stepOrder: "asc" }, include: { template: true } },
+            },
           },
         },
-      },
-      take: 50, // Process in batches
+      });
     });
 
     let sent = 0;
     let skipped = 0;
     let exited = 0;
 
+    // ── Phase 2: Process each claimed enrollment ──
     for (const enrollment of enrollments) {
       const { lead, sequence } = enrollment;
 
@@ -52,7 +103,12 @@ export async function POST(req: Request) {
       if (lead.doNotContact) {
         await prisma.sequenceEnrollment.update({
           where: { id: enrollment.id },
-          data: { status: "EXITED", exitReason: "Do Not Contact enabled", nextSendAt: null },
+          data: {
+            status: "EXITED",
+            exitReason: "Do Not Contact enabled",
+            nextSendAt: null,
+            lockedUntil: null,
+          },
         });
         exited++;
         continue;
@@ -60,148 +116,244 @@ export async function POST(req: Request) {
 
       // Check sequence is still active
       if (sequence.status !== "ACTIVE") {
+        await prisma.sequenceEnrollment.update({
+          where: { id: enrollment.id },
+          data: { lockedUntil: null },
+        });
         skipped++;
         continue;
       }
 
-      // Check exit conditions (e.g., REPLIED)
+      // Check sequence-level exit conditions
       const exitConditions = sequence.exitConditions as string[];
-      if (exitConditions.includes("REPLIED")) {
+      if (exitConditions?.includes("REPLIED")) {
         const recentReply = await prisma.receivedEmail.findFirst({
           where: { leadId: lead.id, receivedAt: { gte: enrollment.enrolledAt } },
         });
         if (recentReply) {
           await prisma.sequenceEnrollment.update({
             where: { id: enrollment.id },
-            data: { status: "EXITED", exitReason: "Contact replied", nextSendAt: null },
+            data: {
+              status: "EXITED",
+              exitReason: "Contact replied",
+              nextSendAt: null,
+              lockedUntil: null,
+            },
           });
           exited++;
           continue;
         }
       }
-      if (exitConditions.includes("UNSUBSCRIBED") && lead.doNotContact) {
-        await prisma.sequenceEnrollment.update({
-          where: { id: enrollment.id },
-          data: { status: "EXITED", exitReason: "Contact unsubscribed", nextSendAt: null },
-        });
-        exited++;
-        continue;
-      }
 
       // Find current step
-      const currentStep = sequence.steps.find((s) => s.stepOrder === enrollment.currentStepOrder);
+      const currentStep = sequence.steps.find(
+        (s) => s.stepOrder === enrollment.currentStepOrder
+      );
       if (!currentStep) {
         await prisma.sequenceEnrollment.update({
           where: { id: enrollment.id },
-          data: { status: "COMPLETED", nextSendAt: null },
+          data: { status: "COMPLETED", nextSendAt: null, lockedUntil: null },
         });
         exited++;
         continue;
       }
 
-      // Check step condition
+      // Check step-level branching condition
       if (!checkStepCondition(currentStep.condition, enrollment.lastAction)) {
-        // Condition not met — check if there's a goToStepOrder
+        // Condition not met — skip to goToStepOrder if configured, otherwise just skip
         if (currentStep.goToStepOrder) {
-          const nextStep = sequence.steps.find((s) => s.stepOrder === currentStep.goToStepOrder);
-          if (nextStep) {
+          const targetStep = sequence.steps.find(
+            (s) => s.stepOrder === currentStep.goToStepOrder
+          );
+          if (targetStep) {
             await prisma.sequenceEnrollment.update({
               where: { id: enrollment.id },
               data: {
-                currentStepOrder: nextStep.stepOrder,
-                nextSendAt: calculateNextSendAt(nextStep.waitValue, nextStep.waitUnit),
+                currentStepOrder: targetStep.stepOrder,
+                nextSendAt: calculateNextSendAt(targetStep.waitValue, targetStep.waitUnit),
+                lockedUntil: null,
               },
             });
+          } else {
+            await prisma.sequenceEnrollment.update({
+              where: { id: enrollment.id },
+              data: { lockedUntil: null },
+            });
           }
+        } else {
+          await prisma.sequenceEnrollment.update({
+            where: { id: enrollment.id },
+            data: { lockedUntil: null },
+          });
         }
         skipped++;
         continue;
       }
 
       // Check step-level exit condition
-      if (currentStep.exitOnCondition && checkStepCondition(currentStep.exitOnCondition, enrollment.lastAction)) {
+      if (
+        currentStep.exitOnCondition &&
+        checkStepCondition(currentStep.exitOnCondition, enrollment.lastAction)
+      ) {
         await prisma.sequenceEnrollment.update({
           where: { id: enrollment.id },
-          data: { status: "EXITED", exitReason: `Step ${currentStep.stepOrder} exit condition met`, nextSendAt: null },
+          data: {
+            status: "EXITED",
+            exitReason: `Step ${currentStep.stepOrder} exit condition met`,
+            nextSendAt: null,
+            lockedUntil: null,
+          },
         });
         exited++;
         continue;
       }
 
-      // Send the email
+      // ── Phase 3: Crash-safe send pipeline ──
       const template = currentStep.template;
-      let emailBody = template.body;
-      let emailSubject = template.subject;
+      const stepOrderBeforeSend = enrollment.currentStepOrder;
+      const nextStepOrder = stepOrderBeforeSend + 1;
+      const nextStep = sequence.steps.find((s) => s.stepOrder === nextStepOrder);
 
       // Merge tags
-      const replacements: Record<string, string> = {
-        customerName: lead.customerName,
-        projectName: lead.projectName,
-      };
-      for (const [key, value] of Object.entries(replacements)) {
-        const regex = new RegExp(`\\{\\{${key}\\}\\}`, "g");
-        emailBody = emailBody.replace(regex, value);
-        emailSubject = emailSubject.replace(regex, value);
-      }
+      const emailSubject = mergeTags(template.subject, lead);
+      const emailBody = mergeTags(template.body, lead);
 
+      // STEP 1: Reserve idempotency slot (durable record before SMTP)
+      let sentEmailId: string;
       try {
-        // Create SentEmail record first for tracking pixel
         const sentEmail = await prisma.sentEmail.create({
           data: {
             leadId: lead.id,
+            templateId: template.id,
+            enrollmentId: enrollment.id,
+            enrollmentStep: stepOrderBeforeSend,
             subject: emailSubject,
             body: emailBody,
             sentBy: "Smart Sequence",
-            templateId: template.id,
             status: "SENT",
           },
         });
+        sentEmailId = sentEmail.id;
+      } catch (e) {
+        if (isDuplicateKeyError(e)) {
+          // Already sent in a previous tick — advance and move on
+          console.warn(
+            `[seq-cron] enrollment ${enrollment.id} step ${stepOrderBeforeSend} already sent — advancing`
+          );
+          await prisma.sequenceEnrollment.update({
+            where: { id: enrollment.id },
+            data: {
+              currentStepOrder: nextStepOrder,
+              status: nextStep ? "ACTIVE" : "COMPLETED",
+              nextSendAt: nextStep
+                ? calculateNextSendAt(nextStep.waitValue, nextStep.waitUnit, now)
+                : null,
+              lockedUntil: null,
+              retryCount: 0,
+            },
+          });
+          continue;
+        }
+        // Unknown DB error — release lock and let next tick retry
+        console.error(
+          `[seq-cron] DB error reserving slot for enrollment ${enrollment.id}:`,
+          e
+        );
+        await prisma.sequenceEnrollment.update({
+          where: { id: enrollment.id },
+          data: { lockedUntil: null },
+        });
+        skipped++;
+        continue;
+      }
 
-        const trackingPixel = `<img src="${process.env.NEXT_PUBLIC_ADMIN_URL || "https://leadsportaladmin.kitlabs.us"}/api/track/${sentEmail.id}" width="1" height="1" style="display:none" />`;
+      // STEP 2: Advance enrollment optimistically (before SMTP)
+      // Crash here = missed send, never duplicate.
+      await prisma.sequenceEnrollment.update({
+        where: { id: enrollment.id },
+        data: {
+          currentStepOrder: nextStepOrder,
+          lastEmailSentAt: now,
+          lastAction: "NONE",
+          status: nextStep ? "ACTIVE" : "COMPLETED",
+          nextSendAt: nextStep
+            ? calculateNextSendAt(nextStep.waitValue, nextStep.waitUnit, now)
+            : null,
+          exitReason: nextStep ? null : "Completed all steps",
+          lockedUntil: null,
+          retryCount: 0,
+        },
+      });
 
+      // STEP 3: Actually send the email
+      try {
+        const trackingPixel = `<img src="${process.env.NEXT_PUBLIC_ADMIN_URL || "https://leadsportaladmin.kitlabs.us"}/api/track/${sentEmailId}" width="1" height="1" style="display:none" />`;
         await transporter.sendMail({
           from: `"KITLabs" <${process.env.SMTP_FROM || process.env.SMTP_USER}>`,
           to: lead.customerEmail,
           subject: emailSubject,
           html: emailBody + trackingPixel,
         });
-
         sent++;
       } catch (emailError) {
-        console.error(`Failed to send sequence email to ${lead.customerEmail}:`, emailError);
-        skipped++;
+        // STEP 4: SMTP failed — roll back and increment retry counter
+        console.error(
+          `[seq-cron] SMTP failed for enrollment ${enrollment.id}:`,
+          emailError
+        );
+
+        // Mark SentEmail as FAILED before deleting (audit trail in logs)
+        const errMsg =
+          emailError instanceof Error ? emailError.message : String(emailError);
+
+        const newRetryCount = enrollment.retryCount + 1;
+        if (newRetryCount >= MAX_RETRIES) {
+          // Give up
+          await prisma.sequenceEnrollment.update({
+            where: { id: enrollment.id },
+            data: {
+              status: "EXITED",
+              exitReason: `Send failed after ${MAX_RETRIES} retries: ${errMsg}`,
+              nextSendAt: null,
+              lockedUntil: null,
+              retryCount: newRetryCount,
+            },
+          });
+          // Mark the SentEmail as FAILED so it stays in history as a failed attempt
+          await prisma.sentEmail.update({
+            where: { id: sentEmailId },
+            data: { status: "FAILED" },
+          });
+          exited++;
+        } else {
+          // Roll back step advancement, schedule retry in 10 minutes
+          await prisma.sequenceEnrollment.update({
+            where: { id: enrollment.id },
+            data: {
+              currentStepOrder: stepOrderBeforeSend,
+              status: "ACTIVE",
+              nextSendAt: new Date(Date.now() + RETRY_BACKOFF_MS),
+              lockedUntil: null,
+              retryCount: newRetryCount,
+            },
+          });
+          // Delete the SentEmail row so the unique constraint doesn't block the retry
+          await prisma.sentEmail.delete({ where: { id: sentEmailId } });
+          skipped++;
+        }
         continue;
       }
 
-      // Advance to next step
-      const nextStepOrder = enrollment.currentStepOrder + 1;
-      const nextStep = sequence.steps.find((s) => s.stepOrder === nextStepOrder);
-
-      if (nextStep) {
-        await prisma.sequenceEnrollment.update({
-          where: { id: enrollment.id },
-          data: {
-            currentStepOrder: nextStepOrder,
-            lastEmailSentAt: now,
-            lastAction: "NONE", // Reset for next step's condition check
-            nextSendAt: calculateNextSendAt(nextStep.waitValue, nextStep.waitUnit, now),
-          },
-        });
-      } else {
-        // Last step completed
-        await prisma.sequenceEnrollment.update({
-          where: { id: enrollment.id },
-          data: {
-            lastEmailSentAt: now,
-            status: "COMPLETED",
-            nextSendAt: null,
-            exitReason: "Completed all steps",
-          },
-        });
-      }
+      // Pace at ~14/sec to stay under SES sustained limit
+      await new Promise((r) => setTimeout(r, SEND_PACING_MS));
     }
 
-    return NextResponse.json({ processed: enrollments.length, sent, skipped, exited });
+    return NextResponse.json({
+      claimed: enrollments.length,
+      sent,
+      skipped,
+      exited,
+    });
   } catch (error) {
     console.error("Sequence processor error:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

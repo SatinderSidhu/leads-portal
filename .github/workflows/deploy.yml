@@ -123,6 +123,8 @@ jobs:
           LINKEDIN_CLIENT_SECRET=${{ secrets.LINKEDIN_CLIENT_SECRET }}
           DOMAIN_ADMIN=${{ secrets.DOMAIN_ADMIN }}
           DOMAIN_CUSTOMER=${{ secrets.DOMAIN_CUSTOMER }}
+          CRON_SECRET=${{ secrets.CRON_SECRET }}
+          SEQUENCE_CRON_ENABLED=true
           EOF
 
             # Login to ECR

@@ -190,6 +190,15 @@ export async function POST(req: Request) {
       },
     });
 
+    // Update SequenceEnrollment.lastAction = REPLIED so REPLIED step conditions
+    // and sequence-level exit conditions can fire on the next cron tick.
+    prisma.sequenceEnrollment
+      .updateMany({
+        where: { leadId, status: "ACTIVE" },
+        data: { lastAction: "REPLIED" },
+      })
+      .catch(() => {});
+
     console.log(`[SES Inbound] Saved reply from ${fromEmail} for lead ${leadId} (${received.id})`);
 
     // Notify watchers about customer reply

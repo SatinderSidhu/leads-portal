@@ -27,6 +27,22 @@ export async function GET(
       },
     });
 
+    // Update SequenceEnrollment.lastAction so OPENED step conditions can fire.
+    // Only updates if currently NONE — don't downgrade CLICKED or REPLIED.
+    if (email.leadId && email.templateId) {
+      prisma.sequenceEnrollment
+        .updateMany({
+          where: {
+            leadId: email.leadId,
+            status: "ACTIVE",
+            lastAction: "NONE",
+            sequence: { steps: { some: { templateId: email.templateId } } },
+          },
+          data: { lastAction: "OPENED" },
+        })
+        .catch(() => {});
+    }
+
     // Notify watchers and log audit
     if (email.lead) {
       logAudit(

@@ -32,6 +32,9 @@ services:
       COMPANY_NAME: ${COMPANY_NAME:-KITLabs Inc}
       API_TOKEN: ${API_TOKEN}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      CRON_SECRET: ${CRON_SECRET}
+      SEQUENCE_CRON_ENABLED: ${SEQUENCE_CRON_ENABLED:-false}
+      NEXT_PUBLIC_ADMIN_URL: ${ADMIN_PORTAL_URL}
       NODE_ENV: production
     volumes:
       - uploads:/app/apps/admin/public/uploads

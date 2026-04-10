@@ -41,6 +41,7 @@ RUN npm run build --workspace=apps/customer
 # Admin production image
 FROM base AS admin
 WORKDIR /app
+RUN apk add --no-cache postgresql-client
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 COPY --from=prisma /app/node_modules ./node_modules
