@@ -37,6 +37,7 @@ enum LeadSource {
   WEBSITE
   COLD_OUTREACH
   EVENT
+  APP_FACTORY
   OTHER
 }
 
@@ -882,6 +883,132 @@ model ListMembership {
 
   @@unique([listId, leadId])
   @@map("list_memberships")
+}
+
+// ── App Factory ──────────────────────────────────────────────────────
+
+enum AppFactoryStatus {
+  IDEATING
+  DESIGNING
+  SUBMITTED
+  BUILDING
+  DELIVERED
+  ENHANCING
+}
+
+enum AppFactoryBuildStatus {
+  SUBMITTED
+  IN_REVIEW
+  BUILDING
+  TESTING
+  READY
+  DELIVERED
+}
+
+enum AppStorePlatform {
+  IOS
+  ANDROID
+}
+
+enum EnhancementStatus {
+  REQUESTED
+  REVIEWED
+  APPROVED
+  BUILDING
+  DELIVERED
+}
+
+model AppFactoryProject {
+  id              String              @id @default(uuid())
+  publicId        String              @unique @map("public_id")
+  status          AppFactoryStatus    @default(IDEATING)
+  customerName    String?             @map("customer_name")
+  customerEmail   String?             @map("customer_email")
+  companyName     String?             @map("company_name")
+  leadId          String?             @map("lead_id")
+  invitationToken String?             @unique @map("invitation_token")
+  idea            String              @db.Text
+  platforms       Json                @default("[\"ios\", \"android\"]")
+  targetAudience  String?             @db.Text @map("target_audience")
+  keyFeatures     Json                @default("[]") @map("key_features")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  flows           AppFactoryFlow[]
+  builds          AppFactoryBuild[]
+  appStoreConfigs AppStoreConfig[]
+  enhancements    AppFactoryEnhancement[]
+
+  @@map("app_factory_projects")
+}
+
+model AppFactoryFlow {
+  id                     String            @id @default(uuid())
+  projectId              String            @map("project_id")
+  project                AppFactoryProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  version                Int               @default(1)
+  flowType               String            @default("WIREFRAME") @map("flow_type")
+  nodes                  Json              @default("[]")
+  edges                  Json              @default("[]")
+  screens                Json              @default("[]")
+  requirements           Json              @default("[]")
+  isFinalized            Boolean           @default(false) @map("is_finalized")
+  aiConversationHistory  Json              @default("[]") @map("ai_conversation_history")
+  createdAt              DateTime          @default(now()) @map("created_at")
+  updatedAt              DateTime          @updatedAt @map("updated_at")
+
+  @@unique([projectId, version])
+  @@map("app_factory_flows")
+}
+
+model AppFactoryBuild {
+  id            String                @id @default(uuid())
+  projectId     String                @map("project_id")
+  project       AppFactoryProject     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  version       Int                   @default(1)
+  status        AppFactoryBuildStatus @default(SUBMITTED)
+  requirements  Json                  @default("{}") @map("requirements_snapshot")
+  submittedAt   DateTime              @default(now()) @map("submitted_at")
+  deliveredAt   DateTime?             @map("delivered_at")
+  notes         String?               @db.Text
+  createdAt     DateTime              @default(now()) @map("created_at")
+  updatedAt     DateTime              @updatedAt @map("updated_at")
+
+  enhancements  AppFactoryEnhancement[]
+
+  @@map("app_factory_builds")
+}
+
+model AppStoreConfig {
+  id                   String            @id @default(uuid())
+  projectId            String            @map("project_id")
+  project              AppFactoryProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  platform             AppStorePlatform
+  accountId            String?           @map("account_id")
+  bundleId             String?           @map("bundle_id")
+  apiKey               String?           @db.Text @map("api_key")
+  connectionVerified   Boolean           @default(false) @map("connection_verified")
+  connectionVerifiedAt DateTime?         @map("connection_verified_at")
+  createdAt            DateTime          @default(now()) @map("created_at")
+  updatedAt            DateTime          @updatedAt @map("updated_at")
+
+  @@unique([projectId, platform])
+  @@map("app_store_configs")
+}
+
+model AppFactoryEnhancement {
+  id            String            @id @default(uuid())
+  projectId     String            @map("project_id")
+  project       AppFactoryProject @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  buildId       String?           @map("build_id")
+  build         AppFactoryBuild?  @relation(fields: [buildId], references: [id], onDelete: SetNull)
+  description   String            @db.Text
+  aiDiff        Json?             @map("ai_diff")
+  status        EnhancementStatus @default(REQUESTED)
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  @@map("app_factory_enhancements")
 }
 
 // ── System Health (singleton table for cron heartbeat) ──────────────

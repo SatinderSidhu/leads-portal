@@ -9,6 +9,7 @@ env:
   AWS_REGION: ${{ secrets.AWS_REGION || 'us-east-1' }}
   ECR_ADMIN: leads-portal-admin
   ECR_CUSTOMER: leads-portal-customer
+  ECR_APP_FACTORY: leads-portal-app-factory
 
 jobs:
   build-and-push:
@@ -56,6 +57,16 @@ jobs:
             .
           docker push $ECR/${{ env.ECR_CUSTOMER }}:${{ steps.meta.outputs.tag }}
           docker push $ECR/${{ env.ECR_CUSTOMER }}:latest
+
+      - name: Build and push App Factory image
+        run: |
+          ECR=${{ steps.ecr-login.outputs.registry }}
+          docker build --target app-factory \
+            -t $ECR/${{ env.ECR_APP_FACTORY }}:${{ steps.meta.outputs.tag }} \
+            -t $ECR/${{ env.ECR_APP_FACTORY }}:latest \
+            .
+          docker push $ECR/${{ env.ECR_APP_FACTORY }}:${{ steps.meta.outputs.tag }}
+          docker push $ECR/${{ env.ECR_APP_FACTORY }}:latest
 
   deploy:
     name: Deploy to EC2
@@ -137,7 +148,7 @@ jobs:
             docker builder prune -af 2>/dev/null || true
 
             # Pull new images and deploy
-            docker compose pull admin customer
+            docker compose pull admin customer app-factory
             docker compose up -d --remove-orphans
 
             # Restart nginx to reconnect to new containers

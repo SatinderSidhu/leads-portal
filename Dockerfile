@@ -28,6 +28,16 @@ ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_PUBLIC_COMMIT_SHA=$COMMIT_SHA
 RUN npm run build --workspace=apps/admin
 
+# Build app-factory
+FROM base AS app-factory-builder
+WORKDIR /app
+COPY --from=prisma /app/node_modules ./node_modules
+COPY --from=prisma /app/packages/database ./packages/database
+COPY package.json ./
+COPY apps/app-factory ./apps/app-factory
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build --workspace=apps/app-factory
+
 # Build customer
 FROM base AS customer-builder
 WORKDIR /app
@@ -69,3 +79,18 @@ COPY --from=customer-builder /app/apps/customer/next.config.ts ./apps/customer/n
 COPY package.json ./
 EXPOSE 3001
 CMD ["npm", "run", "start", "--workspace=apps/customer"]
+
+# App Factory production image
+FROM base AS app-factory
+WORKDIR /app
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+COPY --from=prisma /app/node_modules ./node_modules
+COPY --from=prisma /app/packages/database ./packages/database
+COPY --from=app-factory-builder /app/apps/app-factory/.next ./apps/app-factory/.next
+COPY --from=app-factory-builder /app/apps/app-factory/public ./apps/app-factory/public
+COPY --from=app-factory-builder /app/apps/app-factory/package.json ./apps/app-factory/package.json
+COPY --from=app-factory-builder /app/apps/app-factory/next.config.ts ./apps/app-factory/next.config.ts
+COPY package.json ./
+EXPOSE 3002
+CMD ["npm", "run", "start", "--workspace=apps/app-factory"]
