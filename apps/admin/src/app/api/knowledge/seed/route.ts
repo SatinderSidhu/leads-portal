@@ -1438,6 +1438,69 @@ If you ever need historical enrollment data (for a quarterly review or complianc
 **Emails are going out twice:**
 - This shouldn't happen because of the idempotency unique constraint and the advance-before-send order
 - If it does, check the logs for "duplicate key" warnings — these are normal recovery (the system catching itself) but if they're frequent, something is wrong with the lock duration` },
+
+  { category: "Email System", sortOrder: 10, title: "Click Tracking", slug: "click-tracking", content: `# Click Tracking
+
+All outgoing emails (sequence emails and scheduled drafts) have their links automatically rewritten for click tracking.
+
+## How It Works
+
+When an email is sent, every link in the body is rewritten to go through a tracking redirect:
+- Original: \`https://kitlabs.us/demo\`
+- Rewritten: \`https://leadsportaladmin.kitlabs.us/api/track-click/{emailId}?url={encoded}\`
+
+When the recipient clicks the link:
+1. The click is recorded (\`clickedAt\` timestamp on the SentEmail record)
+2. The enrollment's last action is updated to **Clicked** (for sequence branching)
+3. The recipient is instantly redirected to the original URL
+
+## What's NOT Tracked
+
+- **Unsubscribe links** — these have a \`data-no-track\` attribute and are never rewritten
+- **mailto:** and **tel:** links — skipped
+- **Anchor links** (#) — skipped
+
+## Using Clicks in Sequences
+
+When building a Smart Sequence, you can use these step conditions:
+- **If clicked a link** — proceed only if the contact clicked any link in the previous email
+- **If no link clicked** — proceed only if no clicks were recorded
+
+Clicks are a more reliable engagement signal than opens (which can be faked by email clients that pre-load images).
+
+## Viewing Click Data
+
+Click timestamps appear on the email history in the lead detail page. The SentEmail record shows both \`openedAt\` and \`clickedAt\` timestamps.` },
+
+  { category: "Email System", sortOrder: 11, title: "Bounce & Complaint Handling", slug: "bounce-handling", content: `# Bounce & Complaint Handling
+
+The system automatically handles email bounces and spam complaints from AWS SES.
+
+## Hard Bounces
+
+When an email permanently bounces (bad address, non-existent mailbox):
+1. The lead is automatically marked **Do Not Contact**
+2. All active sequence enrollments for that lead are immediately **exited** with reason "Hard bounce detected"
+3. An audit log entry is created
+
+This protects your sender reputation — AWS SES will throttle or suspend your account if your bounce rate exceeds 5%.
+
+## Spam Complaints
+
+When a recipient marks your email as spam:
+1. Same as hard bounce — **Do Not Contact** is enabled immediately
+2. All active sequences are exited
+3. Audit log entry created
+
+## Soft Bounces
+
+Temporary delivery failures (mailbox full, server temporarily down) are logged but no action is taken. The sequence processor's existing retry counter handles these — it will retry up to 5 times with 10-minute backoff before giving up.
+
+## What You Need to Do
+
+Nothing — this is automatic. But you can check:
+- **Lead detail page** — look for the red Do Not Contact banner and audit log entries
+- **Container logs** — search for \`[SES Bounce]\` or \`[SES Complaint]\` entries` },
 ];
 
 export async function POST() {

@@ -82,7 +82,7 @@ leads-portal/
 | LeadFile | lead_files | File attachments on leads |
 | EmailTemplate | email_templates | Reusable email templates with HTML body, sendAfterDays timing, industry, naicsSectorCode, naicsSubsectorCode, systemKey for system templates |
 | EmailFlow | email_flows | Visual email automation flows (JSON nodes/edges) |
-| SentEmail | sent_emails | Email tracking (sent, opened, failed) |
+| SentEmail | sent_emails | Email tracking (sent, opened, clicked, failed; clickedAt timestamp for link click tracking) |
 | EmailAttachment | email_attachments | File attachments on sent emails |
 | ReceivedEmail | received_emails | Inbound email replies via SES |
 | SowTemplate | sow_templates | Reusable SOW format templates (HTML content, industry, project type, duration/cost range, isDefault flag) |
@@ -100,12 +100,13 @@ leads-portal/
 | PortfolioService | portfolio_services | Services offered by KITLabs (name, description, pitch scripts, documents, URLs) |
 | PortfolioProject | portfolio_projects | Completed projects (title, description, category, domain, industry, industrySector/NAICS, industrySubsector/NAICS, technologies, client, demoVideoUrl, portfolioUrl, customerReviewUrl, additionalLinks JSON, scripts, docs) |
 | Message | messages | Secure messaging between admin and customer (content, senderName, senderType, readAt) |
-| EmailDraft | email_drafts | Saved email drafts per lead (subject, body, cc, bcc) |
+| EmailDraft | email_drafts | Saved email drafts per lead (subject, body, cc, bcc, status, scheduledAt, lockedUntil, retryCount, failureReason, sentAt, sentEmailId) |
 | NaicsSector | naics_sectors | NAICS 2022 industry sector codes (20 sectors) |
 | NaicsSubsector | naics_subsectors | NAICS 2022 subsector codes (96 subsectors, linked to sectors) |
 | KnowledgeArticle | knowledge_articles | Knowledge base articles (title, slug, content, category, tags, published) |
 | Content | content | Social media content posts |
 | CustomerUser | customer_users | Customer portal users (email, name, password, leadIds) |
+| SystemHealth | system_health | Singleton cron heartbeat (lastSequenceProcessAt/Result, lastDraftProcessAt/Result, lastArchiveAt/Result, consecutive failure counters) |
 | SmartSequence | smart_sequences | Email nurture sequences (name, goal, status, enrollment trigger, exit conditions, re-enroll cooldown, triggerListId FK) |
 | SequenceStep | sequence_steps | Steps in a sequence (stepOrder, templateId FK, wait value/unit, branching condition, goToStepOrder, exitOnCondition) |
 | SequenceEnrollment | sequence_enrollments | Contacts enrolled in sequences (leadId, currentStepOrder, status, lastAction, nextSendAt, exitReason, lockedUntil, retryCount) |
@@ -265,7 +266,10 @@ leads-portal/
 - `POST /api/knowledge/seed` — Seed 12 default feature articles
 - `GET /api/dashboard` — Dashboard stats (total leads, my leads, new today/week, engagement, needs attention, my tasks, pipeline distribution)
 - `GET /api/track/[id]` — Email open tracking pixel (also triggers customer_response notification)
-- `POST /api/webhooks/ses-inbound` — SES inbound email webhook
+- `GET /api/track-click/[id]` — Email click tracking redirect (records clickedAt, updates lastAction=CLICKED, 302 redirects to original URL)
+- `POST /api/drafts/process` — Scheduled draft processor (claim-and-lock, cron every 5 min, Bearer CRON_SECRET auth)
+- `GET /api/health` — System health check (200/503 with green/warning/critical status for sequence, draft, and archive crons)
+- `POST /api/webhooks/ses-inbound` — SES inbound email webhook (also handles Bounce and Complaint notification types)
 
 ### External API (Bearer token auth via API_TOKEN)
 - `GET /api/v1/leads` — List leads (supports filters: status, stage, source, industry, assignedTo, search)
@@ -342,7 +346,7 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 | `apps/admin/src/lib/sow-prompt.ts` | `buildSowPrompt()` — AI prompt for SOW generation (supports editor template, file reference, both, or default) |
 | `apps/admin/src/lib/extract-file-text.ts` | `extractFileContent()` — Extracts text/HTML from uploaded PDF (pdf-parse) or DOCX (mammoth) files |
 | `apps/admin/src/lib/zoho.ts` | `getZohoConfig()`, `getAccessToken()`, `createZohoLead()`, `updateZohoLead()`, `getZohoLead()`, `searchZohoLead()`, `getZohoLeadUrl()`, `isZohoEnabled()` — Zoho CRM OAuth + API + bidirectional sync |
-| `apps/admin/src/lib/sequence-cron.ts` | `startSequenceCron()` — node-cron scheduler invoked from `instrumentation.ts`. Schedules every-minute self-call to `/api/sequences/process` and daily 3 AM UTC self-call to `/api/sequences/archive-old`, both with `Bearer ${CRON_SECRET}`. Gated by `SEQUENCE_CRON_ENABLED` env var |
+| `apps/admin/src/lib/sequence-cron.ts` | `startSequenceCron()` — node-cron scheduler invoked from `instrumentation.ts`. 3 schedules: every-minute `/api/sequences/process`, every-5-min `/api/drafts/process`, daily 3 AM `/api/sequences/archive-old`. `tickWithHealth()` wrapper upserts `SystemHealth` after each tick. Gated by `SEQUENCE_CRON_ENABLED` env var |
 | `apps/admin/src/lib/template-merge.ts` | `renderTemplate()` — shared merge tag renderer used by sequence processor and other email paths. Supports 10 standard merge tags (customerName, projectName, phone, city, status, stage, source, dateCreated, etc.) |
 | `apps/admin/src/lib/notify.ts` | `sendNotification()` — Central notification dispatcher; checks admin preferences before sending, supports broadcast and lead-specific events |
 | `apps/admin/src/lib/audit.ts` | `logAudit()` — Non-blocking audit trail logger for all lead write operations |
@@ -352,6 +356,8 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 | `apps/customer/src/lib/preview-token.ts` | `generatePreviewToken()`, `isValidPreviewToken()` — Preview token validation |
 | `apps/customer/src/lib/generate-pdf.ts` | `downloadNdaPdf()`, `downloadSowPdf()` — jsPDF generation |
 | `apps/admin/src/lib/sequence-utils.ts` | Sequence helper utilities (preview text generation, step condition labels, enrollment processing) |
+| `apps/admin/src/lib/enrollment-utils.ts` | `autoEnrollLeadInSequence()`, `processAutoEnrollmentTriggers()` — shared auto-enrollment logic reused by LEAD_CREATED, STAGE_CHANGE, and ADDED_TO_LIST triggers |
+| `apps/admin/src/lib/click-track-utils.ts` | `rewriteLinksForTracking(html, sentEmailId, baseUrl)` — rewrites `<a href>` links for click tracking, skips `data-no-track`, `mailto:`, `tel:`, `#` links |
 | `apps/admin/src/lib/list-utils.ts` | `buildPrismaWhereFromFilters()` — converts dynamic list filter rules to Prisma where clauses; filter field/operator constants for 12 fields |
 | `packages/database/src/index.ts` | Singleton `PrismaClient` export |
 
@@ -494,6 +500,14 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 | Lead assigned | `leadAssigned` | Assigned admin | `PUT /api/leads/[id]/assign` |
 | SOW signed | `sowSigned` | Watchers + assigned | `POST /api/sow/[sowId]/sign` |
 | NDA signed | `ndaSigned` | Watchers + assigned | `POST /api/nda/sign` |
+
+## Email Click Tracking
+- All outgoing emails (sequence emails and scheduled drafts) have links rewritten for click tracking via `rewriteLinksForTracking()` from `click-track-utils.ts`
+- Links rewritten to `/api/track-click/{sentEmailId}?url={base64url}` — recipient is 302-redirected to the original URL after recording the click
+- `SentEmail.clickedAt` timestamp records when the first click occurred
+- `SequenceEnrollment.lastAction` updated to `CLICKED` (only if currently `NONE` or `OPENED`, never downgrades from `REPLIED`)
+- `CLICKED` / `NOT_CLICKED` step conditions now fire correctly for sequence branching
+- **Excluded from tracking**: links with `data-no-track` attribute (used on unsubscribe links), `mailto:`, `tel:`, and anchor (`#`) links
 
 ## Lead Assignment & Watch List
 - Leads are auto-assigned to the creating admin and that admin is auto-added as a watcher
@@ -713,8 +727,9 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 
 ## Smart Sequence Sending Pipeline
 - **Cron wiring**: `apps/admin/src/instrumentation.ts` (Next.js startup hook) calls `startSequenceCron()` from `lib/sequence-cron.ts`. node-cron runs inside the admin container and self-calls the app via HTTP with `Bearer ${CRON_SECRET}` — no external scheduler, no separate worker process
-- **Two schedules**:
+- **Three schedules**:
   - **Process**: `* * * * *` (every minute) → `POST /api/sequences/process` — claims up to 50 due enrollments per tick
+  - **Drafts**: `*/5 * * * *` (every 5 min) → `POST /api/drafts/process` — sends scheduled email drafts with claim-and-lock (lockedUntil + retryCount on EmailDraft, max 5 retries then FAILED)
   - **Archive**: `0 3 * * *` (daily 3 AM UTC) → `POST /api/sequences/archive-old` — moves old enrollments to cold storage
 - **Env vars**:
   - `CRON_SECRET` — shared bearer token between the cron and the processor endpoint (must be set in GitHub Secrets for CI/CD; deploy.yml writes it into EC2 `.env`)
@@ -728,8 +743,19 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - **Pacing**: 80ms sleep between sends (~14/sec) to stay under SES sustained limit. Batch size 50 per tick = ~480 emails/min sustained ceiling
 - **Branching gap fixes** (previously silently broken):
   - `/api/track/[id]` (tracking pixel) → updates `SequenceEnrollment.lastAction = OPENED` (only if currently `NONE`, to avoid downgrading from REPLIED)
+  - `/api/track-click/[id]` (click redirect) → updates `SequenceEnrollment.lastAction = CLICKED` (only if currently `NONE` or `OPENED`)
   - `/api/webhooks/ses-inbound` → updates `SequenceEnrollment.lastAction = REPLIED`
-  - These unlock the `OPENED`/`NOT_OPENED`/`REPLIED`/`NOT_REPLIED` step conditions that had no write path before
+  - These unlock the `OPENED`/`NOT_OPENED`/`CLICKED`/`NOT_CLICKED`/`REPLIED`/`NOT_REPLIED` step conditions
+- **Bounce & complaint handling** (in `/api/webhooks/ses-inbound`):
+  - **Hard bounce** (bad address): auto-enables `doNotContact` on the lead, exits all active sequence enrollments with reason "Hard bounce detected", creates audit log entry
+  - **Complaint** (recipient marked as spam): same as hard bounce — `doNotContact` + exit sequences + audit
+  - **Soft bounce** (temporary failure): logged only, no action taken — retry counter handles these
+- **Auto-enrollment triggers**:
+  - `LEAD_CREATED`: fires after `POST /api/leads` via `processAutoEnrollmentTriggers()` (non-blocking)
+  - `STAGE_CHANGE`: fires after `PATCH /api/leads/[id]/status`, checks `triggerConfig.fromStage`/`toStage` matching (non-blocking)
+  - `ADDED_TO_LIST`: fires when member added to list (existing)
+  - Shared logic in `enrollment-utils.ts` (`autoEnrollLeadInSequence` + `processAutoEnrollmentTriggers`)
+- **Cron heartbeat**: `SystemHealth` singleton table tracks last run time and result for each cron schedule. `tickWithHealth()` wrapper in `sequence-cron.ts` upserts after every tick. `GET /api/health` returns 200 (ok) or 503 (degraded) with green/warning/critical status per schedule. Dashboard API includes `systemHealth` summary
 - **Data retention**: 90-day archival cron moves `COMPLETED/EXITED/REMOVED` enrollments to `SequenceEnrollmentArchive`. Archive table has same shape but no FKs/triggers, status as plain string (not enum) for long-term stability, indexed by `leadId`/`sequenceId`
 - **Partial index** on `sequence_enrollments(next_send_at) WHERE status='ACTIVE'` — added via raw SQL in `scripts/start-admin.sh` since Prisma can't express partial indexes. Keeps the cron query sub-5ms even at 1M+ rows. Dockerfile installs `postgresql-client` so `psql` is available at container startup
 - **Manual trigger** (for testing without waiting for the next tick):

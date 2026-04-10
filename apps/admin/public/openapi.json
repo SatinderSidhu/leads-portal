@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Leads Portal API",
-    "version": "5.3.0",
+    "version": "5.4.0",
     "description": "Complete API documentation for the KITLabs Leads Portal.\n\n## Authentication\n\n### Internal APIs (Session-based)\nMost admin endpoints require an active session cookie obtained via `POST /api/auth`. Customer portal endpoints require a customer session via `POST /api/auth` on the customer portal.\n\n### External APIs (Token-based)\nEndpoints under `/api/v1/` require Bearer token authentication:\n```\nAuthorization: Bearer <your-api-token>\n```\n\n## Base URLs\n- Admin Portal (Production): `https://leadsportaladmin.kitlabs.us`\n- Customer Portal (Production): `https://leadsportal.kitlabs.us`\n- Admin Portal (Local): `http://localhost:3000`\n- Customer Portal (Local): `http://localhost:3001`",
     "contact": {
       "name": "KITLabs Inc",
@@ -42,7 +42,9 @@
     { "name": "Dashboard & Activity", "description": "Dashboard stats and activity feed" },
     { "name": "Zoho CRM", "description": "Zoho CRM integration and sync" },
     { "name": "Notifications", "description": "Notification preferences" },
-    { "name": "Tracking & Webhooks", "description": "Email open tracking and inbound email webhooks" },
+    { "name": "Tracking & Webhooks", "description": "Email open/click tracking and inbound email webhooks" },
+    { "name": "Email Drafts", "description": "Email draft management and scheduled sending" },
+    { "name": "System", "description": "System health and monitoring" },
     { "name": "External API (v1)", "description": "Token-authenticated external API for leads and content" },
     { "name": "Smart Sequences", "description": "Form-driven email nurture sequences" },
     { "name": "Contact Lists", "description": "Static and dynamic contact lists with sequence enrollment integration" }
@@ -277,6 +279,7 @@
           "sentBy": { "type": "string" },
           "status": { "type": "string", "enum": ["SENT", "OPENED", "FAILED"] },
           "openedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "clickedAt": { "type": "string", "format": "date-time", "nullable": true, "description": "Timestamp of first link click" },
           "template": {
             "type": "object",
             "nullable": true,
@@ -746,6 +749,20 @@
           "addedBy": { "type": "string", "nullable": true },
           "addedAt": { "type": "string", "format": "date-time" },
           "lead": { "$ref": "#/components/schemas/Lead" }
+        }
+      },
+      "SystemHealth": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "lastSequenceProcessAt": { "type": "string", "format": "date-time", "nullable": true },
+          "lastSequenceProcessResult": { "type": "string", "nullable": true },
+          "lastDraftProcessAt": { "type": "string", "format": "date-time", "nullable": true },
+          "lastDraftProcessResult": { "type": "string", "nullable": true },
+          "lastArchiveAt": { "type": "string", "format": "date-time", "nullable": true },
+          "lastArchiveResult": { "type": "string", "nullable": true },
+          "sequenceProcessConsecutiveFailures": { "type": "integer" },
+          "draftProcessConsecutiveFailures": { "type": "integer" }
         }
       },
       "Error": {
@@ -2544,11 +2561,54 @@
         }
       }
     },
+    "/api/track-click/{id}": {
+      "get": {
+        "tags": ["Tracking & Webhooks"],
+        "summary": "Email click tracking redirect",
+        "description": "Records a link click on a SentEmail (sets clickedAt timestamp), updates SequenceEnrollment.lastAction to CLICKED if applicable, then 302 redirects to the original URL.",
+        "security": [],
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "SentEmail ID" },
+          { "name": "url", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Base64-encoded original URL to redirect to" }
+        ],
+        "responses": {
+          "302": { "description": "Redirect to original URL" },
+          "400": { "description": "Missing or invalid URL parameter" }
+        }
+      }
+    },
+    "/api/drafts/process": {
+      "post": {
+        "tags": ["Email Drafts"],
+        "summary": "Process scheduled email drafts (cron endpoint)",
+        "description": "Triggered every 5 minutes by node-cron. Claims scheduled drafts with lockedUntil claim-and-lock pattern, sends them via SMTP, updates status to SENT. After 5 failed retries, marks as FAILED with failureReason.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "claimed": { "type": "integer" }, "sent": { "type": "integer" }, "skipped": { "type": "integer" } } } } } },
+          "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/health": {
+      "get": {
+        "tags": ["System"],
+        "summary": "System health check",
+        "description": "Returns health status for all cron schedules (sequence processor, draft processor, archival). Returns 200 when all healthy, 503 when any schedule is critical. No authentication required.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "System healthy",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "ok": { "type": "boolean" }, "sequence": { "type": "object", "properties": { "lastTickAt": { "type": "string", "format": "date-time", "nullable": true }, "ageSeconds": { "type": "number", "nullable": true }, "status": { "type": "string", "enum": ["green", "warning", "critical"] }, "failures": { "type": "integer" } } }, "draft": { "type": "object", "properties": { "lastTickAt": { "type": "string", "format": "date-time", "nullable": true }, "ageSeconds": { "type": "number", "nullable": true }, "status": { "type": "string", "enum": ["green", "warning", "critical"] }, "failures": { "type": "integer" } } }, "archive": { "type": "object", "properties": { "lastTickAt": { "type": "string", "format": "date-time", "nullable": true }, "ageSeconds": { "type": "number", "nullable": true }, "status": { "type": "string", "enum": ["green", "warning", "critical"] }, "failures": { "type": "integer" } } } } } } }
+          },
+          "503": { "description": "System degraded — one or more cron schedules critical" }
+        }
+      }
+    },
     "/api/webhooks/ses-inbound": {
       "post": {
         "tags": ["Tracking & Webhooks"],
         "summary": "SES inbound email webhook",
-        "description": "Receives inbound email replies via AWS SES → SNS. Stores as ReceivedEmail and notifies watchers.",
+        "description": "Receives inbound email replies, bounce notifications, and complaint notifications via AWS SES → SNS. Email replies stored as ReceivedEmail. Hard bounces and complaints auto-enable doNotContact and exit active sequences. Soft bounces logged only.",
         "security": [],
         "requestBody": {
           "required": true,

@@ -7,6 +7,20 @@ export interface Release {
 
 export const releases: Release[] = [
   {
+    version: "4.16",
+    date: "2026-04-10",
+    commitId: "4d4e2a3",
+    changes: [
+      "Bounce & complaint handling: SES webhook handles hard bounces (auto-DNC + exit sequences) and spam complaints",
+      "Click tracking: link rewriting on all outgoing emails, /api/track-click redirect, SentEmail.clickedAt, CLICKED/NOT_CLICKED step conditions now fire",
+      "Auto-enrollment triggers: LEAD_CREATED hook in POST /api/leads, STAGE_CHANGE hook in PATCH /api/leads/[id]/status (with triggerConfig matching)",
+      "Shared enrollment-utils.ts: autoEnrollLeadInSequence + processAutoEnrollmentTriggers reused by all 3 trigger types",
+      "EmailDraft scheduled sending: /api/drafts/process with claim-and-lock, cron every 5 min, retry counter, FAILED status",
+      "Cron heartbeat: SystemHealth singleton table, tickWithHealth wrapper, GET /api/health (200/503), dashboard systemHealth widget",
+      "Unsubscribe links excluded from click tracking via data-no-track attribute",
+    ],
+  },
+  {
     version: "4.15",
     date: "2026-04-09",
     commitId: "639ea47",
