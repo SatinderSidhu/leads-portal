@@ -7,6 +7,23 @@ export interface Release {
 
 export const releases: Release[] = [
   {
+    version: "4.15",
+    date: "2026-04-09",
+    commitId: "639ea47",
+    changes: [
+      "Smart Sequence email sending activated: node-cron in admin container fires every minute",
+      "Crash-safe processor: SELECT FOR UPDATE SKIP LOCKED claim-and-lock, idempotency unique constraint on SentEmail(enrollmentId, enrollmentStep), advance-before-send order",
+      "Retry logic: max 5 attempts with 10-min backoff, then EXITED with failure reason",
+      "Branching gap fixes: tracking pixel updates lastAction=OPENED, SES inbound webhook updates lastAction=REPLIED",
+      "90-day archival: daily 3 AM UTC cron moves completed/exited enrollments to SequenceEnrollmentArchive table",
+      "Partial index on sequence_enrollments WHERE status='ACTIVE' keeps cron query sub-5ms at 1M+ rows",
+      "Shared template-merge.ts util: 10 standard merge tags now work in sequence emails",
+      "Schema: lockedUntil + retryCount on SequenceEnrollment, SequenceEnrollmentArchive cold-storage table",
+      "Dockerfile: postgresql-client added for partial index migration",
+      "Designed for 10k contacts at ~480 emails/min sustained, with documented SQS migration path",
+    ],
+  },
+  {
     version: "4.14",
     date: "2026-04-09",
     commitId: "pending",

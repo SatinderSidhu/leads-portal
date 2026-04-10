@@ -2,7 +2,7 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Leads Portal API",
-    "version": "5.2.0",
+    "version": "5.3.0",
     "description": "Complete API documentation for the KITLabs Leads Portal.\n\n## Authentication\n\n### Internal APIs (Session-based)\nMost admin endpoints require an active session cookie obtained via `POST /api/auth`. Customer portal endpoints require a customer session via `POST /api/auth` on the customer portal.\n\n### External APIs (Token-based)\nEndpoints under `/api/v1/` require Bearer token authentication:\n```\nAuthorization: Bearer <your-api-token>\n```\n\n## Base URLs\n- Admin Portal (Production): `https://leadsportaladmin.kitlabs.us`\n- Customer Portal (Production): `https://leadsportal.kitlabs.us`\n- Admin Portal (Local): `http://localhost:3000`\n- Customer Portal (Local): `http://localhost:3001`",
     "contact": {
       "name": "KITLabs Inc",
@@ -688,9 +688,30 @@
           "lastAction": { "type": "string", "enum": ["NONE", "OPENED", "CLICKED", "REPLIED"] },
           "nextSendAt": { "type": "string", "format": "date-time", "nullable": true },
           "exitReason": { "type": "string", "nullable": true },
+          "lockedUntil": { "type": "string", "format": "date-time", "nullable": true, "description": "Claim-and-lock timestamp used by the sequence processor to prevent concurrent ticks from processing the same enrollment. Expires after 5 minutes to recover from crashes." },
+          "retryCount": { "type": "integer", "description": "Number of SMTP retry attempts for the current step. After 5 failures the enrollment is EXITED." },
           "createdAt": { "type": "string", "format": "date-time" },
           "updatedAt": { "type": "string", "format": "date-time" },
           "lead": { "$ref": "#/components/schemas/Lead" }
+        }
+      },
+      "SequenceEnrollmentArchive": {
+        "type": "object",
+        "description": "Cold-storage archive of sequence enrollments older than 90 days (COMPLETED/EXITED/REMOVED). Same shape as SequenceEnrollment but without foreign keys or triggers, and with status stored as a plain string (not enum) for long-term stability.",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "sequenceId": { "type": "string", "format": "uuid" },
+          "leadId": { "type": "string", "format": "uuid" },
+          "currentStepOrder": { "type": "integer" },
+          "status": { "type": "string", "description": "Plain string (not enum) for long-term stability — typically COMPLETED, EXITED, or REMOVED" },
+          "lastAction": { "type": "string" },
+          "nextSendAt": { "type": "string", "format": "date-time", "nullable": true },
+          "exitReason": { "type": "string", "nullable": true },
+          "lockedUntil": { "type": "string", "format": "date-time", "nullable": true },
+          "retryCount": { "type": "integer" },
+          "createdAt": { "type": "string", "format": "date-time" },
+          "updatedAt": { "type": "string", "format": "date-time" },
+          "archivedAt": { "type": "string", "format": "date-time", "description": "When the row was moved from sequence_enrollments to the archive table" }
         }
       },
       "ContactList": {
@@ -3199,9 +3220,27 @@
       "post": {
         "tags": ["Smart Sequences"],
         "summary": "Process sequences (cron endpoint: sends due emails, advances steps)",
+        "description": "Triggered every minute by node-cron in the admin container via instrumentation.ts startup hook (self-calls with Bearer CRON_SECRET). Claims up to 50 due enrollments with SELECT FOR UPDATE SKIP LOCKED, evaluates exit conditions and branching, sends emails with 80ms pacing, advances steps. Crash-safe: idempotency unique constraint + advance-before-send order guarantees no duplicate sends. Can also be invoked manually with the same bearer token for testing.",
+        "security": [{ "bearerAuth": [] }],
         "responses": {
           "200": { "content": { "application/json": { "schema": { "type": "object", "properties": { "processed": { "type": "integer" }, "sent": { "type": "integer" }, "errors": { "type": "integer" } } } } } },
           "401": { "description": "Unauthorized" }
+        }
+      }
+    },
+    "/api/sequences/archive-old": {
+      "post": {
+        "tags": ["Smart Sequences"],
+        "summary": "Archive old sequence enrollments",
+        "description": "Daily archival job. Moves SequenceEnrollment rows in COMPLETED/EXITED/REMOVED status whose updatedAt is older than 90 days to the SequenceEnrollmentArchive table. Returns counts. Triggered daily at 3 AM UTC by node-cron in the admin container via instrumentation.ts startup hook (self-calls with Bearer CRON_SECRET). Can also be invoked manually with the same bearer token for testing.",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Archive run complete",
+            "content": { "application/json": { "schema": { "type": "object", "properties": { "archived": { "type": "integer" }, "eligibleRemaining": { "type": "integer" } } } } }
+          },
+          "401": { "description": "Unauthorized" },
+          "500": { "description": "Archive failed" }
         }
       }
     },

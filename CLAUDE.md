@@ -108,7 +108,8 @@ leads-portal/
 | CustomerUser | customer_users | Customer portal users (email, name, password, leadIds) |
 | SmartSequence | smart_sequences | Email nurture sequences (name, goal, status, enrollment trigger, exit conditions, re-enroll cooldown, triggerListId FK) |
 | SequenceStep | sequence_steps | Steps in a sequence (stepOrder, templateId FK, wait value/unit, branching condition, goToStepOrder, exitOnCondition) |
-| SequenceEnrollment | sequence_enrollments | Contacts enrolled in sequences (leadId, currentStepOrder, status, lastAction, nextSendAt, exitReason) |
+| SequenceEnrollment | sequence_enrollments | Contacts enrolled in sequences (leadId, currentStepOrder, status, lastAction, nextSendAt, exitReason, lockedUntil, retryCount) |
+| SequenceEnrollmentArchive | sequence_enrollments_archive | Cold-storage archive of completed/exited enrollments older than 90 days (same shape as SequenceEnrollment, no FKs, status as plain string, archivedAt timestamp) |
 | ContactList | contact_lists | Static or dynamic contact lists (name, type, description, isSuppression, filters JSON, lastRefreshedAt) |
 | ListMembership | list_memberships | Join table for list members (listId FK, leadId FK, source, addedBy, addedAt). @@unique([listId, leadId]) |
 
@@ -250,7 +251,8 @@ leads-portal/
 - `GET/POST /api/sequences/[id]/enrollments` — List/enroll contacts in sequence
 - `PUT /api/sequences/[id]/enrollments/[enrollmentId]` — Pause/resume/remove/advance enrolled contact
 - `GET /api/sequences/[id]/performance` — Sequence performance metrics
-- `POST /api/sequences/process` — Cron processor (sends emails, advances steps)
+- `POST /api/sequences/process` — Cron processor (sends emails, advances steps). Triggered every minute by node-cron in admin container via `instrumentation.ts` startup hook (self-calls with `Bearer ${CRON_SECRET}`). Crash-safe: SELECT FOR UPDATE SKIP LOCKED claim, 5-min lock, idempotency unique constraint, advance-before-send order, retry counter, 80ms pacing. Also callable manually via curl with bearer token for testing
+- `POST /api/sequences/archive-old` — Daily archival job (3 AM UTC). Moves COMPLETED/EXITED/REMOVED enrollments older than 90 days to `SequenceEnrollmentArchive`. Same `CRON_SECRET` bearer auth
 - `GET/POST /api/lists` — List/create contact lists (filter by type, search by name)
 - `GET/PUT/DELETE /api/lists/[id]` — Contact list CRUD
 - `GET/POST/DELETE /api/lists/[id]/members` — List/add/remove members (with auto-enroll for triggered sequences)
@@ -340,6 +342,8 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 | `apps/admin/src/lib/sow-prompt.ts` | `buildSowPrompt()` — AI prompt for SOW generation (supports editor template, file reference, both, or default) |
 | `apps/admin/src/lib/extract-file-text.ts` | `extractFileContent()` — Extracts text/HTML from uploaded PDF (pdf-parse) or DOCX (mammoth) files |
 | `apps/admin/src/lib/zoho.ts` | `getZohoConfig()`, `getAccessToken()`, `createZohoLead()`, `updateZohoLead()`, `getZohoLead()`, `searchZohoLead()`, `getZohoLeadUrl()`, `isZohoEnabled()` — Zoho CRM OAuth + API + bidirectional sync |
+| `apps/admin/src/lib/sequence-cron.ts` | `startSequenceCron()` — node-cron scheduler invoked from `instrumentation.ts`. Schedules every-minute self-call to `/api/sequences/process` and daily 3 AM UTC self-call to `/api/sequences/archive-old`, both with `Bearer ${CRON_SECRET}`. Gated by `SEQUENCE_CRON_ENABLED` env var |
+| `apps/admin/src/lib/template-merge.ts` | `renderTemplate()` — shared merge tag renderer used by sequence processor and other email paths. Supports 10 standard merge tags (customerName, projectName, phone, city, status, stage, source, dateCreated, etc.) |
 | `apps/admin/src/lib/notify.ts` | `sendNotification()` — Central notification dispatcher; checks admin preferences before sending, supports broadcast and lead-specific events |
 | `apps/admin/src/lib/audit.ts` | `logAudit()` — Non-blocking audit trail logger for all lead write operations |
 | `apps/customer/src/lib/session.ts` | `getCustomerSession()` — reads customer-session cookie, returns CustomerSession |
@@ -706,6 +710,36 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - Sequences can only be deleted when in DRAFT or PAUSED status; activation requires at least one step
 - Sidebar nav: "Smart Sequences" under Templates group after Email Flows
 - 8 API routes, 3 admin pages (/sequences list, /sequences/new, /sequences/[id] with 4 tabs)
+
+## Smart Sequence Sending Pipeline
+- **Cron wiring**: `apps/admin/src/instrumentation.ts` (Next.js startup hook) calls `startSequenceCron()` from `lib/sequence-cron.ts`. node-cron runs inside the admin container and self-calls the app via HTTP with `Bearer ${CRON_SECRET}` — no external scheduler, no separate worker process
+- **Two schedules**:
+  - **Process**: `* * * * *` (every minute) → `POST /api/sequences/process` — claims up to 50 due enrollments per tick
+  - **Archive**: `0 3 * * *` (daily 3 AM UTC) → `POST /api/sequences/archive-old` — moves old enrollments to cold storage
+- **Env vars**:
+  - `CRON_SECRET` — shared bearer token between the cron and the processor endpoint (must be set in GitHub Secrets for CI/CD; deploy.yml writes it into EC2 `.env`)
+  - `SEQUENCE_CRON_ENABLED=true` — kill switch; if unset or not "true", `startSequenceCron()` is a no-op (useful for local dev)
+  - `NEXT_PUBLIC_ADMIN_URL` — base URL for the cron's self-call (container uses this to hit its own API)
+- **Crash safety guarantees**:
+  - `SequenceEnrollment.lockedUntil` + `SELECT FOR UPDATE SKIP LOCKED` → only one tick processes a given enrollment. Lock is 5 minutes; expires on crash so the next tick resumes cleanly
+  - `@@unique([enrollmentId, enrollmentStep])` on `SentEmail` → idempotency. A duplicate send attempt fails at the DB layer, never reaches SMTP twice
+  - **Advance-before-send order**: the processor reserves the idempotency slot (`SentEmail.create`) and advances the enrollment to the next step *before* calling SMTP. A crash mid-SMTP = one missed nurture touch, never a duplicate
+- **Retry logic**: SMTP failure rolls the step back, increments `retryCount`, reschedules `nextSendAt` +10 minutes. After 5 failures, the enrollment is marked `EXITED` with reason "Send failed after 5 retries"
+- **Pacing**: 80ms sleep between sends (~14/sec) to stay under SES sustained limit. Batch size 50 per tick = ~480 emails/min sustained ceiling
+- **Branching gap fixes** (previously silently broken):
+  - `/api/track/[id]` (tracking pixel) → updates `SequenceEnrollment.lastAction = OPENED` (only if currently `NONE`, to avoid downgrading from REPLIED)
+  - `/api/webhooks/ses-inbound` → updates `SequenceEnrollment.lastAction = REPLIED`
+  - These unlock the `OPENED`/`NOT_OPENED`/`REPLIED`/`NOT_REPLIED` step conditions that had no write path before
+- **Data retention**: 90-day archival cron moves `COMPLETED/EXITED/REMOVED` enrollments to `SequenceEnrollmentArchive`. Archive table has same shape but no FKs/triggers, status as plain string (not enum) for long-term stability, indexed by `leadId`/`sequenceId`
+- **Partial index** on `sequence_enrollments(next_send_at) WHERE status='ACTIVE'` — added via raw SQL in `scripts/start-admin.sh` since Prisma can't express partial indexes. Keeps the cron query sub-5ms even at 1M+ rows. Dockerfile installs `postgresql-client` so `psql` is available at container startup
+- **Manual trigger** (for testing without waiting for the next tick):
+  ```bash
+  curl -X POST https://leadsportaladmin.kitlabs.us/api/sequences/process \
+    -H "Authorization: Bearer $CRON_SECRET"
+  ```
+  Response includes `{ claimed, sent, skipped, exited }` counts
+- **Scale target**: designed for 10k contacts at ~480 emails/min sustained. SQS migration path documented for when volume exceeds 330k/month or a second admin container is added — not built yet
+- **Observability**: logs prefixed `[sequence-cron]` on startup (`scheduled`) and per-tick (`process: claimed=X sent=Y ...`). Grep `docker compose logs admin | grep sequence-cron` on EC2 to verify
 
 ## Contact Lists
 - Two list types: **Static** (manually curated — add/remove contacts by hand) and **Dynamic** (rule-based — auto-updates as contacts change)

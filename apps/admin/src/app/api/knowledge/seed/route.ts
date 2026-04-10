@@ -1350,6 +1350,94 @@ The only exception: Do Not Contact immediately removes contacts from all active 
 - Membership is read-only (computed from filter rules)
 - Click **"Refresh"** to re-evaluate rules and update membership
 - New matches are added, non-matches are removed` },
+  { category: "Email System", sortOrder: 9, title: "How Sequence Emails Get Sent", slug: "sequence-sending", content: `# How Sequence Emails Get Sent
+
+Once you've activated a Smart Sequence and enrolled contacts, the system sends emails automatically. Here's what happens behind the scenes — and how to test or troubleshoot.
+
+## The Schedule
+
+The system runs **every minute**, processing up to 50 enrollments per tick. Most sequences feel near-real-time. At 10k active contacts, the system can sustain ~480 emails per minute.
+
+A separate job runs **once a day at 3 AM UTC** to archive old enrollment records (see "Data Retention" below).
+
+## What Happens on Each Tick
+
+1. The system finds enrollments where:
+   - Status is **Active**
+   - **Next Send Date** is in the past
+   - Not currently being processed by another tick (locking)
+2. For each one, it checks:
+   - Is the contact **Do Not Contact**? → Exit
+   - Did the contact **reply** to a previous email? → Exit (if Replied is in your exit conditions)
+   - Does the **branching condition** ("If opened", "If clicked", etc.) match?
+3. If all checks pass, it sends the email via SMTP, advances the contact to the next step, and calculates the next send date based on the next step's wait value.
+4. There's an 80ms pause between each send to stay friendly with the SMTP provider.
+
+## Crash Safety
+
+If the server crashes or restarts in the middle of sending, **no email gets sent twice**. This is the most important guarantee.
+
+- Each enrollment is locked for 5 minutes when claimed. If the server crashes, the lock expires and the next tick picks it up cleanly.
+- A unique constraint on \`(enrollment, step)\` prevents the same email from being recorded twice in \`SentEmail\`.
+- The enrollment is advanced to the next step *before* the SMTP call returns. So if the server dies during the SMTP call, that single email is missed (the customer just doesn't get this one nurture touch) — but no one gets a duplicate.
+
+## Retry Logic
+
+If the SMTP provider returns an error (rate limit, temporary outage, bad address):
+1. The system rolls the enrollment back to the previous step
+2. It increments a **retry counter** on the enrollment
+3. It schedules a retry for **10 minutes later**
+4. After **5 failed attempts**, the enrollment is marked **Exited** with the reason "Send failed after 5 retries"
+
+You'll see these in the Contacts tab on the sequence detail page.
+
+## Manually Triggering the Cron (For Testing)
+
+If you don't want to wait for the next cron tick, an admin can trigger the processor directly. From the EC2 host:
+
+\`\`\`bash
+curl -X POST https://leadsportaladmin.kitlabs.us/api/sequences/process \\
+  -H "Authorization: Bearer \$CRON_SECRET"
+\`\`\`
+
+The response shows how many enrollments were claimed, how many sent, how many skipped, and how many exited.
+
+## Tracking & Branching
+
+- When a customer **opens** an email (tracking pixel fires), their enrollment's "last action" updates to **Opened**.
+- When a customer **replies** (inbound webhook fires), their enrollment's "last action" updates to **Replied**.
+
+This makes step-level branching ("if opened, send X; otherwise send Y") actually work. Both signals are durable — the next cron tick will see them.
+
+## Data Retention (90-Day Archive)
+
+Enrollments don't sit in the main table forever. Once an enrollment reaches **Completed**, **Exited**, or **Removed** and **90 days** have passed since the last update, it's moved to an archive table by the daily 3 AM cron.
+
+- **What's preserved:** every field — leadId, sequenceId, current step, status, exit reason, retry count, all timestamps
+- **What's removed:** the row from the main \`sequence_enrollments\` table (so the cron query stays fast)
+- **Where it goes:** \`sequence_enrollments_archive\`
+- **Why:** at 10k contacts running ~10 sequences a year, this caps the hot table at ~50k rows forever, so the cron query stays sub-5ms even after years of operation
+
+If you ever need historical enrollment data (for a quarterly review or compliance audit), it's still in the database — just in the archive table.
+
+## Troubleshooting
+
+**No sequence emails are going out:**
+- Check that \`SEQUENCE_CRON_ENABLED=true\` is in the \`.env\` on EC2
+- Check the admin container logs: \`docker compose logs admin | grep sequence-cron\`
+- You should see "[sequence-cron] scheduled" on container startup
+- You should see "[sequence-cron] process:" lines whenever the cron sends or exits enrollments
+
+**A specific contact isn't getting emails:**
+- Open the sequence detail page → Contacts tab
+- Find the contact and check their status
+  - **Paused** — manually paused, click Resume
+  - **Exited** — check the exit reason (replied, DNC, retry exhaustion)
+  - **Active but not sending** — check Next Send date and the contact's Do Not Contact flag
+
+**Emails are going out twice:**
+- This shouldn't happen because of the idempotency unique constraint and the advance-before-send order
+- If it does, check the logs for "duplicate key" warnings — these are normal recovery (the system catching itself) but if they're frequent, something is wrong with the lock duration` },
 ];
 
 export async function POST() {
