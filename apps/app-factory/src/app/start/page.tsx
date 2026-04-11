@@ -82,6 +82,18 @@ export default function StartPage() {
   const [idea, setIdea] = useState("");
   const [platform, setPlatform] = useState<string[]>(["ios", "android"]);
   const [submitting, setSubmitting] = useState(false);
+  const [user, setUser] = useState<{ id: string; name: string; email: string } | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
+
+  // Restore idea from localStorage on mount + check auth
+  useState(() => {
+    const saved = localStorage.getItem("appfactory_idea");
+    if (saved) { setIdea(saved); localStorage.removeItem("appfactory_idea"); }
+    const savedPlatforms = localStorage.getItem("appfactory_platforms");
+    if (savedPlatforms) { try { setPlatform(JSON.parse(savedPlatforms)); localStorage.removeItem("appfactory_platforms"); } catch {} }
+
+    fetch("/api/auth/me").then((r) => r.ok ? r.json() : null).then((u) => { setUser(u); setAuthChecked(true); }).catch(() => setAuthChecked(true));
+  });
 
   function togglePlatform(p: string) {
     setPlatform((prev) => prev.includes(p) ? prev.filter((v) => v !== p) : [...prev, p]);
@@ -96,6 +108,16 @@ export default function StartPage() {
 
   async function handleSubmit() {
     if (!idea.trim()) return;
+
+    // Check if user is signed in
+    if (!user) {
+      // Save idea + platforms to localStorage so they persist through login/register
+      localStorage.setItem("appfactory_idea", idea);
+      localStorage.setItem("appfactory_platforms", JSON.stringify(platform));
+      router.push("/login?returnTo=/start");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/projects", {
@@ -161,7 +183,7 @@ export default function StartPage() {
           disabled={!idea.trim() || platform.length === 0 || submitting}
           className="w-full py-3 rounded-xl bg-[#01358d] text-white font-semibold text-lg hover:bg-[#012a70] disabled:opacity-50 disabled:cursor-not-allowed transition"
         >
-          {submitting ? "Creating your project..." : "Generate App Flow →"}
+          {submitting ? "Creating your project..." : user ? "Generate App Flow →" : "Sign In & Generate App Flow →"}
         </button>
       </div>
 
