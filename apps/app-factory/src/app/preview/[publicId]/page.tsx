@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import PrototypePreview from "../../../components/PrototypePreview";
+import PrototypePreview from "@/components/PrototypePreview";
 
 const DEFAULT_THEME = { id: "default", name: "KITLabs Blue", primary: "#01358d", accent: "#f9556d", nav: "#01358d", button: "#01358d", bg: "#ffffff" };
 

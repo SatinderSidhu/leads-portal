@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import PrototypePreview from "../../../components/PrototypePreview";
+import PrototypePreview from "@/components/PrototypePreview";
 
 // ── Types ──────────────────────────────────────────────────────────
 
