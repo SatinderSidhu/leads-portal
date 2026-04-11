@@ -1,6 +1,6 @@
 #!/bin/sh
 echo "Running database migrations..."
-npx prisma db push --schema=packages/database/prisma/schema.prisma --skip-generate
+npx prisma db push --schema=packages/database/prisma/schema.prisma --skip-generate --accept-data-loss
 
 echo "Creating partial index for active sequence enrollments..."
 psql "$DATABASE_URL" -c "
