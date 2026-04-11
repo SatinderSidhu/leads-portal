@@ -140,7 +140,7 @@ async function generateVisual(
 
   const systemPrompt = `You are an expert mobile app UI designer at KITLabs.
 
-Given an app idea, generate a list of screens with descriptions of their UI layout and elements.
+Given an app idea, generate a list of screens with descriptions of their UI layout and elements. Each interactive element should include a "navigateTo" field with the target screen ID so customers can click through screens like a real app prototype.
 
 Output format — return ONLY valid JSON:
 {
@@ -155,7 +155,8 @@ Output format — return ONLY valid JSON:
         { "type": "heading", "content": "Welcome back" },
         { "type": "input", "placeholder": "Email address" },
         { "type": "input", "placeholder": "Password" },
-        { "type": "button", "content": "Sign In" },
+        { "type": "button", "content": "Sign In", "navigateTo": "S2" },
+        { "type": "button-outline", "content": "Create Account", "navigateTo": "S3" },
         { "type": "text", "content": "Forgot password?" }
       ],
       "connections": ["S2", "S3"]
@@ -164,6 +165,8 @@ Output format — return ONLY valid JSON:
 }
 
 Element types: nav-bar, heading, text, input, button, button-outline, image, avatar, search, card, list, tab-bar, toggle, divider, checkbox, radio, social-login, map
+
+For interactive elements (buttons, button-outline, card, list items), add a "navigateTo" field with the target screen's ID. This enables an interactive prototype where customers click through screens like a real app. Only add navigateTo to elements that would logically trigger navigation — inputs, text, images, toggles, dividers don't navigate.
 
 Generate 5-8 screens covering the core user journey. If the user requests changes, return the FULL updated screen list.`;
 

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import PrototypePreview from "../../../components/PrototypePreview";
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -84,7 +85,7 @@ export default function DesignPage() {
 
   // Main state
   const [tab, setTab] = useState<"visual" | "requirements">("visual");
-  const [visualView, setVisualView] = useState<"screens" | "flow" | "detail">("screens");
+  const [visualView, setVisualView] = useState<"screens" | "flow" | "detail" | "preview">("screens");
   const [screens, setScreens] = useState<Screen[]>([]);
   const [requirements, setRequirements] = useState<Requirements | null>(null);
   const [chatInput, setChatInput] = useState("");
@@ -303,6 +304,9 @@ export default function DesignPage() {
                 <button onClick={() => setVisualView("flow")} className={`px-4 py-2 rounded-lg text-xs font-medium transition ${visualView === "flow" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
                   🔀 Flow View
                 </button>
+                <button onClick={() => setVisualView("preview")} className={`px-4 py-2 rounded-lg text-xs font-medium transition ${visualView === "preview" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
+                  ▶️ Preview
+                </button>
                 {selectedScreen && (
                   <button onClick={() => setVisualView("detail")} className={`px-4 py-2 rounded-lg text-xs font-medium transition ${visualView === "detail" ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
                     📝 {selectedScreen.name}
@@ -411,6 +415,27 @@ export default function DesignPage() {
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Prototype Preview ── */}
+              {visualView === "preview" && (
+                <div className="bg-white rounded-2xl border border-gray-200 py-8" style={{ minHeight: 600 }}>
+                  {screens.length === 0 ? (
+                    <p className="text-center text-gray-300 py-16">Generate screens first to preview</p>
+                  ) : (
+                    <div>
+                      <div className="flex justify-end px-6 mb-4">
+                        <button
+                          onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/preview/${publicId}`); alert("Preview link copied!"); }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-200 text-gray-600 hover:bg-gray-50 transition"
+                        >
+                          🔗 Copy Share Link
+                        </button>
+                      </div>
+                      <PrototypePreview screens={screens} theme={selectedTheme} />
                     </div>
                   )}
                 </div>
