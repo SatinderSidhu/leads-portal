@@ -108,23 +108,21 @@ export async function POST(
       }
     }
 
-    // Notify customer that build was submitted
+    // Notify customer that build was submitted (in-app + email)
     try {
-      const customer = await prisma.customerUser.findUnique({
-        where: { email: session.email },
-        select: { id: true },
-      });
-      if (customer) {
-        await prisma.customerNotification.create({
-          data: {
-            userId: customer.id,
-            title: "Build submitted!",
-            body: `Your app (v${build.version}) has been submitted to our team. We'll notify you as we progress through review, development, and testing.`,
-            type: "build_update",
-            link: `/project/${publicId}/status`,
-          },
-        });
-      }
+      const { notifyAppFactoryCustomer } = await import("../../../../lib/notify-customer");
+      notifyAppFactoryCustomer({
+        customerEmail: session.email,
+        title: "Build submitted!",
+        body: `Your app (v${build.version}) has been submitted to our team. We'll notify you as we progress through review, development, and testing.`,
+        type: "build_update",
+        link: `/project/${publicId}/status`,
+        systemKey: "system_appfactory_build_submitted",
+        mergeData: {
+          buildVersion: String(build.version),
+          projectLink: `/project/${publicId}/status`,
+        },
+      }).catch(() => {});
     } catch {}
 
     return NextResponse.json(build, { status: 201 });

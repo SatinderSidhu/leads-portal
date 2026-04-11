@@ -28,22 +28,23 @@ export async function POST(req: Request) {
       },
     });
 
-    // Send welcome notification on first project
+    // Send welcome notification + email on first project
     if (session) {
       try {
         const projectCount = await prisma.appFactoryProject.count({
           where: { customerEmail: session.email },
         });
         if (projectCount === 1) {
-          await prisma.customerNotification.create({
-            data: {
-              userId: session.id,
-              title: "👋 Welcome to App Factory!",
-              body: "Your first project has been created. Our AI is generating your app design — head to the Design tab to see it come to life.",
-              type: "welcome",
-              link: `/project/${publicId}/design`,
-            },
-          });
+          const { notifyAppFactoryCustomer } = await import("../../../lib/notify-customer");
+          notifyAppFactoryCustomer({
+            customerEmail: session.email,
+            title: "👋 Welcome to App Factory!",
+            body: "Your first project has been created. Our AI is generating your app design — head to the Design tab to see it come to life.",
+            type: "welcome",
+            link: `/project/${publicId}/design`,
+            systemKey: "system_appfactory_welcome",
+            mergeData: { projectLink: `/project/${publicId}/design` },
+          }).catch(() => {});
         }
       } catch {}
     }
