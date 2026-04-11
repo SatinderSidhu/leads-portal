@@ -74,6 +74,40 @@ export async function POST(
       },
     });
 
+    // Auto-create a Lead if not already linked
+    if (!project.leadId && session.email) {
+      try {
+        // Build a description from requirements
+        const reqData = latestFlow?.requirements as { summary?: string; features?: { name: string }[] } | null;
+        const featureList = reqData?.features?.map((f) => f.name).join(", ") || "";
+        const description = reqData?.summary
+          ? `${reqData.summary}\n\nKey features: ${featureList}`
+          : project.idea;
+
+        const lead = await prisma.lead.create({
+          data: {
+            projectName: `App Factory: ${project.idea.substring(0, 80)}`,
+            customerName: session.name || "App Factory Customer",
+            customerEmail: session.email,
+            projectDescription: description,
+            source: "APP_FACTORY",
+            stage: "NEW",
+            status: "NEW",
+            companyName: companyName || project.companyName || null,
+          },
+        });
+
+        // Link the lead back to the project
+        await prisma.appFactoryProject.update({
+          where: { id: project.id },
+          data: { leadId: lead.id },
+        });
+      } catch (leadError) {
+        console.error("Failed to auto-create lead:", leadError);
+        // Non-blocking — build still succeeds even if lead creation fails
+      }
+    }
+
     return NextResponse.json(build, { status: 201 });
   } catch (error) {
     console.error("Failed to create build:", error);
