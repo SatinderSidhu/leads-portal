@@ -676,12 +676,31 @@ model CustomerUser {
   email          String          @unique
   name           String
   password       String?
+  phone          String?
+  profilePicture String?         @map("profile_picture")
+  companyName    String?         @map("company_name")
   leadIds        Json            @default("[]") @map("lead_ids")
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
-  socialAccounts SocialAccount[]
+  socialAccounts    SocialAccount[]
+  notifications     CustomerNotification[]
 
   @@map("customer_users")
+}
+
+model CustomerNotification {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      CustomerUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  body      String   @db.Text
+  type      String   @default("info")
+  link      String?
+  readAt    DateTime? @map("read_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, readAt])
+  @@map("customer_notifications")
 }
 
 model SocialAccount {

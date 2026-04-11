@@ -5,14 +5,38 @@ import { useRouter } from "next/navigation";
 
 export default function NavBar() {
   const router = useRouter();
-  const [user, setUser] = useState<{ id: string; name: string; email: string } | null>(null);
+  const [user, setUser] = useState<{ id: string; name: string; email: string; profilePicture?: string | null } | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : null))
-      .then(setUser)
+      .then((u) => {
+        setUser(u);
+        if (u) {
+          // Also fetch profile picture
+          fetch("/api/profile").then((r) => r.ok ? r.json() : null).then((p) => {
+            if (p?.profilePicture) setUser((prev) => prev ? { ...prev, profilePicture: p.profilePicture } : prev);
+          }).catch(() => {});
+          // Fetch unread count
+          fetch("/api/notifications?unread=1").then((r) => r.ok ? r.json() : null).then((d) => {
+            if (d?.unreadCount) setUnreadCount(d.unreadCount);
+          }).catch(() => {});
+        }
+      })
       .catch(() => {});
   }, []);
+
+  // Poll unread count every 30s
+  useEffect(() => {
+    if (!user) return;
+    const interval = setInterval(() => {
+      fetch("/api/notifications?unread=1").then((r) => r.ok ? r.json() : null).then((d) => {
+        if (d) setUnreadCount(d.unreadCount || 0);
+      }).catch(() => {});
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   async function handleLogout() {
     await fetch("/api/auth", { method: "DELETE" });
@@ -39,24 +63,37 @@ export default function NavBar() {
               <a href="/projects" className="text-sm text-gray-600 hover:text-[#01358d] transition">
                 My Projects
               </a>
-              <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-full bg-[#01358d] flex items-center justify-center text-white text-xs font-bold">
-                  {user.name.charAt(0).toUpperCase()}
-                </div>
+
+              {/* Inbox */}
+              <a href="/inbox" className="relative p-1.5 rounded-lg text-gray-500 hover:text-[#01358d] hover:bg-gray-100 transition">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+                </svg>
+                {unreadCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </a>
+
+              {/* Profile */}
+              <a href="/profile" className="flex items-center gap-2 hover:opacity-80 transition">
+                {user.profilePicture ? (
+                  <img src={user.profilePicture} alt={user.name} className="w-7 h-7 rounded-full object-cover border border-gray-200" />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-[#01358d] flex items-center justify-center text-white text-xs font-bold">
+                    {user.name.charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <span className="text-sm font-medium text-gray-700 hidden sm:block">{user.name}</span>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="text-xs text-gray-400 hover:text-red-500 transition"
-              >
+              </a>
+
+              <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-red-500 transition">
                 Sign Out
               </button>
             </div>
           ) : (
-            <a
-              href="/login"
-              className="text-sm font-medium text-[#01358d] hover:text-[#012a70] transition"
-            >
+            <a href="/login" className="text-sm font-medium text-[#01358d] hover:text-[#012a70] transition">
               Sign In
             </a>
           )}
