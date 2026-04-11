@@ -25,11 +25,18 @@ interface Build { id: string; version: number; status: string; submittedAt: stri
 interface AppStoreConf { id: string; platform: string; accountId: string | null; bundleId: string | null; connectionVerified: boolean }
 interface Flow { id: string; version: number; screens: Screen[]; requirements: { appName?: string; summary?: string; features?: Feature[]; techStack?: string[] }; isFinalized: boolean }
 
+interface Enhancement {
+  id: string; description: string; status: string; createdAt: string;
+  aiDiff: { summary?: string; estimatedEffort?: string; impactedScreens?: { screen: string; change: string }[]; newScreens?: { name: string }[]; newFeatures?: { name: string }[] } | null;
+  build: { version: number } | null;
+}
+
 interface Project {
   id: string; publicId: string; status: string; idea: string;
   customerName: string | null; customerEmail: string | null; companyName: string | null;
   leadId: string | null; platforms: string[]; createdAt: string;
   flows: Flow[]; builds: Build[]; appStoreConfigs: AppStoreConf[];
+  enhancements: Enhancement[];
 }
 
 export default function AppFactoryDetailPage() {
@@ -37,7 +44,7 @@ export default function AppFactoryDetailPage() {
   const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<"overview" | "screens" | "requirements" | "builds" | "stores">("overview");
+  const [tab, setTab] = useState<"overview" | "screens" | "requirements" | "builds" | "stores" | "enhancements">("overview");
   const [buildNotes, setBuildNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -106,9 +113,12 @@ export default function AppFactoryDetailPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-6 w-fit">
-        {(["overview", "screens", "requirements", "builds", "stores"] as const).map((t) => (
+        {(["overview", "screens", "requirements", "builds", "enhancements", "stores"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} className={`px-4 py-2 rounded-lg text-sm font-medium transition capitalize ${tab === t ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm" : "text-gray-500 dark:text-gray-400"}`}>
             {t === "stores" ? "App Stores" : t}
+            {t === "enhancements" && project.enhancements.length > 0 && (
+              <span className="ml-1.5 px-1.5 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-700">{project.enhancements.length}</span>
+            )}
           </button>
         ))}
       </div>
@@ -247,6 +257,59 @@ export default function AppFactoryDetailPage() {
                   >
                     {BUILD_STATUSES.map((s) => <option key={s} value={s}>{BUILD_STATUS_LABELS[s]}</option>)}
                   </select>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Enhancements ── */}
+      {tab === "enhancements" && (
+        <div>
+          {project.enhancements.length === 0 ? (
+            <p className="text-gray-400 py-8 text-center">No enhancement requests yet</p>
+          ) : (
+            <div className="space-y-3">
+              {project.enhancements.map((e) => (
+                <div key={e.id} className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1 min-w-0 mr-4">
+                      <p className="text-sm text-gray-700 dark:text-gray-300">{e.description}</p>
+                      {e.aiDiff?.summary && <p className="text-xs text-gray-400 mt-1">{e.aiDiff.summary}</p>}
+                      <div className="flex items-center gap-2 mt-2">
+                        {e.aiDiff?.estimatedEffort && (
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                            e.aiDiff.estimatedEffort === "Low" ? "bg-green-100 text-green-700" :
+                            e.aiDiff.estimatedEffort === "Medium" ? "bg-yellow-100 text-yellow-700" :
+                            "bg-red-100 text-red-700"
+                          }`}>{e.aiDiff.estimatedEffort} effort</span>
+                        )}
+                        {e.aiDiff?.impactedScreens && <span className="text-[10px] text-gray-400">{e.aiDiff.impactedScreens.length} screens impacted</span>}
+                        {e.aiDiff?.newScreens && e.aiDiff.newScreens.length > 0 && <span className="text-[10px] text-green-600">+{e.aiDiff.newScreens.length} new</span>}
+                        {e.build && <span className="text-[10px] text-gray-400">Build v{e.build.version}</span>}
+                        <span className="text-[10px] text-gray-400">{new Date(e.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                    <select
+                      value={e.status}
+                      onChange={async (ev) => {
+                        await fetch(`/api/app-factory/${id}/enhancements/${e.id}`, {
+                          method: "PUT",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({ status: ev.target.value }),
+                        });
+                        fetchProject();
+                      }}
+                      className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs font-medium bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                    >
+                      <option value="REQUESTED">Requested</option>
+                      <option value="REVIEWED">Reviewed</option>
+                      <option value="APPROVED">Approved</option>
+                      <option value="BUILDING">Building</option>
+                      <option value="DELIVERED">Delivered</option>
+                    </select>
+                  </div>
                 </div>
               ))}
             </div>
