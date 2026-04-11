@@ -137,6 +137,7 @@ jobs:
           DOMAIN_CUSTOMER=${{ secrets.DOMAIN_CUSTOMER }}
           CRON_SECRET=${{ secrets.CRON_SECRET }}
           SEQUENCE_CRON_ENABLED=true
+          STITCH_API_KEY=${{ secrets.STITCH_API_KEY }}
           EOF
 
             # Login to ECR
