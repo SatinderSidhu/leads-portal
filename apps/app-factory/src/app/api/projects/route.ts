@@ -28,6 +28,26 @@ export async function POST(req: Request) {
       },
     });
 
+    // Send welcome notification on first project
+    if (session) {
+      try {
+        const projectCount = await prisma.appFactoryProject.count({
+          where: { customerEmail: session.email },
+        });
+        if (projectCount === 1) {
+          await prisma.customerNotification.create({
+            data: {
+              userId: session.id,
+              title: "👋 Welcome to App Factory!",
+              body: "Your first project has been created. Our AI is generating your app design — head to the Design tab to see it come to life.",
+              type: "welcome",
+              link: `/project/${publicId}/design`,
+            },
+          });
+        }
+      } catch {}
+    }
+
     return NextResponse.json(project, { status: 201 });
   } catch (error) {
     console.error("Failed to create project:", error);

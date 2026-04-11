@@ -108,6 +108,25 @@ export async function POST(
       }
     }
 
+    // Notify customer that build was submitted
+    try {
+      const customer = await prisma.customerUser.findUnique({
+        where: { email: session.email },
+        select: { id: true },
+      });
+      if (customer) {
+        await prisma.customerNotification.create({
+          data: {
+            userId: customer.id,
+            title: "Build submitted!",
+            body: `Your app (v${build.version}) has been submitted to our team. We'll notify you as we progress through review, development, and testing.`,
+            type: "build_update",
+            link: `/project/${publicId}/status`,
+          },
+        });
+      }
+    } catch {}
+
     return NextResponse.json(build, { status: 201 });
   } catch (error) {
     console.error("Failed to create build:", error);
