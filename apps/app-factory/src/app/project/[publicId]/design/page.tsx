@@ -118,6 +118,22 @@ export default function DesignPage() {
     generate(msg);
   }
 
+  async function handleFinalize() {
+    if (!confirm("Finalize this design? You can still make enhancements later.")) return;
+    try {
+      // Mark the latest flow as finalized
+      await fetch(`/api/projects/${publicId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "SUBMITTED" }),
+      });
+      // Redirect to build page
+      window.location.href = `/project/${publicId}/build`;
+    } catch {
+      alert("Failed to finalize. Please try again.");
+    }
+  }
+
   return (
     <main className="max-w-7xl mx-auto px-6 py-8">
       {/* Header */}
@@ -126,7 +142,11 @@ export default function DesignPage() {
           <a href={`/project/${publicId}`} className="text-sm text-gray-400 hover:text-[#01358d] transition">&larr; Back to project</a>
           <h1 className="text-2xl font-bold text-gray-900 mt-1">Design Your App</h1>
         </div>
-        <button disabled className="px-6 py-2.5 rounded-xl bg-[#01358d] text-white font-medium opacity-50 cursor-not-allowed text-sm">
+        <button
+          onClick={handleFinalize}
+          disabled={generating || (!screens.length && !requirements?.features?.length)}
+          className="px-6 py-2.5 rounded-xl bg-[#01358d] text-white font-medium text-sm hover:bg-[#012a70] disabled:opacity-50 disabled:cursor-not-allowed transition"
+        >
           Finalize Design
         </button>
       </div>
