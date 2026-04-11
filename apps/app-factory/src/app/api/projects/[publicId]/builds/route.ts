@@ -1,4 +1,5 @@
 import { prisma } from "@leads-portal/database";
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { getSession } from "../../../../../lib/session";
 
@@ -69,7 +70,7 @@ export async function POST(
         projectId: project.id,
         version: nextVersion,
         status: "SUBMITTED",
-        requirements: requirementsSnapshot as Record<string, unknown>,
+        requirements: requirementsSnapshot as unknown as Prisma.InputJsonValue,
       },
     });
 
