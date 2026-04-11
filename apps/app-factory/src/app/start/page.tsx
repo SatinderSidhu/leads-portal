@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 const INDUSTRY_PROMPTS = [
@@ -86,14 +86,14 @@ export default function StartPage() {
   const [authChecked, setAuthChecked] = useState(false);
 
   // Restore idea from localStorage on mount + check auth
-  useState(() => {
+  useEffect(() => {
     const saved = localStorage.getItem("appfactory_idea");
     if (saved) { setIdea(saved); localStorage.removeItem("appfactory_idea"); }
     const savedPlatforms = localStorage.getItem("appfactory_platforms");
     if (savedPlatforms) { try { setPlatform(JSON.parse(savedPlatforms)); localStorage.removeItem("appfactory_platforms"); } catch {} }
 
     fetch("/api/auth/me").then((r) => r.ok ? r.json() : null).then((u) => { setUser(u); setAuthChecked(true); }).catch(() => setAuthChecked(true));
-  });
+  }, []);
 
   function togglePlatform(p: string) {
     setPlatform((prev) => prev.includes(p) ? prev.filter((v) => v !== p) : [...prev, p]);
