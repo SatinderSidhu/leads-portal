@@ -95,6 +95,7 @@ jobs:
           # Generate nginx config from template with real domain names
           sed -e "s/DOMAIN_ADMIN_PLACEHOLDER/${{ secrets.DOMAIN_ADMIN }}/g" \
               -e "s/DOMAIN_CUSTOMER_PLACEHOLDER/${{ secrets.DOMAIN_CUSTOMER }}/g" \
+              -e "s/DOMAIN_APP_FACTORY_PLACEHOLDER/${{ secrets.DOMAIN_APP_FACTORY || 'appfactory.kitlabs.us' }}/g" \
               nginx/conf.d/default.conf.template > nginx/conf.d/default.conf
 
           # Copy docker-compose and nginx configs
