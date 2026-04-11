@@ -1,4 +1,5 @@
 import { prisma } from "@leads-portal/database";
+import type { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
@@ -106,15 +107,15 @@ If the user asks to modify requirements, return the FULL updated JSON (not just 
   if (latestFlow && !latestFlow.isFinalized) {
     await prisma.appFactoryFlow.update({
       where: { id: latestFlow.id },
-      data: { requirements, aiConversationHistory: newHistory },
+      data: { requirements: requirements as Prisma.InputJsonValue, aiConversationHistory: newHistory as unknown as Prisma.InputJsonValue },
     });
   } else {
     await prisma.appFactoryFlow.create({
       data: {
         projectId: project.id,
         version: (latestFlow?.version || 0) + 1,
-        requirements,
-        aiConversationHistory: newHistory,
+        requirements: requirements as Prisma.InputJsonValue,
+        aiConversationHistory: newHistory as unknown as Prisma.InputJsonValue,
       },
     });
   }
@@ -207,15 +208,15 @@ Generate 5-8 screens covering the core user journey. If the user requests change
   if (latestFlow && !latestFlow.isFinalized) {
     await prisma.appFactoryFlow.update({
       where: { id: latestFlow.id },
-      data: { screens, aiConversationHistory: newHistory },
+      data: { screens: screens as unknown as Prisma.InputJsonValue, aiConversationHistory: newHistory as unknown as Prisma.InputJsonValue },
     });
   } else {
     await prisma.appFactoryFlow.create({
       data: {
         projectId: project.id,
         version: (latestFlow?.version || 0) + 1,
-        screens,
-        aiConversationHistory: newHistory,
+        screens: screens as unknown as Prisma.InputJsonValue,
+        aiConversationHistory: newHistory as unknown as Prisma.InputJsonValue,
       },
     });
   }
