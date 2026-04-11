@@ -13,12 +13,18 @@ export async function POST(req: Request) {
 
     const publicId = randomBytes(4).toString("hex");
 
+    // Get session to link project to customer
+    const { getSession } = await import("../../../lib/session");
+    const session = await getSession();
+
     const project = await prisma.appFactoryProject.create({
       data: {
         publicId,
         idea: idea.trim(),
         platforms: platforms || ["ios", "android"],
         status: "IDEATING",
+        customerName: session?.name || null,
+        customerEmail: session?.email || null,
       },
     });
 
@@ -30,10 +36,18 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
+  const { getSession } = await import("../../../lib/session");
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+
   try {
     const projects = await prisma.appFactoryProject.findMany({
+      where: { customerEmail: session.email },
       orderBy: { createdAt: "desc" },
-      take: 50,
+      include: {
+        builds: { orderBy: { version: "desc" }, take: 1 },
+        _count: { select: { builds: true, enhancements: true } },
+      },
     });
     return NextResponse.json(projects);
   } catch (error) {

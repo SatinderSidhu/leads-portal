@@ -36,6 +36,9 @@ export default function NavBar() {
           </a>
           {user ? (
             <div className="flex items-center gap-3">
+              <a href="/projects" className="text-sm text-gray-600 hover:text-[#01358d] transition">
+                My Projects
+              </a>
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-full bg-[#01358d] flex items-center justify-center text-white text-xs font-bold">
                   {user.name.charAt(0).toUpperCase()}
