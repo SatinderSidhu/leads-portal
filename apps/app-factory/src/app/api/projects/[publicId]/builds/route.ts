@@ -110,7 +110,7 @@ export async function POST(
 
     // Notify customer that build was submitted (in-app + email)
     try {
-      const { notifyAppFactoryCustomer } = await import("../../../../lib/notify-customer");
+      const { notifyAppFactoryCustomer } = await import("../../../../../lib/notify-customer");
       notifyAppFactoryCustomer({
         customerEmail: session.email,
         title: "Build submitted!",
