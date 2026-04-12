@@ -102,6 +102,48 @@ export async function POST(
           where: { id: project.id },
           data: { leadId: lead.id },
         });
+
+        // Auto-enroll in LEAD_CREATED sequences filtered by APP_FACTORY source
+        try {
+          // Find active sequences with LEAD_CREATED trigger
+          const sequences = await prisma.smartSequence.findMany({
+            where: { enrollmentTrigger: "LEAD_CREATED", status: "ACTIVE" },
+            select: { id: true, triggerConfig: true },
+            include: { steps: { orderBy: { stepOrder: "asc" }, take: 1 } },
+          });
+
+          for (const seq of sequences) {
+            const config = (seq.triggerConfig as { source?: string }) || {};
+            // Only enroll if no source filter, or source matches APP_FACTORY
+            if (config.source && config.source !== "APP_FACTORY") continue;
+
+            // Check not already enrolled
+            const existing = await prisma.sequenceEnrollment.findFirst({
+              where: { sequenceId: seq.id, leadId: lead.id },
+            });
+            if (existing) continue;
+
+            if (seq.steps.length === 0) continue;
+            const firstStep = seq.steps[0];
+            const now = new Date();
+            const nextSendAt = new Date(now);
+            if (firstStep.waitUnit === "HOURS") nextSendAt.setHours(nextSendAt.getHours() + firstStep.waitValue);
+            else if (firstStep.waitUnit === "DAYS") nextSendAt.setDate(nextSendAt.getDate() + firstStep.waitValue);
+            else if (firstStep.waitUnit === "WEEKS") nextSendAt.setDate(nextSendAt.getDate() + firstStep.waitValue * 7);
+
+            await prisma.sequenceEnrollment.create({
+              data: {
+                sequenceId: seq.id,
+                leadId: lead.id,
+                currentStepOrder: 1,
+                status: "ACTIVE",
+                nextSendAt: firstStep.waitValue === 0 ? now : nextSendAt,
+              },
+            });
+          }
+        } catch (enrollError) {
+          console.error("Failed to auto-enroll in sequences:", enrollError);
+        }
       } catch (leadError) {
         console.error("Failed to auto-create lead:", leadError);
         // Non-blocking — build still succeeds even if lead creation fails

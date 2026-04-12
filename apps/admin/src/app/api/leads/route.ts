@@ -158,7 +158,7 @@ export async function POST(req: Request) {
 
   // Auto-enroll in LEAD_CREATED-triggered sequences
   import("../../../lib/enrollment-utils").then(({ processAutoEnrollmentTriggers }) => {
-    processAutoEnrollmentTriggers({ trigger: "LEAD_CREATED", leadId: lead.id }).catch(() => {});
+    processAutoEnrollmentTriggers({ trigger: "LEAD_CREATED", leadId: lead.id, leadSource: lead.source }).catch(() => {});
   }).catch(() => {});
 
   if (body.sendEmail) {

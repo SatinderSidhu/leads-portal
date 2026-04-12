@@ -87,11 +87,14 @@ interface ProcessTriggerArgs {
   toStage?: string;
   /** For ADDED_TO_LIST triggers */
   listId?: string;
+  /** For LEAD_CREATED triggers — filter by lead source (e.g., APP_FACTORY) */
+  leadSource?: string;
 }
 
-interface StageChangeTriggerConfig {
+interface TriggerConfig {
   fromStage?: string;
   toStage?: string;
+  source?: string;
 }
 
 /**
@@ -103,7 +106,7 @@ interface StageChangeTriggerConfig {
 export async function processAutoEnrollmentTriggers(
   args: ProcessTriggerArgs
 ): Promise<{ enrolled: number; skipped: number }> {
-  const { trigger, leadId, fromStage, toStage, listId } = args;
+  const { trigger, leadId, fromStage, toStage, listId, leadSource } = args;
   let enrolled = 0;
   let skipped = 0;
 
@@ -129,10 +132,18 @@ export async function processAutoEnrollmentTriggers(
     });
 
     for (const seq of sequences) {
+      const config = (seq.triggerConfig as TriggerConfig) || {};
+
+      // LEAD_CREATED: filter by triggerConfig.source if specified
+      if (trigger === "LEAD_CREATED" && config.source) {
+        if (config.source !== leadSource) {
+          skipped++;
+          continue;
+        }
+      }
+
       // STAGE_CHANGE: filter by triggerConfig.fromStage / toStage
       if (trigger === "STAGE_CHANGE") {
-        const config = (seq.triggerConfig as StageChangeTriggerConfig) || {};
-        // Match if config explicitly specifies a fromStage and it matches, or no fromStage
         if (config.fromStage && config.fromStage !== fromStage) {
           skipped++;
           continue;

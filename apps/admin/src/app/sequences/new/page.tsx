@@ -36,6 +36,7 @@ export default function NewSequencePage() {
   const [fromStage, setFromStage] = useState("");
   const [toStage, setToStage] = useState("");
   const [triggerListId, setTriggerListId] = useState("");
+  const [triggerSource, setTriggerSource] = useState("");
   const [lists, setLists] = useState<{ id: string; name: string; type: string }[]>([]);
   const [audienceTags, setAudienceTags] = useState("");
   const [exitConditions, setExitConditions] = useState<string[]>(["REPLIED"]);
@@ -61,7 +62,9 @@ export default function NewSequencePage() {
         ? { fromStage, toStage }
         : trigger === "ADDED_TO_LIST"
           ? { listId: triggerListId }
-          : {};
+          : trigger === "LEAD_CREATED" && triggerSource
+            ? { source: triggerSource }
+            : {};
 
       const res = await fetch("/api/sequences", {
         method: "POST",
@@ -150,6 +153,24 @@ export default function NewSequencePage() {
                 {STAGE_OPTIONS.map((s) => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
               </select>
             </div>
+          </div>
+        )}
+
+        {trigger === "LEAD_CREATED" && (
+          <div className="pl-4 border-l-2 border-indigo-200 dark:border-indigo-800">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Filter by Lead Source <span className="font-normal text-gray-400">(optional)</span></label>
+            <select value={triggerSource} onChange={(e) => setTriggerSource(e.target.value)} className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700">
+              <option value="">All sources (any new lead)</option>
+              <option value="APP_FACTORY">App Factory only</option>
+              <option value="MANUAL">Manual only</option>
+              <option value="APOLLO">Apollo only</option>
+              <option value="LINKEDIN_SALES_NAV">LinkedIn Sales Nav only</option>
+              <option value="WEBSITE">Website only</option>
+              <option value="REFERRAL">Referral only</option>
+              <option value="COLD_OUTREACH">Cold Outreach only</option>
+              <option value="AGENT">Agent only</option>
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Only leads from this source will be auto-enrolled. Leave blank to enroll all new leads.</p>
           </div>
         )}
 
