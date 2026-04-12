@@ -108,7 +108,6 @@ export async function POST(
           // Find active sequences with LEAD_CREATED trigger
           const sequences = await prisma.smartSequence.findMany({
             where: { enrollmentTrigger: "LEAD_CREATED", status: "ACTIVE" },
-            select: { id: true, triggerConfig: true },
             include: { steps: { orderBy: { stepOrder: "asc" }, take: 1 } },
           });
 
