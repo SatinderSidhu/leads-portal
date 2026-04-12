@@ -19,6 +19,7 @@ export async function GET(
           orderBy: { stepOrder: "asc" },
           include: { template: { select: { id: true, title: true, subject: true, purpose: true, sendAfterDays: true } } },
         },
+        triggerList: { select: { name: true } },
         _count: { select: { enrollments: true } },
       },
     });

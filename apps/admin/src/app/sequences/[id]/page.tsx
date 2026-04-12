@@ -4,6 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
 const GOAL_LABELS: Record<string, string> = { BOOK_MEETING: "Book a Meeting", GET_REPLY: "Get a Reply", DRIVE_PURCHASE: "Drive a Purchase", NURTURE_ONLY: "Nurture Only" };
+const TRIGGER_LABELS: Record<string, string> = { MANUAL: "Manual", STAGE_CHANGE: "Stage Changes", LEAD_CREATED: "New Lead Created", ADDED_TO_LIST: "Added to List" };
+const SOURCE_LABELS: Record<string, string> = { APP_FACTORY: "App Factory", MANUAL: "Manual", APOLLO: "Apollo", LINKEDIN_SALES_NAV: "LinkedIn Sales Nav", WEBSITE: "Website", REFERRAL: "Referral", COLD_OUTREACH: "Cold Outreach", AGENT: "Agent", BARK: "Bark", EVENT: "Event", OTHER: "Other" };
+const EXIT_LABELS: Record<string, string> = { REPLIED: "Contact replied", MEETING_BOOKED: "Meeting booked", UNSUBSCRIBED: "Unsubscribed / DNC" };
 const STATUS_COLORS: Record<string, string> = { DRAFT: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300", ACTIVE: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300", PAUSED: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300" };
 const CONDITION_LABELS: Record<string, string> = { ALWAYS: "Always proceed", OPENED: "If opened", NOT_OPENED: "If not opened", CLICKED: "If clicked a link", NOT_CLICKED: "If no link clicked", REPLIED: "If replied", NOT_REPLIED: "If no reply" };
 const CONDITION_OPTIONS = ["ALWAYS", "OPENED", "NOT_OPENED", "CLICKED", "NOT_CLICKED", "REPLIED", "NOT_REPLIED"];
@@ -23,7 +26,13 @@ export default function SequenceDetailPage() {
   const id = params.id as string;
 
   const [tab, setTab] = useState<"steps" | "contacts" | "preview" | "performance">("steps");
-  const [sequence, setSequence] = useState<{ id: string; name: string; goal: string; status: string; exitConditions: string[]; _count: { enrollments: number } } | null>(null);
+  const [sequence, setSequence] = useState<{
+    id: string; name: string; goal: string; status: string;
+    enrollmentTrigger: string; triggerConfig: { source?: string; fromStage?: string; toStage?: string; listId?: string };
+    audienceTags: string[]; exitConditions: string[]; reEnrollAfterDays: number | null;
+    triggerList?: { name: string } | null;
+    _count: { enrollments: number };
+  } | null>(null);
   const [steps, setSteps] = useState<Step[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
@@ -174,6 +183,72 @@ export default function SequenceDetailPage() {
           {sequence.status !== "ACTIVE" && (
             <button onClick={handleDelete} className="px-4 py-2 border border-red-300 dark:border-red-700 rounded-lg text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition">Delete</button>
           )}
+        </div>
+      </div>
+
+      {/* Configuration summary */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Trigger */}
+          <div>
+            <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Enrollment Trigger</span>
+            <div className="mt-1 flex items-center gap-1.5">
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300">
+                {TRIGGER_LABELS[sequence.enrollmentTrigger] || sequence.enrollmentTrigger}
+              </span>
+            </div>
+            {sequence.enrollmentTrigger === "LEAD_CREATED" && sequence.triggerConfig?.source && (
+              <div className="mt-1 text-xs text-gray-500">
+                Source: <span className="font-medium text-gray-700 dark:text-gray-300">{SOURCE_LABELS[sequence.triggerConfig.source] || sequence.triggerConfig.source}</span>
+              </div>
+            )}
+            {sequence.enrollmentTrigger === "STAGE_CHANGE" && (
+              <div className="mt-1 text-xs text-gray-500">
+                {sequence.triggerConfig?.fromStage && <span>{sequence.triggerConfig.fromStage}</span>}
+                {sequence.triggerConfig?.fromStage && sequence.triggerConfig?.toStage && <span> → </span>}
+                {sequence.triggerConfig?.toStage && <span>{sequence.triggerConfig.toStage}</span>}
+                {!sequence.triggerConfig?.fromStage && !sequence.triggerConfig?.toStage && <span>Any stage change</span>}
+              </div>
+            )}
+            {sequence.enrollmentTrigger === "ADDED_TO_LIST" && sequence.triggerList && (
+              <div className="mt-1 text-xs text-gray-500">
+                List: <span className="font-medium text-gray-700 dark:text-gray-300">{sequence.triggerList.name}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Goal */}
+          <div>
+            <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Goal</span>
+            <div className="mt-1 text-sm font-medium text-gray-700 dark:text-gray-300">{GOAL_LABELS[sequence.goal]}</div>
+          </div>
+
+          {/* Exit Conditions */}
+          <div>
+            <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Exit When</span>
+            <div className="mt-1 space-y-0.5">
+              {sequence.exitConditions.length > 0 ? sequence.exitConditions.map((ec) => (
+                <div key={ec} className="text-xs text-gray-500">{EXIT_LABELS[ec] || ec}</div>
+              )) : (
+                <div className="text-xs text-gray-400">No exit conditions</div>
+              )}
+            </div>
+          </div>
+
+          {/* Re-enrollment */}
+          <div>
+            <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">Re-enrollment</span>
+            <div className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+              {sequence.reEnrollAfterDays ? `After ${sequence.reEnrollAfterDays} days` : "Disabled"}
+            </div>
+            {sequence.audienceTags && (sequence.audienceTags as string[]).length > 0 && (
+              <div className="mt-1 flex flex-wrap gap-1">
+                {(sequence.audienceTags as string[]).map((tag) => (
+                  <span key={tag} className="px-1.5 py-0.5 rounded text-[10px] bg-gray-100 dark:bg-gray-600 text-gray-600 dark:text-gray-300">{tag}</span>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
