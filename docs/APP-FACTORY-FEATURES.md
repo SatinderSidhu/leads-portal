@@ -37,7 +37,7 @@ Unlike traditional app development where customers describe an idea on a call, w
 
 **Helpful prompts built in:**
 - 20 industry-specific starter prompts mapped to NAICS sectors (Healthcare, Fintech, Real Estate, Education, etc.)
-- 6 portfolio example cards with pre-written prompts customers can use as starting points (Dog Walking App, Restaurant Platform, Fitness Tracker, Property Management, E-Learning, Appointment Booking)
+- 6 portfolio example cards from real KITLabs apps with pre-written prompts customers can use as starting points (KITFit, Overdims, Squabbler, Care Partners, My Digital Card, Whenworx)
 
 ---
 

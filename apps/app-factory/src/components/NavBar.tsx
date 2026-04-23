@@ -46,26 +46,26 @@ export default function NavBar() {
 
   return (
     <nav className="border-b border-gray-200 bg-white">
-      <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between">
-        <a href="/" className="flex items-center gap-2.5">
-          <img src="/kitlabs-logo.jpg" alt="KITLabs" className="h-8 w-8 rounded-lg object-cover" />
-          <div>
-            <span className="text-sm font-bold text-[#01358d]">App Factory</span>
-            <span className="text-[10px] text-gray-400 block -mt-0.5">by KITLabs</span>
+      <div className="max-w-7xl mx-auto px-6 py-3 flex items-center justify-between gap-6">
+        <a href="/" className="flex items-center gap-2.5 flex-shrink-0">
+          <img src="/kitlabs-logo.jpg" alt="KITLabs" className="h-8 w-8 rounded-lg object-cover flex-shrink-0" />
+          <div className="leading-tight">
+            <span className="text-sm font-bold text-[#01358d] whitespace-nowrap block">App Factory</span>
+            <span className="text-[10px] text-gray-400 whitespace-nowrap block">by KITLabs</span>
           </div>
         </a>
-        <div className="flex items-center gap-4">
-          <a href="/start" className="text-sm text-gray-600 hover:text-[#01358d] transition">
+        <div className="flex items-center gap-4 flex-shrink-0">
+          <a href="/start" className="hidden sm:inline text-sm text-gray-600 hover:text-[#01358d] transition whitespace-nowrap">
             Start Building
           </a>
           {user ? (
             <div className="flex items-center gap-3">
-              <a href="/projects" className="text-sm text-gray-600 hover:text-[#01358d] transition">
+              <a href="/projects" className="hidden sm:inline text-sm text-gray-600 hover:text-[#01358d] transition whitespace-nowrap">
                 My Projects
               </a>
 
               {/* Inbox */}
-              <a href="/inbox" className="relative p-1.5 rounded-lg text-gray-500 hover:text-[#01358d] hover:bg-gray-100 transition">
+              <a href="/inbox" className="relative p-1.5 rounded-lg text-gray-500 hover:text-[#01358d] hover:bg-gray-100 transition flex-shrink-0">
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
                 </svg>
@@ -77,23 +77,23 @@ export default function NavBar() {
               </a>
 
               {/* Profile */}
-              <a href="/profile" className="flex items-center gap-2 hover:opacity-80 transition">
+              <a href="/profile" className="flex items-center gap-2 hover:opacity-80 transition flex-shrink-0">
                 {user.profilePicture ? (
                   <img src={user.profilePicture} alt={user.name} className="w-7 h-7 rounded-full object-cover border border-gray-200" />
                 ) : (
-                  <div className="w-7 h-7 rounded-full bg-[#01358d] flex items-center justify-center text-white text-xs font-bold">
+                  <div className="w-7 h-7 rounded-full bg-[#01358d] flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                     {user.name.charAt(0).toUpperCase()}
                   </div>
                 )}
-                <span className="text-sm font-medium text-gray-700 hidden sm:block">{user.name}</span>
+                <span className="text-sm font-medium text-gray-700 hidden sm:block whitespace-nowrap">{user.name}</span>
               </a>
 
-              <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-red-500 transition">
+              <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-red-500 transition whitespace-nowrap">
                 Sign Out
               </button>
             </div>
           ) : (
-            <a href="/login" className="text-sm font-medium text-[#01358d] hover:text-[#012a70] transition">
+            <a href="/login" className="text-sm font-medium text-[#01358d] hover:text-[#012a70] transition whitespace-nowrap">
               Sign In
             </a>
           )}
