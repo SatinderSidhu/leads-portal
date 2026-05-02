@@ -545,6 +545,9 @@ export default async function ProjectPage({
                 signerName: lead.nda.signerName,
                 signedAt: lead.nda.signedAt ? lead.nda.signedAt.toISOString() : null,
                 createdAt: lead.nda.createdAt.toISOString(),
+                fileName: lead.nda.fileName,
+                mimeType: lead.nda.mimeType,
+                uploadedExternally: lead.nda.uploadedExternally,
               }}
             />
           </div>

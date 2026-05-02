@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { downloadNdaPdf, PdfBranding } from "../lib/generate-pdf";
+import DocumentPreviewModal from "./DocumentPreviewModal";
 
 interface NdaSectionProps {
   leadId: string;
@@ -13,6 +14,9 @@ interface NdaSectionProps {
     signerName: string | null;
     signedAt: string | null;
     createdAt: string;
+    fileName: string | null;
+    mimeType: string | null;
+    uploadedExternally: boolean;
   };
 }
 
@@ -67,6 +71,99 @@ export default function NdaSection({ leadId, projectName, nda }: NdaSectionProps
 
   function handleDownloadPdf() {
     downloadNdaPdf(nda.content, projectName, branding);
+  }
+
+  // ── Uploaded NDA file branch ───────────────────────────────
+  const [filePreviewOpen, setFilePreviewOpen] = useState(false);
+
+  async function handleDownloadUploadedFile() {
+    try {
+      const res = await fetch(`/api/nda/file?leadId=${leadId}`);
+      if (!res.ok) throw new Error("Download failed");
+      const { downloadUrl } = await res.json();
+      window.open(downloadUrl, "_blank");
+    } catch {
+      alert("Failed to download NDA file");
+    }
+  }
+
+  if (nda.fileName) {
+    const signedDate = nda.signedAt
+      ? new Date(nda.signedAt).toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        })
+      : null;
+    return (
+      <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl p-8 md:p-10">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <p className="text-sm font-medium text-indigo-600 uppercase tracking-wider mb-1">
+              Non-Disclosure Agreement
+            </p>
+            <h2 className="text-2xl font-bold text-gray-900">{projectName}</h2>
+          </div>
+        </div>
+
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 mb-6 flex items-start gap-3">
+          <svg className="w-6 h-6 text-emerald-600 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+          </svg>
+          <div>
+            <p className="text-sm font-semibold text-emerald-900">NDA on file</p>
+            <p className="text-sm text-emerald-800 mt-0.5">
+              A signed Non-Disclosure Agreement{nda.signerName ? ` from ${nda.signerName}` : ""}
+              {signedDate ? ` (signed ${signedDate})` : ""} has been uploaded to your project. You can preview or download it below.
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-gray-50 rounded-xl border border-gray-200 p-5 mb-6 flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-blue-100 text-[#01358d] flex items-center justify-center flex-shrink-0">
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+            </svg>
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-gray-900 truncate">{nda.fileName}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{nda.mimeType?.includes("pdf") ? "PDF document" : "Word document"}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => setFilePreviewOpen(true)}
+            className="px-5 py-3 bg-[#01358d] hover:bg-[#012a70] text-white rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+            </svg>
+            Preview
+          </button>
+          <button
+            onClick={handleDownloadUploadedFile}
+            className="px-5 py-3 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+            </svg>
+            Download
+          </button>
+        </div>
+
+        {filePreviewOpen && (
+          <DocumentPreviewModal
+            fileName={nda.fileName}
+            mimeType={nda.mimeType || "application/pdf"}
+            previewEndpoint={`/api/nda/file?leadId=${leadId}`}
+            onClose={() => setFilePreviewOpen(false)}
+            onDownload={handleDownloadUploadedFile}
+          />
+        )}
+      </div>
+    );
   }
 
   return (

@@ -830,6 +830,7 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - **Dashboard cards**: Overview tab shows NDA, SOW, App Flow, Book Meeting cards (always visible, grayed out with "Not yet shared" when unavailable). NDA card has "Request NDA" link when not shared
 - **Your Representative**: Shows assigned admin's profile photo, name, title, and email (with fallback for unassigned)
 - **NDA Request flow**: Customer can request NDA via modal with pre-filled editable message + file upload (PDF/Word). Logs audit + creates note + emails admin
+- **Externally signed NDA upload**: Admin can upload a PDF/Word NDA that was signed outside the system from the lead detail NDA card ("Upload Signed NDA" button). Stored in S3 at `leads/{leadId}/nda/{uuid}-{filename}`, marked `Nda.uploadedExternally=true`, status set to SIGNED with the signer name and date the admin enters. Customer NDA tab detects `nda.fileName` and renders a preview/download view (PDF iframe or Word download prompt) instead of the digital sign form. Admin endpoints: `POST /api/leads/[id]/nda/upload-presign`, `POST /api/leads/[id]/nda/upload`, `GET /api/leads/[id]/nda/file?inline=1`. Customer endpoint: `GET /api/nda/file?leadId=X&inline=1`
 - **Unsubscribe page**: `/unsubscribe` with pre-filled email, enables doNotContact on all matching leads
 - **KITLabs Resources section**: SVG icons in colored containers, hover effects
 - **Footer**: horizontal layout (logo + text left, copyright right)

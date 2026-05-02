@@ -29,6 +29,16 @@ export function buildDocumentKey(leadId: string, fileName: string): string {
   return `leads/${leadId}/${id}-${safeBase}${ext}`;
 }
 
+export function buildNdaKey(leadId: string, fileName: string): string {
+  const ext = path.extname(fileName);
+  const safeBase = path
+    .basename(fileName, ext)
+    .replace(/[^a-zA-Z0-9._-]/g, "_")
+    .slice(0, 80);
+  const id = randomUUID();
+  return `leads/${leadId}/nda/${id}-${safeBase}${ext}`;
+}
+
 export async function getPresignedUploadUrl(
   key: string,
   contentType: string,
@@ -79,4 +89,14 @@ export const MAX_DOCUMENT_SIZE = 25 * 1024 * 1024; // 25MB
 
 export function isAllowedMimeType(mimeType: string): boolean {
   return ALLOWED_MIME_TYPES.has(mimeType);
+}
+
+const ALLOWED_NDA_MIME_TYPES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+
+export function isAllowedNdaMimeType(mimeType: string): boolean {
+  return ALLOWED_NDA_MIME_TYPES.has(mimeType);
 }

@@ -197,15 +197,21 @@ model StatusHistory {
 }
 
 model Nda {
-  id         String    @id @default(uuid())
-  leadId     String    @unique @map("lead_id")
-  lead       Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
-  content    String    @db.Text
-  status     NdaStatus @default(GENERATED)
-  signerName String?   @map("signer_name")
-  signerIp   String?   @map("signer_ip")
-  signedAt   DateTime? @map("signed_at")
-  createdAt  DateTime  @default(now()) @map("created_at")
+  id                 String    @id @default(uuid())
+  leadId             String    @unique @map("lead_id")
+  lead               Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  content            String    @db.Text
+  status             NdaStatus @default(GENERATED)
+  signerName         String?   @map("signer_name")
+  signerIp           String?   @map("signer_ip")
+  signedAt           DateTime? @map("signed_at")
+  fileName           String?   @map("file_name")
+  s3Key              String?   @map("s3_key") @db.Text
+  fileSize           Int?      @map("file_size")
+  mimeType           String?   @map("mime_type")
+  uploadedExternally Boolean   @default(false) @map("uploaded_externally")
+  uploadedBy         String?   @map("uploaded_by")
+  createdAt          DateTime  @default(now()) @map("created_at")
 
   @@map("ndas")
 }

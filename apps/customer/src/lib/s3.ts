@@ -80,3 +80,13 @@ export const MAX_DOCUMENT_SIZE = 25 * 1024 * 1024; // 25MB
 export function isAllowedMimeType(mimeType: string): boolean {
   return ALLOWED_MIME_TYPES.has(mimeType);
 }
+
+const ALLOWED_NDA_MIME_TYPES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+
+export function isAllowedNdaMimeType(mimeType: string): boolean {
+  return ALLOWED_NDA_MIME_TYPES.has(mimeType);
+}

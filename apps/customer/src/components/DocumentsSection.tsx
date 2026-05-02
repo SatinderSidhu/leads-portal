@@ -441,10 +441,9 @@ export default function DocumentsSection({
 
       {previewDoc && (
         <DocumentPreviewModal
-          docId={previewDoc.id}
           fileName={previewDoc.fileName}
           mimeType={previewDoc.mimeType}
-          apiBase="/api/documents"
+          previewEndpoint={`/api/documents/${previewDoc.id}`}
           onClose={() => setPreviewDoc(null)}
           onDownload={() => handleDownload(previewDoc.id)}
         />

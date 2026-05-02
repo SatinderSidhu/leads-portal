@@ -14,6 +14,16 @@ const LeadDocumentsAdmin = dynamic(
   { ssr: false, loading: () => <div className="h-32 bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse" /> }
 );
 
+const NdaUploadModal = dynamic(
+  () => import("../../../components/NdaUploadModal"),
+  { ssr: false }
+);
+
+const DocumentPreviewModal = dynamic(
+  () => import("../../../components/DocumentPreviewModal"),
+  { ssr: false }
+);
+
 const STATUS_OPTIONS = [
   "NEW",
   "SOW_READY",
@@ -124,6 +134,10 @@ interface Nda {
   signerName: string | null;
   signedAt: string | null;
   createdAt: string;
+  fileName: string | null;
+  mimeType: string | null;
+  uploadedExternally: boolean;
+  uploadedBy: string | null;
 }
 
 interface EmailAttachmentItem {
@@ -294,6 +308,8 @@ export default function LeadDetailPage() {
   // Audit log state
   const [auditLogs, setAuditLogs] = useState<{ id: string; action: string; detail: string | null; actor: string | null; createdAt: string }[]>([]);
   const [ndaGenerating, setNdaGenerating] = useState(false);
+  const [ndaUploadModalOpen, setNdaUploadModalOpen] = useState(false);
+  const [ndaPreviewOpen, setNdaPreviewOpen] = useState(false);
 
   // Edit mode state
   const [editing, setEditing] = useState(false);
@@ -3366,13 +3382,21 @@ export default function LeadDetailPage() {
                   <p className="text-gray-500 dark:text-gray-400 text-sm mb-4">
                     No NDA has been generated for this lead yet.
                   </p>
-                  <button
-                    onClick={handleGenerateNda}
-                    disabled={ndaGenerating}
-                    className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-2.5 rounded-lg text-sm font-medium hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                  >
-                    {ndaGenerating ? "Generating..." : "Generate NDA"}
-                  </button>
+                  <div className="space-y-2">
+                    <button
+                      onClick={handleGenerateNda}
+                      disabled={ndaGenerating}
+                      className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-2.5 rounded-lg text-sm font-medium hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
+                      {ndaGenerating ? "Generating..." : "Generate NDA"}
+                    </button>
+                    <button
+                      onClick={() => setNdaUploadModalOpen(true)}
+                      className="w-full border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                    >
+                      Upload Signed NDA
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -3387,6 +3411,14 @@ export default function LeadDetailPage() {
                         lead.nda.status}
                     </span>
                   </div>
+                  {lead.nda.uploadedExternally && (
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm text-gray-500 dark:text-gray-400">Source</span>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-pink-100 dark:bg-pink-900/40 text-[#f9556d]">
+                        Externally Signed
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-500 dark:text-gray-400">
                       Created
@@ -3417,12 +3449,51 @@ export default function LeadDetailPage() {
                       </div>
                     </>
                   )}
-                  <button
-                    onClick={() => router.push(`/leads/${lead.id}/nda`)}
-                    className="w-full mt-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-                  >
-                    View NDA
-                  </button>
+                  {lead.nda.fileName && (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm text-gray-500 dark:text-gray-400 flex-shrink-0">File</span>
+                      <span className="text-sm text-gray-900 dark:text-white truncate" title={lead.nda.fileName}>
+                        {lead.nda.fileName}
+                      </span>
+                    </div>
+                  )}
+                  {lead.nda.fileName ? (
+                    <div className="space-y-2 pt-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => setNdaPreviewOpen(true)}
+                          className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                        >
+                          Preview
+                        </button>
+                        <button
+                          onClick={async () => {
+                            const res = await fetch(`/api/leads/${lead.id}/nda/file`);
+                            if (res.ok) {
+                              const { downloadUrl } = await res.json();
+                              window.open(downloadUrl, "_blank");
+                            }
+                          }}
+                          className="border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                        >
+                          Download
+                        </button>
+                      </div>
+                      <button
+                        onClick={() => setNdaUploadModalOpen(true)}
+                        className="w-full text-xs text-gray-500 dark:text-gray-400 hover:text-[#01358d] dark:hover:text-blue-400 underline transition"
+                      >
+                        Replace with different file
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => router.push(`/leads/${lead.id}/nda`)}
+                      className="w-full mt-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                    >
+                      View NDA
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -3606,6 +3677,35 @@ export default function LeadDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {ndaUploadModalOpen && (
+        <NdaUploadModal
+          leadId={lead.id}
+          defaultSignerName={lead.nda?.signerName || lead.customerName}
+          isReplace={!!lead.nda?.fileName}
+          onClose={() => setNdaUploadModalOpen(false)}
+          onUploaded={async () => {
+            setNdaUploadModalOpen(false);
+            await fetchLead();
+          }}
+        />
+      )}
+
+      {ndaPreviewOpen && lead.nda?.fileName && (
+        <DocumentPreviewModal
+          fileName={lead.nda.fileName}
+          mimeType={lead.nda.mimeType || "application/pdf"}
+          previewEndpoint={`/api/leads/${lead.id}/nda/file`}
+          onClose={() => setNdaPreviewOpen(false)}
+          onDownload={async () => {
+            const res = await fetch(`/api/leads/${lead.id}/nda/file`);
+            if (res.ok) {
+              const { downloadUrl } = await res.json();
+              window.open(downloadUrl, "_blank");
+            }
+          }}
+        />
       )}
     </div>
   );

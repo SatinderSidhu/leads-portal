@@ -350,10 +350,9 @@ export default function LeadDocumentsAdmin({ leadId }: LeadDocumentsAdminProps) 
 
       {previewDoc && (
         <DocumentPreviewModal
-          docId={previewDoc.id}
           fileName={previewDoc.fileName}
           mimeType={previewDoc.mimeType}
-          apiBase={apiBase}
+          previewEndpoint={`${apiBase}/${previewDoc.id}`}
           onClose={() => setPreviewDoc(null)}
           onDownload={() => handleDownload(previewDoc.id)}
         />

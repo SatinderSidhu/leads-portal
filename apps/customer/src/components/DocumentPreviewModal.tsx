@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 
 interface DocumentPreviewModalProps {
-  docId: string;
   fileName: string;
   mimeType: string;
-  apiBase: string; // e.g. "/api/documents" (customer) or "/api/leads/{id}/documents" (admin)
+  /** Endpoint that returns `{ downloadUrl }`. The modal appends `inline=1` (with `?` or `&` as appropriate). */
+  previewEndpoint: string;
   onClose: () => void;
   onDownload: () => void;
 }
@@ -18,10 +18,9 @@ function isPreviewable(mimeType: string): "pdf" | "image" | null {
 }
 
 export default function DocumentPreviewModal({
-  docId,
   fileName,
   mimeType,
-  apiBase,
+  previewEndpoint,
   onClose,
   onDownload,
 }: DocumentPreviewModalProps) {
@@ -34,7 +33,8 @@ export default function DocumentPreviewModal({
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${apiBase}/${docId}?inline=1`);
+        const sep = previewEndpoint.includes("?") ? "&" : "?";
+        const res = await fetch(`${previewEndpoint}${sep}inline=1`);
         if (!res.ok) throw new Error("Failed to load preview");
         const { downloadUrl } = await res.json();
         if (!cancelled) setUrl(downloadUrl);
@@ -45,7 +45,7 @@ export default function DocumentPreviewModal({
     return () => {
       cancelled = true;
     };
-  }, [docId, apiBase, previewType]);
+  }, [previewEndpoint, previewType]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
