@@ -693,7 +693,7 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 
 ## Live Chat / Secure Messaging
 - **Message** model: leadId, content, senderName, senderType (admin/customer), readAt for read receipts
-- **Customer portal**: ChatWidget floating bubble (bottom-right), auto-opens after 10s, requires sign-in
+- **Customer portal**: ChatWidget floating bubble (bottom-right), opens on click (no auto-open), requires sign-in
   - Adaptive polling: 5s when chat is open, 15s when closed
   - Sound notification when new admin message arrives
 - **Admin portal**:

@@ -27,14 +27,6 @@ export default function ChatWidget({ leadId, isLoggedIn, customerName, returnTo 
   const [prevMessageCount, setPrevMessageCount] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Auto-open chat after 10 seconds
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!open && isLoggedIn) setOpen(true);
-    }, 10000);
-    return () => clearTimeout(timer);
-  }, [isLoggedIn]); // eslint-disable-line react-hooks/exhaustive-deps
-
   const fetchMessages = useCallback(async () => {
     if (!isLoggedIn) return;
     const res = await fetch(`/api/messages?leadId=${leadId}`);
