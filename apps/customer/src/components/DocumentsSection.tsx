@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import DocumentPreviewModal from "./DocumentPreviewModal";
 
 interface LeadDocument {
   id: string;
@@ -19,6 +20,14 @@ interface DocumentsSectionProps {
   returnTo: string;
 }
 
+interface UploadItem {
+  id: string;
+  file: File;
+  progress: number;
+  status: "queued" | "uploading" | "done" | "error";
+  error?: string;
+}
+
 const ALLOWED_EXTENSIONS = ".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg";
 const MAX_SIZE = 25 * 1024 * 1024;
 
@@ -31,6 +40,10 @@ function formatBytes(bytes: number): string {
 function formatDate(iso: string): string {
   const d = new Date(iso);
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+function isPreviewable(mimeType: string): boolean {
+  return mimeType === "application/pdf" || mimeType.startsWith("image/");
 }
 
 function fileIcon(mimeType: string) {
@@ -56,9 +69,9 @@ export default function DocumentsSection({
 }: DocumentsSectionProps) {
   const [documents, setDocuments] = useState<LeadDocument[]>([]);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [uploads, setUploads] = useState<UploadItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [previewDoc, setPreviewDoc] = useState<LeadDocument | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function loadDocs() {
@@ -80,30 +93,21 @@ export default function DocumentsSection({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leadId, isLoggedIn]);
 
-  async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setError(null);
+  function updateUpload(id: string, patch: Partial<UploadItem>) {
+    setUploads((prev) => prev.map((u) => (u.id === id ? { ...u, ...patch } : u)));
+  }
 
-    if (file.size > MAX_SIZE) {
-      setError("File too large (max 25MB).");
-      e.target.value = "";
-      return;
-    }
-
-    setUploading(true);
-    setProgress(0);
-
+  async function uploadOne(item: UploadItem) {
+    updateUpload(item.id, { status: "uploading", progress: 0 });
     try {
-      // 1. Get presigned URL
       const presignRes = await fetch("/api/documents/presign", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           leadId,
-          fileName: file.name,
-          mimeType: file.type || "application/octet-stream",
-          fileSize: file.size,
+          fileName: item.file.name,
+          mimeType: item.file.type || "application/octet-stream",
+          fileSize: item.file.size,
         }),
       });
       if (!presignRes.ok) {
@@ -112,32 +116,32 @@ export default function DocumentsSection({
       }
       const { uploadUrl, s3Key } = await presignRes.json();
 
-      // 2. Upload directly to S3 with progress
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open("PUT", uploadUrl);
-        xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+        xhr.setRequestHeader("Content-Type", item.file.type || "application/octet-stream");
         xhr.upload.onprogress = (ev) => {
-          if (ev.lengthComputable) setProgress(Math.round((ev.loaded / ev.total) * 100));
+          if (ev.lengthComputable) {
+            updateUpload(item.id, { progress: Math.round((ev.loaded / ev.total) * 100) });
+          }
         };
         xhr.onload = () => {
           if (xhr.status >= 200 && xhr.status < 300) resolve();
           else reject(new Error(`S3 upload failed: ${xhr.status}`));
         };
         xhr.onerror = () => reject(new Error("S3 upload failed"));
-        xhr.send(file);
+        xhr.send(item.file);
       });
 
-      // 3. Record in DB
       const recordRes = await fetch("/api/documents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           leadId,
-          fileName: file.name,
+          fileName: item.file.name,
           s3Key,
-          fileSize: file.size,
-          mimeType: file.type || "application/octet-stream",
+          fileSize: item.file.size,
+          mimeType: item.file.type || "application/octet-stream",
         }),
       });
       if (!recordRes.ok) {
@@ -145,14 +149,63 @@ export default function DocumentsSection({
         throw new Error(error || "Failed to save document");
       }
 
-      await loadDocs();
+      updateUpload(item.id, { status: "done", progress: 100 });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Upload failed");
-    } finally {
-      setUploading(false);
-      setProgress(0);
-      if (fileInputRef.current) fileInputRef.current.value = "";
+      updateUpload(item.id, {
+        status: "error",
+        error: err instanceof Error ? err.message : "Upload failed",
+      });
     }
+  }
+
+  async function handleFilesSelected(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length === 0) return;
+    setError(null);
+
+    const items: UploadItem[] = [];
+    for (const file of files) {
+      if (file.size > MAX_SIZE) {
+        items.push({
+          id: `${file.name}-${file.size}-${Math.random()}`,
+          file,
+          progress: 0,
+          status: "error",
+          error: "Too large (max 25MB)",
+        });
+        continue;
+      }
+      items.push({
+        id: `${file.name}-${file.size}-${Math.random()}`,
+        file,
+        progress: 0,
+        status: "queued",
+      });
+    }
+    setUploads((prev) => [...prev, ...items]);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+
+    // Upload up to 3 in parallel
+    const queue = [...items.filter((i) => i.status === "queued")];
+    const workers = Array(Math.min(3, queue.length))
+      .fill(0)
+      .map(async () => {
+        while (queue.length > 0) {
+          const next = queue.shift();
+          if (next) await uploadOne(next);
+        }
+      });
+    await Promise.all(workers);
+    await loadDocs();
+
+    // Auto-clear successful uploads after 2.5s
+    setTimeout(() => {
+      setUploads((prev) => prev.filter((u) => u.status !== "done"));
+    }, 2500);
+  }
+
+  function dismissUpload(id: string) {
+    setUploads((prev) => prev.filter((u) => u.id !== id));
   }
 
   async function handleDownload(docId: string) {
@@ -198,13 +251,14 @@ export default function DocumentsSection({
     );
   }
 
+  const anyUploading = uploads.some((u) => u.status === "uploading" || u.status === "queued");
+
   return (
     <div>
-      {/* Header */}
       <div className="mb-6">
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Documents</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          Securely share documents with our team. PDF, Word, Excel, and images supported (max 25MB per file).
+          Securely share documents with our team. Upload one or many at a time. PDF, Word, Excel, and images supported (max 25MB each).
         </p>
       </div>
 
@@ -213,35 +267,78 @@ export default function DocumentsSection({
         <input
           ref={fileInputRef}
           type="file"
+          multiple
           accept={ALLOWED_EXTENSIONS}
-          onChange={handleFileSelected}
-          disabled={uploading}
+          onChange={handleFilesSelected}
           className="hidden"
         />
 
-        {uploading ? (
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Uploading…</p>
-              <p className="text-sm font-semibold text-[#01358d] dark:text-blue-400">{progress}%</p>
-            </div>
-            <div className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-[#01358d] to-[#2870a8] transition-all duration-150" style={{ width: `${progress}%` }} />
-            </div>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          disabled={anyUploading}
+          className="w-full py-8 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl hover:border-[#01358d] hover:bg-[#01358d]/5 dark:hover:bg-[#01358d]/10 transition-all text-center group disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-gray-100 dark:bg-gray-800 group-hover:bg-[#01358d]/10 flex items-center justify-center transition-all">
+            <svg className="w-6 h-6 text-gray-400 group-hover:text-[#01358d] transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+            </svg>
           </div>
-        ) : (
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="w-full py-8 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-2xl hover:border-[#01358d] hover:bg-[#01358d]/5 dark:hover:bg-[#01358d]/10 transition-all text-center group"
-          >
-            <div className="w-12 h-12 mx-auto mb-3 rounded-2xl bg-gray-100 dark:bg-gray-800 group-hover:bg-[#01358d]/10 flex items-center justify-center transition-all">
-              <svg className="w-6 h-6 text-gray-400 group-hover:text-[#01358d] transition-colors" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-              </svg>
-            </div>
-            <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">Click to upload</p>
-            <p className="text-xs text-gray-400">PDF, DOC, DOCX, XLS, XLSX, PNG, JPG · Max 25MB</p>
-          </button>
+          <p className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1">
+            {anyUploading ? "Uploading…" : "Click to upload (multiple files supported)"}
+          </p>
+          <p className="text-xs text-gray-400">PDF, DOC, DOCX, XLS, XLSX, PNG, JPG · Max 25MB each</p>
+        </button>
+
+        {/* Upload queue */}
+        {uploads.length > 0 && (
+          <div className="mt-4 space-y-2">
+            {uploads.map((u) => (
+              <div
+                key={u.id}
+                className="px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-800/60 border border-gray-200 dark:border-gray-700"
+              >
+                <div className="flex items-center justify-between gap-3 mb-1.5">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 truncate flex-1">{u.file.name}</p>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {u.status === "done" && (
+                      <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Done</span>
+                    )}
+                    {u.status === "error" && (
+                      <span className="text-xs font-semibold text-red-600 dark:text-red-400">Failed</span>
+                    )}
+                    {(u.status === "uploading" || u.status === "queued") && (
+                      <span className="text-xs font-semibold text-[#01358d] dark:text-blue-400">{u.progress}%</span>
+                    )}
+                    {(u.status === "done" || u.status === "error") && (
+                      <button
+                        onClick={() => dismissUpload(u.id)}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        aria-label="Dismiss"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {u.status === "error" ? (
+                  <p className="text-xs text-red-600 dark:text-red-400">{u.error}</p>
+                ) : (
+                  <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full transition-all duration-150 ${
+                        u.status === "done"
+                          ? "bg-emerald-500"
+                          : "bg-gradient-to-r from-[#01358d] to-[#2870a8]"
+                      }`}
+                      style={{ width: `${u.progress}%` }}
+                    />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         )}
 
         {error && (
@@ -270,17 +367,28 @@ export default function DocumentsSection({
             {documents.map((doc) => {
               const canDelete = doc.uploadedByType === "customer" && customerUserId !== null;
               const isMine = doc.uploadedByType === "customer";
+              const canPreview = isPreviewable(doc.mimeType);
               return (
                 <li key={doc.id} className="px-6 py-4 flex items-center gap-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                    doc.mimeType.startsWith("image/")
-                      ? "bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400"
-                      : "bg-blue-100 dark:bg-blue-900/40 text-[#01358d] dark:text-blue-400"
-                  }`}>
+                  <button
+                    onClick={() => canPreview && setPreviewDoc(doc)}
+                    disabled={!canPreview}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                      doc.mimeType.startsWith("image/")
+                        ? "bg-purple-100 dark:bg-purple-900/40 text-purple-600 dark:text-purple-400"
+                        : "bg-blue-100 dark:bg-blue-900/40 text-[#01358d] dark:text-blue-400"
+                    } ${canPreview ? "cursor-pointer hover:scale-105 transition" : "cursor-default"}`}
+                    aria-label={canPreview ? "Preview" : undefined}
+                  >
                     {fileIcon(doc.mimeType)}
-                  </div>
+                  </button>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{doc.fileName}</p>
+                    <button
+                      onClick={() => canPreview ? setPreviewDoc(doc) : handleDownload(doc.id)}
+                      className="text-sm font-semibold text-gray-900 dark:text-white truncate block text-left hover:text-[#01358d] dark:hover:text-blue-400 transition"
+                    >
+                      {doc.fileName}
+                    </button>
                     <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                       <span>{formatBytes(doc.fileSize)}</span>
                       <span>·</span>
@@ -291,6 +399,18 @@ export default function DocumentsSection({
                     </div>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
+                    {canPreview && (
+                      <button
+                        onClick={() => setPreviewDoc(doc)}
+                        className="p-2 rounded-lg text-gray-400 hover:text-[#01358d] hover:bg-blue-50 dark:hover:bg-blue-950/30 transition"
+                        title="Preview"
+                      >
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDownload(doc.id)}
                       className="p-2 rounded-lg text-gray-400 hover:text-[#01358d] hover:bg-blue-50 dark:hover:bg-blue-950/30 transition"
@@ -318,6 +438,17 @@ export default function DocumentsSection({
           </ul>
         )}
       </div>
+
+      {previewDoc && (
+        <DocumentPreviewModal
+          docId={previewDoc.id}
+          fileName={previewDoc.fileName}
+          mimeType={previewDoc.mimeType}
+          apiBase="/api/documents"
+          onClose={() => setPreviewDoc(null)}
+          onDownload={() => handleDownload(previewDoc.id)}
+        />
+      )}
     </div>
   );
 }

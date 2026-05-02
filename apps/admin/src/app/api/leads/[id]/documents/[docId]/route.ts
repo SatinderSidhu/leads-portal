@@ -5,13 +5,14 @@ import { logAudit } from "../../../../../../lib/audit";
 import { deleteS3Object, getPresignedDownloadUrl } from "../../../../../../lib/s3";
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ id: string; docId: string }> }
 ) {
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id, docId } = await params;
+  const inline = new URL(req.url).searchParams.get("inline") === "1";
 
   const doc = await prisma.leadDocument.findUnique({ where: { id: docId } });
   if (!doc || doc.leadId !== id) {
@@ -19,8 +20,13 @@ export async function GET(
   }
 
   try {
-    const downloadUrl = await getPresignedDownloadUrl(doc.s3Key, doc.fileName);
-    return NextResponse.json({ downloadUrl, fileName: doc.fileName });
+    const url = await getPresignedDownloadUrl(
+      doc.s3Key,
+      doc.fileName,
+      300,
+      inline ? "inline" : "attachment"
+    );
+    return NextResponse.json({ downloadUrl: url, fileName: doc.fileName, mimeType: doc.mimeType });
   } catch (err) {
     console.error("[Document download] Failed:", err);
     return NextResponse.json({ error: "Failed to generate download URL" }, { status: 500 });
