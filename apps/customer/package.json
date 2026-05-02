@@ -10,6 +10,8 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
+    "@aws-sdk/client-s3": "^3.1041.0",
+    "@aws-sdk/s3-request-presigner": "^3.1041.0",
     "@leads-portal/database": "*",
     "@xyflow/react": "^12.10.1",
     "bcryptjs": "^3.0.3",

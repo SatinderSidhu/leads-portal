@@ -5,6 +5,7 @@ import SowSection from "../../components/SowSection";
 import AppFlowSection from "../../components/AppFlowSection";
 import ProjectFeedback from "../../components/ProjectFeedback";
 import NdaRequestCard from "../../components/NdaRequestCard";
+import DocumentsSection from "../../components/DocumentsSection";
 import ProjectShell from "../../components/ProjectShell";
 import VisitTracker from "../../components/VisitTracker";
 import ChatWidget from "../../components/ChatWidget";
@@ -40,6 +41,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 const TABS = [
   { key: "overview", label: "Overview", icon: "overview" },
+  { key: "documents", label: "Documents", icon: "folder" },
   { key: "sow", label: "Scope of Work", icon: "document" },
   { key: "app-flow", label: "App Flow", icon: "flow" },
   { key: "nda", label: "NDA", icon: "shield" },
@@ -197,6 +199,7 @@ export default async function ProjectPage({
   // Build nav items for sidebar
   const navItems = [
     { key: "overview", label: "Overview", icon: "overview" },
+    { key: "documents", label: "Documents", icon: "folder" },
     {
       key: "sow",
       label: "Scope of Work",
@@ -451,6 +454,18 @@ export default async function ProjectPage({
                 returnTo={returnTo}
               />
             </div>
+          </div>
+        )}
+
+        {/* ── Documents Tab ── */}
+        {activeTab === "documents" && (
+          <div className="p-5 md:p-8 max-w-5xl">
+            <DocumentsSection
+              leadId={lead.id}
+              isLoggedIn={isLoggedIn}
+              customerUserId={session?.id ?? null}
+              returnTo={returnTo}
+            />
           </div>
         )}
 

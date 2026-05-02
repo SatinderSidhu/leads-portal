@@ -9,6 +9,11 @@ const RichTextEditor = dynamic(
   { ssr: false, loading: () => <div className="h-48 bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse" /> }
 );
 
+const LeadDocumentsAdmin = dynamic(
+  () => import("../../../components/LeadDocumentsAdmin"),
+  { ssr: false, loading: () => <div className="h-32 bg-gray-100 dark:bg-gray-700 rounded-lg animate-pulse" /> }
+);
+
 const STATUS_OPTIONS = [
   "NEW",
   "SOW_READY",
@@ -2717,6 +2722,9 @@ export default function LeadDetailPage() {
                 </div>
               )}
             </div>
+
+            {/* Documents Section (S3-backed, customer + admin uploads) */}
+            <LeadDocumentsAdmin leadId={lead.id} />
 
             {/* Scope of Work Section */}
             <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">

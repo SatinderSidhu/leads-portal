@@ -354,6 +354,84 @@ export async function notifyLeadWatchers(
   }
 }
 
+export async function notifyDocumentUploaded(
+  leadId: string,
+  projectName: string,
+  uploaderName: string,
+  fileName: string
+) {
+  try {
+    const lead = await prisma.lead.findUnique({
+      where: { id: leadId },
+      select: {
+        watchers: { include: { admin: { select: { id: true, email: true } } } },
+        assignedTo: { select: { id: true, email: true } },
+      },
+    });
+    if (!lead) return;
+
+    const adminIds: string[] = [];
+    const adminEmails = new Map<string, string>();
+    for (const w of lead.watchers) {
+      adminIds.push(w.adminId);
+      adminEmails.set(w.adminId, w.admin.email);
+    }
+    if (lead.assignedTo && !adminEmails.has(lead.assignedTo.id)) {
+      adminIds.push(lead.assignedTo.id);
+      adminEmails.set(lead.assignedTo.id, lead.assignedTo.email);
+    }
+    if (adminIds.length === 0) return;
+
+    const prefs = await prisma.notificationPreference.findMany({
+      where: { adminId: { in: adminIds } },
+    });
+    const prefsMap = new Map(prefs.map((p) => [p.adminId, p]));
+
+    const emailList: string[] = [];
+    for (const [adminId, email] of adminEmails) {
+      const pref = prefsMap.get(adminId);
+      if (!pref || pref.customerComment !== false) {
+        emailList.push(pref?.notificationEmail || email);
+      }
+    }
+    if (emailList.length === 0) return;
+
+    const adminUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
+    const leadUrl = `${adminUrl}/leads/${leadId}`;
+
+    await transporter.sendMail({
+      from: process.env.SMTP_FROM || "noreply@leadsportal.com",
+      to: emailList[0],
+      ...(emailList.length > 1 && { bcc: emailList.slice(1).join(",") }),
+      subject: `Document uploaded: ${fileName} — ${projectName}`,
+      html: `
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+          <div style="background: linear-gradient(135deg, #01358d 0%, #2870a8 100%); border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 30px;">
+            <h1 style="color: white; margin: 0; font-size: 20px;">New Document Uploaded</h1>
+            <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 15px;">${projectName}</p>
+          </div>
+          <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+            <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">
+              <strong>${uploaderName}</strong> uploaded a document to their project portal.
+            </p>
+            <div style="background: white; border-left: 4px solid #f9556d; padding: 16px; margin: 16px 0; border-radius: 0 8px 8px 0;">
+              <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 0;">📎 <strong>${fileName}</strong></p>
+            </div>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${leadUrl}" style="display: inline-block; background: #01358d; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-size: 15px; font-weight: 600;">View Lead</a>
+            </div>
+          </div>
+          <p style="color: #999; font-size: 12px; text-align: center;">You're receiving this because you're watching this lead.</p>
+        </div>
+      `,
+    });
+
+    console.log(`[Document] Notified ${emailList.length} admin(s) about upload on ${leadId}`);
+  } catch (error) {
+    console.error("[Document] Failed to notify watchers:", error);
+  }
+}
+
 export async function sendAppFlowCommentNotification(
   lead: LeadInfo,
   flowName: string,

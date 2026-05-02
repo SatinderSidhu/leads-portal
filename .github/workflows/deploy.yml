@@ -138,6 +138,8 @@ jobs:
           CRON_SECRET=${{ secrets.CRON_SECRET }}
           SEQUENCE_CRON_ENABLED=true
           STITCH_API_KEY=${{ secrets.STITCH_API_KEY }}
+          AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}
+          AWS_S3_REGION=${{ secrets.AWS_S3_REGION || env.AWS_REGION }}
           EOF
 
             # Login to ECR

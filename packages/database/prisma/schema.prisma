@@ -148,6 +148,7 @@ model Lead {
   messages        Message[]
   receivedEmails  ReceivedEmail[]
   files           LeadFile[]
+  documents       LeadDocument[]
   scopeOfWorks    ScopeOfWork[]
   appFlows        AppFlow[]
   watchers        LeadWatcher[]
@@ -221,6 +222,23 @@ model LeadFile {
   createdAt  DateTime @default(now()) @map("created_at")
 
   @@map("lead_files")
+}
+
+model LeadDocument {
+  id             String   @id @default(uuid())
+  leadId         String   @map("lead_id")
+  lead           Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  fileName       String   @map("file_name")
+  s3Key          String   @map("s3_key") @db.Text
+  fileSize       Int      @map("file_size")
+  mimeType       String   @map("mime_type")
+  uploadedBy     String   @map("uploaded_by")
+  uploadedByType String   @map("uploaded_by_type")
+  uploadedById   String?  @map("uploaded_by_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([leadId])
+  @@map("lead_documents")
 }
 
 enum LeadStage {

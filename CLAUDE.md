@@ -79,7 +79,8 @@ leads-portal/
 | Note | notes | Comments on leads |
 | StatusHistory | status_history | Audit trail of status changes |
 | Nda | ndas | Non-disclosure agreements (one per lead) |
-| LeadFile | lead_files | File attachments on leads |
+| LeadFile | lead_files | File attachments on leads (legacy, stored on disk under `/uploads/leads/`) |
+| LeadDocument | lead_documents | Customer- and admin-shared documents stored in S3 (`leads/{leadId}/{uuid}-{filename}`), uploaded via presigned PUT URLs |
 | EmailTemplate | email_templates | Reusable email templates with HTML body, sendAfterDays timing, industry, naicsSectorCode, naicsSubsectorCode, systemKey for system templates |
 | EmailFlow | email_flows | Visual email automation flows (JSON nodes/edges) |
 | SentEmail | sent_emails | Email tracking (sent, opened, clicked, failed; clickedAt timestamp for link click tracking) |
@@ -195,6 +196,9 @@ leads-portal/
 - `GET /api/leads/[id]/audit` — Audit log (complete activity trail for a lead)
 - `GET/POST /api/leads/[id]/files` — File uploads
 - `DELETE /api/leads/[id]/files/[fileId]` — Delete file
+- `GET/POST /api/leads/[id]/documents` — S3-backed shared documents (list, save metadata after upload)
+- `POST /api/leads/[id]/documents/presign` — Generate presigned PUT URL for browser-to-S3 upload
+- `GET/DELETE /api/leads/[id]/documents/[docId]` — Get presigned download URL or delete the document
 - `GET/POST /api/leads/[id]/status` — Status changes (creates audit trail, notifies watchers)
 - `POST /api/leads/[id]/welcome-email` — Send/resend welcome email to customer (logs in email history)
 - `PUT /api/leads/[id]/assign` — Reassign lead to another admin (auto-adds watcher, sends email)
@@ -287,7 +291,7 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 | `/` | Landing — project list (logged in) or login/register prompt; redirects `?id=X` to `/project?id=X` for backward compat |
 | `/login` | Customer login |
 | `/register` | Customer registration (optional `?leadId=` to pre-link a project) |
-| `/project` | Project detail with tab navigation (Overview, SOW, App Flow, NDA, Book Meeting) via `?id=X&tab=Y` |
+| `/project` | Project detail with tab navigation (Overview, Documents, SOW, App Flow, NDA, Book Meeting) via `?id=X&tab=Y` |
 
 ### Features
 - **Registration** auto-links leads by matching customer email address
@@ -331,6 +335,9 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 - `POST /api/nda/request` — Customer NDA request (message + optional file upload, audit log + note + email to admin)
 - `POST /api/unsubscribe` — Customer email unsubscribe (enables doNotContact on all matching leads, audit log, emails admin)
 - `GET /api/branding` — Public branding config for document rendering (reads from shared DB)
+- `GET/POST /api/documents` — Customer S3-backed shared documents (list with `?leadId=`, save metadata after S3 upload)
+- `POST /api/documents/presign` — Generate presigned PUT URL for direct browser-to-S3 upload (validates mime/size/lead access)
+- `GET/DELETE /api/documents/[docId]` — Get presigned download URL or delete a document (customer can only delete their own uploads)
 
 ## Key Lib Files
 
@@ -350,8 +357,9 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 | `apps/admin/src/lib/template-merge.ts` | `renderTemplate()` — shared merge tag renderer used by sequence processor and other email paths. Supports 10 standard merge tags (customerName, projectName, phone, city, status, stage, source, dateCreated, etc.) |
 | `apps/admin/src/lib/notify.ts` | `sendNotification()` — Central notification dispatcher; checks admin preferences before sending, supports broadcast and lead-specific events |
 | `apps/admin/src/lib/audit.ts` | `logAudit()` — Non-blocking audit trail logger for all lead write operations |
+| `apps/admin/src/lib/s3.ts` + `apps/customer/src/lib/s3.ts` | `getS3Client()`, `getBucketName()`, `buildDocumentKey()`, `getPresignedUploadUrl()`, `getPresignedDownloadUrl()`, `deleteS3Object()`, `isAllowedMimeType()`, `MAX_DOCUMENT_SIZE` — S3 helpers used by both portals' document routes. Credentials auto-discovered (EC2 IAM role in prod, env vars locally) |
 | `apps/customer/src/lib/session.ts` | `getCustomerSession()` — reads customer-session cookie, returns CustomerSession |
-| `apps/customer/src/lib/email.ts` | `sendNdaSignedEmail()`, `sendSowCommentNotification()`, `sendSowSignedNotification()`, `sendAppFlowCommentNotification()`, `notifyLeadWatchers()`, `getSystemEmailContent()`, `getUnsubscribeFooter()` |
+| `apps/customer/src/lib/email.ts` | `sendNdaSignedEmail()`, `sendSowCommentNotification()`, `sendSowSignedNotification()`, `sendAppFlowCommentNotification()`, `notifyLeadWatchers()`, `notifyDocumentUploaded()`, `getSystemEmailContent()`, `getUnsubscribeFooter()` |
 | `apps/admin/src/lib/preview-token.ts` | `generatePreviewToken()` — HMAC-based preview token for admin impersonation |
 | `apps/customer/src/lib/preview-token.ts` | `generatePreviewToken()`, `isValidPreviewToken()` — Preview token validation |
 | `apps/customer/src/lib/generate-pdf.ts` | `downloadNdaPdf()`, `downloadSowPdf()` — jsPDF generation |
@@ -383,6 +391,8 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 | ProjectSidebar | `apps/customer/src/components/ProjectSidebar.tsx` | Collapsible left nav: nav items with icons/badges, user info, theme toggle |
 | NdaRequestCard | `apps/customer/src/components/NdaRequestCard.tsx` | NDA card with "Request NDA" link when not shared, opens modal |
 | NdaRequestModal | `apps/customer/src/components/NdaRequestModal.tsx` | Modal for requesting NDA: editable message + file upload (PDF/Word) |
+| DocumentsSection | `apps/customer/src/components/DocumentsSection.tsx` | Customer Documents tab: drag-to-upload, list with download/delete, S3 presigned PUT with progress bar |
+| LeadDocumentsAdmin | `apps/admin/src/components/LeadDocumentsAdmin.tsx` | Admin Documents section on lead detail page: upload + download + delete (admin sees both customer- and admin-uploaded docs) |
 
 ## Development
 
@@ -797,6 +807,22 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - "Share Link" button copies slug-based URL (e.g., `/knowledge/creating-lead`)
 - Full-text search across title and content, category pill filters
 - Create/edit articles with Markdown editor
+
+## Document Sharing (S3)
+- Customers and admins can share files (PDF/DOC/DOCX/XLS/XLSX/PNG/JPG, max 25MB) via the `/project?tab=documents` Documents tab on the customer portal and the Documents section on the admin lead detail page
+- **Storage**: dedicated S3 bucket `kitlabs-leads-portal-documents`, organized as `leads/{leadId}/{uuid}-{filename}` so every lead has its own subfolder. Bucket has block-public-access on, AES256 SSE, versioning enabled, and CORS for browser PUTs from admin/customer/localhost origins
+- **Auth/credentials**: production uses an EC2 IAM role (`leads-portal-ec2-role`) attached to the instance — no static AWS keys in env. The AWS SDK auto-discovers credentials via IMDS. Local dev uses `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` env vars
+- **Upload flow** (presigned PUT — server never proxies the file):
+  1. Client requests `POST /api/leads/[id]/documents/presign` (admin) or `POST /api/documents/presign` (customer) with fileName/mimeType/fileSize
+  2. Server validates mime/size, generates an S3 key scoped to the lead, signs a 5-minute PUT URL
+  3. Client `PUT`s the file directly to S3 (with `XMLHttpRequest` for progress UI)
+  4. Client `POST`s a metadata record to `/api/leads/[id]/documents` or `/api/documents`
+- **Download**: server signs a 5-minute GET URL with `Content-Disposition: attachment` and returns it; client opens in a new tab
+- **Permissions**: customer can delete only their own uploads (`uploadedByType=customer` AND `uploadedById=session.id`); admin can delete any document. Both routes verify s3Key starts with `leads/{leadId}/` to prevent cross-lead access
+- **Notifications**: customer upload triggers `notifyDocumentUploaded()` in `apps/customer/src/lib/email.ts` — emails assigned admin + watchers, respects `customerComment` notification preference
+- **Audit log**: `Document Uploaded`, `Document Uploaded by Customer`, `Document Deleted`, `Document Deleted by Customer`
+- **One-time AWS setup**: run `bash scripts/aws-s3-setup.sh` to create bucket + IAM policy + role + instance profile and attach to EC2 (idempotent). Then add `AWS_S3_BUCKET` and `AWS_S3_REGION` to GitHub Secrets so the deploy workflow writes them into the EC2 `.env`
+- **Files vs Documents**: the legacy `LeadFile` model (admin-only file attachments stored on disk under `/uploads/leads/`) is unchanged. `LeadDocument` is the new S3-backed shared workspace between customer and admin
 
 ## Customer Portal Design
 - **Left sidebar navigation**: Collapsible sidebar (ProjectShell + ProjectSidebar) replacing top tabs. Collapse/expand, hover-expand, pin/lock, localStorage persistence. Mobile: hamburger + overlay sidebar

@@ -35,6 +35,8 @@ services:
       CRON_SECRET: ${CRON_SECRET}
       SEQUENCE_CRON_ENABLED: ${SEQUENCE_CRON_ENABLED:-false}
       NEXT_PUBLIC_ADMIN_URL: ${ADMIN_PORTAL_URL}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET}
+      AWS_S3_REGION: ${AWS_S3_REGION:-us-east-1}
       NODE_ENV: production
     volumes:
       - uploads:/app/apps/admin/public/uploads
@@ -68,6 +70,8 @@ services:
       LINKEDIN_CLIENT_ID: ${LINKEDIN_CLIENT_ID}
       LINKEDIN_CLIENT_SECRET: ${LINKEDIN_CLIENT_SECRET}
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET}
+      AWS_S3_REGION: ${AWS_S3_REGION:-us-east-1}
       NODE_ENV: production
     depends_on:
       db:
