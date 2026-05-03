@@ -19,6 +19,7 @@ interface AppStoreConfigData {
   bundleId: string | null;
   connectionVerified: boolean;
   connectionVerifiedAt: string | null;
+  hasApiKey: boolean;
 }
 
 const BUILD_STATUS_STEPS = ["SUBMITTED", "IN_REVIEW", "BUILDING", "TESTING", "READY", "DELIVERED"];
@@ -278,17 +279,30 @@ export default function BuildPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-2">
                   {activeStore === "IOS" ? "App Store Connect API Key" : "Service Account Key (JSON)"}
+                  {(() => {
+                    const existing = configs.find((c) => c.platform === activeStore);
+                    return existing?.hasApiKey ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" /></svg>
+                        Saved
+                      </span>
+                    ) : null;
+                  })()}
                 </label>
                 <textarea
                   value={storeForm.apiKey}
                   onChange={(e) => setStoreForm({ ...storeForm, apiKey: e.target.value })}
                   rows={3}
-                  placeholder={activeStore === "IOS" ? "Paste your API key..." : "Paste your service account JSON..."}
+                  placeholder={(() => {
+                    const existing = configs.find((c) => c.platform === activeStore);
+                    if (existing?.hasApiKey) return "Leave blank to keep existing key, or paste a new one to replace it...";
+                    return activeStore === "IOS" ? "Paste your API key..." : "Paste your service account JSON...";
+                  })()}
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#01358d] outline-none transition resize-y text-xs font-mono"
                 />
-                <p className="text-[10px] text-gray-400 mt-1">This is encrypted and only used for build uploads. Optional — you can add it later.</p>
+                <p className="text-[10px] text-gray-400 mt-1">Stored encrypted (AES-256-GCM) and only used for build uploads. Optional — you can add it later.</p>
               </div>
             </div>
 

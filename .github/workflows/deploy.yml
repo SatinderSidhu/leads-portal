@@ -140,6 +140,7 @@ jobs:
           STITCH_API_KEY=${{ secrets.STITCH_API_KEY }}
           AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}
           AWS_S3_REGION=${{ secrets.AWS_S3_REGION || env.AWS_REGION }}
+          APP_FACTORY_SECRET_KEY=${{ secrets.APP_FACTORY_SECRET_KEY }}
           EOF
 
             # Login to ECR
