@@ -824,6 +824,17 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - **One-time AWS setup**: run `bash scripts/aws-s3-setup.sh` to create bucket + IAM policy + role + instance profile and attach to EC2 (idempotent). Then add `AWS_S3_BUCKET` and `AWS_S3_REGION` to GitHub Secrets so the deploy workflow writes them into the EC2 `.env`
 - **Files vs Documents**: the legacy `LeadFile` model (admin-only file attachments stored on disk under `/uploads/leads/`) is unchanged. `LeadDocument` is the new S3-backed shared workspace between customer and admin
 
+## Kiosk QR Pairing (App Factory)
+- For trade-show kiosks where customers don't want to type passwords on a public machine. Sign-in is gated at the AppFactory prompt-submit step (`/start`).
+- **Flow**: kiosk shows a QR pointing at `https://leadsportal.kitlabs.us/pair?token=…`. Customer scans on phone, completes Google/LinkedIn OAuth on the customer portal (where they're often already authenticated), explicitly confirms pairing, and the kiosk's poll picks up the LINKED status and redeems → AppFactory `customer-session` cookie set, kiosk continues automatically.
+- **Why explicit confirm on phone**: prevents a malicious QR from auto-pairing a stranger's session. Customer sees "Sign in to KITLabs App Factory on the kiosk?" with their identity, taps Confirm.
+- **Security**: opaque 32-char URL-safe token, 10-min expiry, one-shot redeem (status flips PENDING → LINKED → REDEEMED), lazy-expiry on read. Token never travels in a cookie or query string the attacker can guess
+- **Data model**: `PairingSession { token, status, customerUserId?, expiresAt, redeemedAt }` in shared schema. `CustomerUser` gets a back-relation
+- **AppFactory endpoints**: `POST /api/pair/start` (returns token + qrUrl), `GET /api/pair/[token]` (kiosk polls every 2s), `POST /api/pair/[token]/redeem` (sets cookie, marks REDEEMED)
+- **Customer portal endpoints**: `GET /pair?token=…` (server component branches on auth state — login buttons, confirm screen, error/expired/success), `POST /api/pair/[token]/link` (authed-only, marks LINKED)
+- **Components**: `apps/app-factory/src/components/KioskSignInModal.tsx` (renders QR via `qrcode` npm lib, polls, redeems, "Try again" on expiry); `apps/customer/src/app/pair/page.tsx` + `PairConfirmClient.tsx` (phone confirm UI)
+- **Kiosk housekeeping**: NavBar's existing Sign Out is upgraded to a prominent "Sign out & finish" button (coral/pink, with icon) and confirm dialog, so trade-show users can clearly clear their session before the next person uses the kiosk
+
 ## Customer Portal Design
 - **Left sidebar navigation**: Collapsible sidebar (ProjectShell + ProjectSidebar) replacing top tabs. Collapse/expand, hover-expand, pin/lock, localStorage persistence. Mobile: hamburger + overlay sidebar
 - **Welcome message**: personalized greeting explaining portal purpose (track progress, review documents, collaborate, schedule meetings)

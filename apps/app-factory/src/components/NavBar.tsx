@@ -39,6 +39,7 @@ export default function NavBar() {
   }, [user]);
 
   async function handleLogout() {
+    if (!confirm("Sign out and clear this session? Anyone using this kiosk after you will start fresh.")) return;
     await fetch("/api/auth", { method: "DELETE" });
     setUser(null);
     router.push("/");
@@ -88,8 +89,15 @@ export default function NavBar() {
                 <span className="text-sm font-medium text-gray-700 hidden sm:block whitespace-nowrap">{user.name}</span>
               </a>
 
-              <button onClick={handleLogout} className="text-xs text-gray-400 hover:text-red-500 transition whitespace-nowrap">
-                Sign Out
+              <button
+                onClick={handleLogout}
+                title="Sign out and clear this session — recommended at the end of a kiosk session"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#f9556d]/10 hover:bg-[#f9556d] text-[#f9556d] hover:text-white text-xs font-semibold transition whitespace-nowrap"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l-3 3m0 0 3 3m-3-3h12.75" />
+                </svg>
+                Sign out & finish
               </button>
             </div>
           ) : (

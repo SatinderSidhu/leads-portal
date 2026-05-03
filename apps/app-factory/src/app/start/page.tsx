@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import KioskSignInModal from "../../components/KioskSignInModal";
 
 const INDUSTRY_PROMPTS = [
   { name: "Agriculture & Farming", prompt: "I have an agriculture app idea that", icon: "🌾" },
@@ -299,6 +300,8 @@ export default function StartPage() {
   const [submitting, setSubmitting] = useState(false);
   const [user, setUser] = useState<{ id: string; name: string; email: string } | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [signInModalOpen, setSignInModalOpen] = useState(false);
+  const submitAfterSignInRef = useRef(false);
 
   // Restore idea from localStorage on mount + check auth
   useEffect(() => {
@@ -321,18 +324,7 @@ export default function StartPage() {
     if (el) { el.focus(); el.setSelectionRange(prompt.length + 1, prompt.length + 1); }
   }
 
-  async function handleSubmit() {
-    if (!idea.trim()) return;
-
-    // Check if user is signed in
-    if (!user) {
-      // Save idea + platforms to localStorage so they persist through login/register
-      localStorage.setItem("appfactory_idea", idea);
-      localStorage.setItem("appfactory_platforms", JSON.stringify(platform));
-      router.push("/login?returnTo=/start");
-      return;
-    }
-
+  async function submitProject(currentUser: { id: string; name: string; email: string }) {
     setSubmitting(true);
     try {
       const res = await fetch("/api/projects", {
@@ -349,6 +341,20 @@ export default function StartPage() {
     } finally {
       setSubmitting(false);
     }
+    void currentUser;
+  }
+
+  async function handleSubmit() {
+    if (!idea.trim()) return;
+
+    // Not signed in → open the QR pairing modal so the customer can sign in from their phone
+    if (!user) {
+      submitAfterSignInRef.current = true;
+      setSignInModalOpen(true);
+      return;
+    }
+
+    await submitProject(user);
   }
 
   return (
@@ -461,6 +467,23 @@ export default function StartPage() {
           ))}
         </div>
       </div>
+
+      {signInModalOpen && (
+        <KioskSignInModal
+          onCancel={() => {
+            submitAfterSignInRef.current = false;
+            setSignInModalOpen(false);
+          }}
+          onSignedIn={async (signedInUser) => {
+            setUser(signedInUser);
+            setSignInModalOpen(false);
+            if (submitAfterSignInRef.current) {
+              submitAfterSignInRef.current = false;
+              await submitProject(signedInUser);
+            }
+          }}
+        />
+      )}
     </main>
   );
 }

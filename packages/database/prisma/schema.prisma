@@ -708,6 +708,7 @@ model CustomerUser {
   updatedAt      DateTime        @updatedAt @map("updated_at")
   socialAccounts    SocialAccount[]
   notifications     CustomerNotification[]
+  pairingSessions   PairingSession[]
 
   @@map("customer_users")
 }
@@ -725,6 +726,21 @@ model CustomerNotification {
 
   @@index([userId, readAt])
   @@map("customer_notifications")
+}
+
+model PairingSession {
+  id              String        @id @default(uuid())
+  token           String        @unique
+  status          String        @default("PENDING")
+  customerUserId  String?       @map("customer_user_id")
+  customerUser    CustomerUser? @relation(fields: [customerUserId], references: [id], onDelete: SetNull)
+  expiresAt       DateTime      @map("expires_at")
+  redeemedAt      DateTime?     @map("redeemed_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  @@index([expiresAt])
+  @@map("pairing_sessions")
 }
 
 model SocialAccount {
