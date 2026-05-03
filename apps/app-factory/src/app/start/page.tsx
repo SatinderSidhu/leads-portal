@@ -477,6 +477,7 @@ export default function StartPage() {
           onSignedIn={async (signedInUser) => {
             setUser(signedInUser);
             setSignInModalOpen(false);
+            window.dispatchEvent(new Event("auth:changed"));
             if (submitAfterSignInRef.current) {
               submitAfterSignInRef.current = false;
               await submitProject(signedInUser);

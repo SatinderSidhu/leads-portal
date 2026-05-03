@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 export default function NavBar() {
@@ -8,24 +8,35 @@ export default function NavBar() {
   const [user, setUser] = useState<{ id: string; name: string; email: string; profilePicture?: string | null } | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  useEffect(() => {
+  const refreshAuth = useCallback(() => {
     fetch("/api/auth/me")
       .then((r) => (r.ok ? r.json() : null))
       .then((u) => {
         setUser(u);
         if (u) {
-          // Also fetch profile picture
           fetch("/api/profile").then((r) => r.ok ? r.json() : null).then((p) => {
             if (p?.profilePicture) setUser((prev) => prev ? { ...prev, profilePicture: p.profilePicture } : prev);
           }).catch(() => {});
-          // Fetch unread count
           fetch("/api/notifications?unread=1").then((r) => r.ok ? r.json() : null).then((d) => {
             if (d?.unreadCount) setUnreadCount(d.unreadCount);
           }).catch(() => {});
+        } else {
+          setUnreadCount(0);
         }
       })
       .catch(() => {});
   }, []);
+
+  // Initial load
+  useEffect(() => { refreshAuth(); }, [refreshAuth]);
+
+  // Re-fetch when other parts of the app signal an auth change
+  // (QR sign-in modal fires this after redeem, logout fires it on sign-out).
+  useEffect(() => {
+    const handler = () => refreshAuth();
+    window.addEventListener("auth:changed", handler);
+    return () => window.removeEventListener("auth:changed", handler);
+  }, [refreshAuth]);
 
   // Poll unread count every 30s
   useEffect(() => {
@@ -42,6 +53,7 @@ export default function NavBar() {
     if (!confirm("Sign out and clear this session? Anyone using this kiosk after you will start fresh.")) return;
     await fetch("/api/auth", { method: "DELETE" });
     setUser(null);
+    window.dispatchEvent(new Event("auth:changed"));
     router.push("/");
   }
 
