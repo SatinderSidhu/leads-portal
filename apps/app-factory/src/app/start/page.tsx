@@ -470,6 +470,15 @@ export default function StartPage() {
 
       {signInModalOpen && (
         <KioskSignInModal
+          returnTo="/start"
+          onBeforeRedirect={() => {
+            // Persist form state across full-page OAuth redirects so the customer
+            // doesn't lose their typed prompt + platform choices.
+            try {
+              localStorage.setItem("appfactory_idea", idea);
+              localStorage.setItem("appfactory_platforms", JSON.stringify(platform));
+            } catch { /* localStorage unavailable */ }
+          }}
           onCancel={() => {
             submitAfterSignInRef.current = false;
             setSignInModalOpen(false);

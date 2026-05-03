@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
     if (!user.password) {
       return NextResponse.json(
-        { error: "This account uses social login. Please sign in with Google or LinkedIn." },
+        { error: "This account uses social login. Please sign in with Google." },
         { status: 401 }
       );
     }
