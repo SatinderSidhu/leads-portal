@@ -24,6 +24,11 @@ const DocumentPreviewModal = dynamic(
   { ssr: false }
 );
 
+const LeadQuestionnairePanel = dynamic(
+  () => import("../../../components/LeadQuestionnairePanel"),
+  { ssr: false, loading: () => <div className="h-32 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse" /> }
+);
+
 const STATUS_OPTIONS = [
   "NEW",
   "SOW_READY",
@@ -3496,6 +3501,15 @@ export default function LeadDetailPage() {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Questionnaire Section (full width within right column) */}
+            <div className="md:col-span-2">
+              <LeadQuestionnairePanel
+                leadId={lead.id}
+                customerName={lead.customerName}
+                doNotContact={lead.doNotContact}
+              />
             </div>
 
             {/* Notes Section */}

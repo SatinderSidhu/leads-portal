@@ -6,6 +6,7 @@ import AppFlowSection from "../../components/AppFlowSection";
 import ProjectFeedback from "../../components/ProjectFeedback";
 import NdaRequestCard from "../../components/NdaRequestCard";
 import DocumentsSection from "../../components/DocumentsSection";
+import QuestionnaireSection from "../../components/QuestionnaireSection";
 import ProjectShell from "../../components/ProjectShell";
 import VisitTracker from "../../components/VisitTracker";
 import ChatWidget from "../../components/ChatWidget";
@@ -42,6 +43,7 @@ const STATUS_COLORS: Record<string, string> = {
 const TABS = [
   { key: "overview", label: "Overview", icon: "overview" },
   { key: "documents", label: "Documents", icon: "folder" },
+  { key: "questionnaire", label: "Questionnaire", icon: "checklist" },
   { key: "sow", label: "Scope of Work", icon: "document" },
   { key: "app-flow", label: "App Flow", icon: "flow" },
   { key: "nda", label: "NDA", icon: "shield" },
@@ -151,6 +153,7 @@ export default async function ProjectPage({
         orderBy: { createdAt: "desc" },
       },
       assignedTo: { select: { name: true, email: true, profilePicture: true } },
+      questionnaire: { select: { id: true, status: true, questions: true, answers: true } },
     },
   });
 
@@ -186,6 +189,10 @@ export default async function ProjectPage({
   const hasSow = lead.scopeOfWorks.length > 0;
   const hasAppFlow = lead.appFlows.length > 0;
   const hasNda = !!lead.nda;
+
+  // Questionnaire is visible to the customer once admin has SENT it (DRAFT stays admin-only)
+  const visibleQuestionnaire = lead.questionnaire && lead.questionnaire.status !== "DRAFT" ? lead.questionnaire : null;
+  const questionnaireActionRequired = visibleQuestionnaire && visibleQuestionnaire.status !== "SUBMITTED";
   const adminBaseUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
   const isLoggedIn = !!session;
   const returnTo = encodeURIComponent(`/project?id=${lead.id}&tab=${activeTab}${v ? `&v=${v}` : ""}`);
@@ -200,6 +207,14 @@ export default async function ProjectPage({
   const navItems = [
     { key: "overview", label: "Overview", icon: "overview" },
     { key: "documents", label: "Documents", icon: "folder" },
+    {
+      key: "questionnaire",
+      label: "Questionnaire",
+      icon: "checklist",
+      badge: questionnaireActionRequired ? "!" : undefined,
+      statusColor: visibleQuestionnaire?.status === "SUBMITTED" ? "bg-emerald-400" : questionnaireActionRequired ? "bg-amber-400" : undefined,
+      disabled: !visibleQuestionnaire,
+    },
     {
       key: "sow",
       label: "Scope of Work",
@@ -317,6 +332,34 @@ export default async function ProjectPage({
                 </div>
               </div>
             </div>
+
+            {/* Action Required: Questionnaire awaiting answers */}
+            {questionnaireActionRequired && (
+              <a
+                href={`/project?id=${lead.id}&tab=questionnaire`}
+                className="block mb-6 group bg-gradient-to-r from-amber-50 to-amber-100/40 dark:from-amber-950/30 dark:to-amber-900/20 border border-amber-200 dark:border-amber-900 rounded-2xl p-5 hover:shadow-md transition-all"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-amber-200 dark:bg-amber-800/50 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-5 h-5 text-amber-700 dark:text-amber-300" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold text-amber-800 dark:text-amber-300 uppercase tracking-wider">Action required</p>
+                    <p className="text-base font-semibold text-amber-900 dark:text-amber-100 mt-0.5">
+                      Answer {Array.isArray(visibleQuestionnaire?.questions) ? visibleQuestionnaire.questions.length : "a few"} questions for your project
+                    </p>
+                    <p className="text-sm text-amber-800 dark:text-amber-300/80 mt-1">
+                      Your answers help us scope your project accurately. Should take just a few minutes.
+                    </p>
+                  </div>
+                  <svg className="w-5 h-5 text-amber-700 dark:text-amber-400 flex-shrink-0 mt-1 group-hover:translate-x-0.5 transition" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                  </svg>
+                </div>
+              </a>
+            )}
 
             {/* Dashboard Cards — NDA first, then SOW, App Flow, Meeting */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -464,6 +507,17 @@ export default async function ProjectPage({
               leadId={lead.id}
               isLoggedIn={isLoggedIn}
               customerUserId={session?.id ?? null}
+              returnTo={returnTo}
+            />
+          </div>
+        )}
+
+        {/* ── Questionnaire Tab ── */}
+        {activeTab === "questionnaire" && (
+          <div className="p-5 md:p-8 max-w-3xl">
+            <QuestionnaireSection
+              leadId={lead.id}
+              isLoggedIn={isLoggedIn}
               returnTo={returnTo}
             />
           </div>

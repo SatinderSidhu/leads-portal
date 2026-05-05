@@ -149,6 +149,7 @@ model Lead {
   receivedEmails  ReceivedEmail[]
   files           LeadFile[]
   documents       LeadDocument[]
+  questionnaire   LeadQuestionnaire?
   scopeOfWorks    ScopeOfWork[]
   appFlows        AppFlow[]
   watchers        LeadWatcher[]
@@ -228,6 +229,39 @@ model LeadFile {
   createdAt  DateTime @default(now()) @map("created_at")
 
   @@map("lead_files")
+}
+
+model QuestionnaireTemplate {
+  id          String   @id @default(uuid())
+  name        String
+  description String?  @db.Text
+  questions   Json     @default("[]")
+  createdBy   String?  @map("created_by")
+  updatedBy   String?  @map("updated_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("questionnaire_templates")
+}
+
+model LeadQuestionnaire {
+  id           String    @id @default(uuid())
+  leadId       String    @unique @map("lead_id")
+  lead         Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  templateId   String?   @map("template_id")
+  title        String
+  description  String?   @db.Text
+  questions    Json      @default("[]")
+  answers      Json      @default("{}")
+  status       String    @default("DRAFT")
+  sentAt       DateTime? @map("sent_at")
+  submittedAt  DateTime? @map("submitted_at")
+  createdBy    String?   @map("created_by")
+  updatedBy    String?   @map("updated_by")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@map("lead_questionnaires")
 }
 
 model LeadDocument {

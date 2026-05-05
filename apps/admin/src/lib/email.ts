@@ -366,6 +366,64 @@ export async function sendSowReadyEmail(
   return { subject, html: sowHtmlWithUnsub };
 }
 
+export async function sendQuestionnaireSentEmail(
+  lead: { customerName: string; customerEmail: string; projectName: string },
+  leadId: string,
+  questionCount: number,
+  admin?: AdminInfo
+) {
+  const portalUrl = `${process.env.CUSTOMER_PORTAL_URL}?id=${leadId}&tab=questionnaire`;
+
+  console.log(`[Email] Sending questionnaire email to ${lead.customerEmail}...`);
+  const start = Date.now();
+
+  const fallbackSubject = `Quick questions about ${lead.projectName}`;
+  const fallbackHtml = `
+    <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+      <div style="background: linear-gradient(135deg, #01358d 0%, #2870a8 100%); border-radius: 12px; padding: 40px; text-align: center; margin-bottom: 30px;">
+        <h1 style="color: white; margin: 0; font-size: 24px;">A few quick questions</h1>
+        <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 16px;">${lead.projectName}</p>
+      </div>
+      <div style="background: #f8f9fa; border-radius: 12px; padding: 30px; margin-bottom: 30px;">
+        <p style="color: #333; font-size: 16px; line-height: 1.6; margin-top: 0;">Hi ${lead.customerName},</p>
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">
+          To help us scope your project well, we've put together <strong>${questionCount} short question${questionCount === 1 ? "" : "s"}</strong> for you.
+          Your answers will go directly into your project file and inform the Scope of Work we send next.
+        </p>
+        <p style="color: #333; font-size: 16px; line-height: 1.6;">You can save your progress at any time and come back later.</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${portalUrl}" style="display: inline-block; background: #01358d; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-size: 16px; font-weight: 600;">Answer the questions</a>
+        </div>
+      </div>
+      <p style="color: #999; font-size: 13px; text-align: center;">If you have any questions, just reply to this email.</p>
+    </div>
+  `;
+
+  const { subject, html } = await getSystemEmailContent(
+    "system_questionnaire_sent",
+    {
+      customerName: lead.customerName,
+      projectName: lead.projectName,
+      questionCount: String(questionCount),
+      portalUrl,
+    },
+    fallbackSubject,
+    fallbackHtml
+  );
+
+  const htmlWithUnsub = html + getUnsubscribeFooter(lead.customerEmail, leadId);
+
+  const info = await transporter.sendMail({
+    from: getFromAddress(admin?.name),
+    replyTo: getReplyToAddress(leadId, admin?.name),
+    to: lead.customerEmail,
+    subject,
+    html: htmlWithUnsub,
+  });
+
+  console.log(`[Email] Questionnaire email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
+}
+
 export async function sendLeadAssignedEmail(
   lead: { projectName: string; customerName: string; id: string },
   assignedTo: { name: string; email: string },
