@@ -868,11 +868,296 @@ async function seedSystemEmailTemplates() {
   }
 }
 
+// ── Questionnaire Templates ─────────────────────────────────
+
+const MARKETPLACE_DISCOVERY_QUESTIONS = [
+  // Dispatch & Matching
+  {
+    label: "How should service requests be routed to providers?",
+    type: "single_choice",
+    required: true,
+    options: [
+      "1 customer → 1 provider (sequential, one at a time)",
+      "1 customer → multiple providers (broadcast — first to accept wins)",
+      "Mixed / it depends (please describe)",
+    ],
+    helpText: "This is the core dispatch model — sequential one-by-one or simultaneous broadcast.",
+  },
+  {
+    label: "For broadcast dispatch, how many providers should receive the request at once?",
+    type: "single_choice",
+    required: false,
+    options: ["3 providers", "5 providers", "10 providers", "Configurable per service category"],
+    helpText: "Skip if you chose sequential dispatch.",
+  },
+  {
+    label: "For sequential dispatch, how long should we wait before passing to the next provider?",
+    type: "single_choice",
+    required: false,
+    options: ["10 seconds", "20 seconds", "30 seconds", "60 seconds", "Configurable"],
+    helpText: "Skip if you chose broadcast dispatch.",
+  },
+  {
+    label: "What is the default search radius for matching providers?",
+    type: "single_choice",
+    required: true,
+    options: ["10 km", "20 km", "25 km", "Other / configurable"],
+  },
+
+  // Failure & Recovery
+  {
+    label: "What should happen if an accepted provider then cancels?",
+    type: "long_text",
+    required: true,
+    helpText: "Should the system automatically restart dispatch and find another provider, or escalate to an admin?",
+  },
+  {
+    label: "What should happen if an accepted provider doesn't show up?",
+    type: "long_text",
+    required: true,
+    helpText: "Same auto-redispatch flow as cancellation, or different handling?",
+  },
+  {
+    label: "If no provider accepts the request at all, should the customer be charged?",
+    type: "single_choice",
+    required: true,
+    options: [
+      "No — never charge if no one accepts",
+      "Charge a small no-match fee",
+      "Charge full amount and refund automatically",
+      "Other (please describe in notes)",
+    ],
+  },
+
+  // Pricing — Rush / Surge
+  {
+    label: "Is the rush / surge fee fixed or dynamic?",
+    type: "single_choice",
+    required: true,
+    options: [
+      "Fixed flat fee per request",
+      "Dynamic based on demand",
+      "No rush fee at all",
+    ],
+  },
+  {
+    label: "Who controls the rush fee?",
+    type: "single_choice",
+    required: false,
+    options: [
+      "Admin only",
+      "Provider sets their own",
+      "System / algorithm",
+      "Combination (please describe)",
+    ],
+    helpText: "Skip if you chose 'No rush fee'.",
+  },
+
+  // Pricing — Service Fees
+  {
+    label: "Should service prices be the same everywhere, or vary by location/parameter?",
+    type: "single_choice",
+    required: true,
+    options: [
+      "Same fixed prices set by Super Admin",
+      "Variable by state / region",
+      "Variable by other parameter (please describe)",
+    ],
+  },
+  {
+    label: "Will tax be added on top of service prices?",
+    type: "yes_no",
+    required: true,
+  },
+
+  // Payment Timing
+  {
+    label: "When is the customer charged for a service?",
+    type: "single_choice",
+    required: true,
+    options: [
+      "Before dispatch (full amount upfront)",
+      "After job completion",
+      "Partial upfront, remainder after completion",
+      "Other (please describe)",
+    ],
+  },
+
+  // Platform Commission
+  {
+    label: "How is the platform commission calculated?",
+    type: "single_choice",
+    required: true,
+    options: [
+      "Fixed % across all services",
+      "Variable % per service category",
+      "Other (please describe)",
+    ],
+  },
+  {
+    label: "Should admin be able to change commission rates dynamically (without a code deploy)?",
+    type: "yes_no",
+    required: true,
+  },
+
+  // Provider Payouts
+  {
+    label: "When can providers withdraw their earnings?",
+    type: "single_choice",
+    required: true,
+    options: ["Instant (anytime)", "Daily", "Weekly", "Monthly", "Configurable per provider"],
+  },
+  {
+    label: "What is the minimum payout threshold?",
+    type: "single_choice",
+    required: true,
+    options: ["$100", "$500", "Configurable per provider", "No minimum"],
+  },
+  {
+    label: "Should there be a payout fee charged on each withdrawal?",
+    type: "yes_no",
+    required: true,
+  },
+
+  // Refunds
+  {
+    label: "Under what circumstances should customers receive a full refund?",
+    type: "long_text",
+    required: true,
+  },
+  {
+    label: "Under what circumstances should customers receive a partial refund (and how much)?",
+    type: "long_text",
+    required: true,
+  },
+  {
+    label: "Who approves refund requests?",
+    type: "single_choice",
+    required: true,
+    options: [
+      "Admin reviews each request manually",
+      "Automated rules with admin override on edge cases",
+      "Fully automated (no admin intervention)",
+      "Combination (please describe)",
+    ],
+  },
+
+  // Customer Cancellation
+  {
+    label: "Until what point can a customer cancel a request, and is there a cancellation fee?",
+    type: "long_text",
+    required: true,
+    helpText: "Include any free cancellation window — e.g. \"free if cancelled within 2 minutes of booking, full charge after that.\"",
+  },
+
+  // Provider Cancellation
+  {
+    label: "Can a provider cancel after accepting? If yes, what penalty applies?",
+    type: "long_text",
+    required: true,
+    helpText: "Rating drop, temporary suspension, financial penalty, or some combination?",
+  },
+
+  // No-Show Handling
+  {
+    label: "What happens if the provider doesn't show up at the job location?",
+    type: "long_text",
+    required: true,
+  },
+  {
+    label: "What happens if the customer doesn't show up at the job location?",
+    type: "long_text",
+    required: true,
+  },
+
+  // Provider Verification
+  {
+    label: "What documents are required to verify and onboard a provider?",
+    type: "long_text",
+    required: true,
+    helpText: "ID proof, professional license, certifications, insurance, background check, anything else?",
+  },
+
+  // Provider Limits
+  {
+    label: "Can a single provider accept multiple jobs concurrently?",
+    type: "yes_no",
+    required: true,
+    helpText: "Yes = multiple in flight at once, No = one job at a time.",
+  },
+  {
+    label: "Should there be a daily job limit per provider?",
+    type: "single_choice",
+    required: true,
+    options: [
+      "Yes, fixed limit (please specify in notes)",
+      "Yes, configurable per provider",
+      "No daily limit",
+    ],
+  },
+  {
+    label: "What should happen when a provider wants to close their account?",
+    type: "long_text",
+    required: true,
+    helpText: "Pending jobs, pending payouts, archived reviews — how should each be handled?",
+  },
+
+  // Customer Booking Inputs
+  {
+    label: "What information should the customer provide when booking?",
+    type: "long_text",
+    required: true,
+    helpText: "Notes, photos, address, preferred time slot — list everything that should be required or optional.",
+  },
+
+  // Notifications
+  {
+    label: "Which notification channels should be used?",
+    type: "long_text",
+    required: true,
+    helpText: "Push notifications, SMS, Email, in-app — pick any combination, and note if particular events should use a specific channel.",
+  },
+];
+
+async function seedQuestionnaireTemplates() {
+  const TEMPLATE_NAME = "Marketplace App — Pre-SOW Discovery";
+  const existing = await prisma.questionnaireTemplate.findFirst({
+    where: { name: TEMPLATE_NAME },
+  });
+  if (existing) {
+    console.log(`Questionnaire template "${TEMPLATE_NAME}" already exists, skipping.`);
+    return;
+  }
+
+  const questions = MARKETPLACE_DISCOVERY_QUESTIONS.map((q) => ({
+    id: `q_${Math.random().toString(36).slice(2, 10)}${Date.now().toString(36)}_${Math.floor(Math.random() * 1000)}`,
+    label: q.label,
+    type: q.type,
+    required: q.required,
+    ...(q.options && { options: q.options }),
+    ...(q.helpText && { helpText: q.helpText }),
+  }));
+
+  const template = await prisma.questionnaireTemplate.create({
+    data: {
+      name: TEMPLATE_NAME,
+      description:
+        "Discovery questions for an on-demand service marketplace (Uber-style dispatch). Covers dispatch model, pricing, payouts, refunds, cancellations, provider verification, and notification channels.",
+      questions,
+      createdBy: "System",
+      updatedBy: "System",
+    },
+  });
+
+  console.log(`Seeded questionnaire template: "${template.name}" (${questions.length} questions)`);
+}
+
 async function main() {
   await seedAdminUser();
   await seedEmailTemplates();
   await seedSystemEmailTemplates();
   await seedBranding();
+  await seedQuestionnaireTemplates();
 }
 
 main()
