@@ -60,6 +60,28 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Promo Video */}
+      <section className="bg-gradient-to-b from-gray-100 via-gray-100 to-white py-16">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="text-center mb-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">See it in action</h2>
+            <p className="text-sm text-gray-500">Watch how App Factory turns ideas into apps in minutes.</p>
+          </div>
+          <div className="relative rounded-3xl overflow-hidden shadow-2xl ring-1 ring-black/5 bg-black aspect-video">
+            <video
+              src="https://kitlabs-app-factory-promo-video.s3.us-east-1.amazonaws.com/MicrosoftTeams-video.mp4"
+              autoPlay
+              loop
+              muted
+              playsInline
+              controls
+              preload="metadata"
+              className="w-full h-full object-cover"
+            />
+          </div>
+        </div>
+      </section>
+
       {/* Footer */}
       <footer className="border-t border-gray-200 py-6">
         <div className="max-w-5xl mx-auto px-6 flex items-center justify-between">
