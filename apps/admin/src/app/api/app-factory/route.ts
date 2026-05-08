@@ -8,6 +8,9 @@ export async function GET() {
 
   try {
     const projects = await prisma.appFactoryProject.findMany({
+      // Default order is createdAt desc; the client can re-sort by updatedAt
+      // ("recently active") without a round-trip since the list size is
+      // bounded.
       orderBy: { createdAt: "desc" },
       include: {
         builds: { orderBy: { version: "desc" }, take: 1 },
