@@ -169,6 +169,7 @@ export default function NewSequencePage() {
               <option value="REFERRAL">Referral only</option>
               <option value="COLD_OUTREACH">Cold Outreach only</option>
               <option value="AGENT">Agent only</option>
+              <option value="SMB_APP_CONTEST_2026">SMB App Contest 2026 only</option>
             </select>
             <p className="text-xs text-gray-400 mt-1">Only leads from this source will be auto-enrolled. Leave blank to enroll all new leads.</p>
           </div>

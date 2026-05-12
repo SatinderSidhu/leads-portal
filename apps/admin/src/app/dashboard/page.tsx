@@ -78,6 +78,7 @@ const SOURCE_LABELS: Record<string, string> = {
   WEBSITE: "Website",
   COLD_OUTREACH: "Cold Outreach",
   EVENT: "Event",
+  SMB_APP_CONTEST_2026: "SMB App Contest 2026",
   OTHER: "Other",
 };
 

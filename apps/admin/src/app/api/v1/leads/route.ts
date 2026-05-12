@@ -6,7 +6,8 @@ import { resolveNaicsCodes } from "../../../../lib/naics-resolver";
 const VALID_SOURCES = [
   "MANUAL", "AGENT", "BARK",
   "LINKEDIN_SALES_NAV", "APOLLO", "LINKEDIN_COMPANY_PAGE",
-  "REFERRAL", "WEBSITE", "COLD_OUTREACH", "EVENT", "OTHER",
+  "REFERRAL", "WEBSITE", "COLD_OUTREACH", "EVENT",
+  "SMB_APP_CONTEST_2026", "OTHER",
 ];
 
 const VALID_STAGES = [

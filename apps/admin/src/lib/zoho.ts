@@ -199,6 +199,7 @@ const SOURCE_MAP: Record<string, string> = {
   COLD_OUTREACH: "Cold Call",
   BARK: "External Referral",
   EVENT: "Trade Show",
+  SMB_APP_CONTEST_2026: "Trade Show",
   MANUAL: "Web Form",
   AGENT: "Web Form",
   OTHER: "Other",
