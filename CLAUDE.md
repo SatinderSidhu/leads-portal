@@ -114,6 +114,14 @@ leads-portal/
 | SequenceEnrollmentArchive | sequence_enrollments_archive | Cold-storage archive of completed/exited enrollments older than 90 days (same shape as SequenceEnrollment, no FKs, status as plain string, archivedAt timestamp) |
 | ContactList | contact_lists | Static or dynamic contact lists (name, type, description, isSuppression, filters JSON, lastRefreshedAt) |
 | ListMembership | list_memberships | Join table for list members (listId FK, leadId FK, source, addedBy, addedAt). @@unique([listId, leadId]) |
+| QuestionnaireTemplate | questionnaire_templates | Reusable question sets (name, description, questions JSON) — admin-managed library, applied to leads |
+| LeadQuestionnaire | lead_questionnaires | Per-lead instance (one per lead, FK to template, snapshot of questions JSON, answers JSON, status DRAFT/SENT/IN_PROGRESS/SUBMITTED, sentAt, submittedAt) |
+| PairingSession | pairing_sessions | Kiosk-to-phone QR sign-in handoff (token, status PENDING/LINKED/REDEEMED/EXPIRED, customerUserId?, expiresAt, redeemedAt) |
+| AppFactoryProject | app_factory_projects | App Factory customer project (publicId, status, idea, platforms, customer info, optional leadId FK to Lead) |
+| AppFactoryFlow | app_factory_flows | Versioned design flows per project (nodes/edges/screens JSON, requirements, isFinalized, AI conversation history) |
+| AppFactoryBuild | app_factory_builds | Build submissions per project (version, status SUBMITTED/IN_REVIEW/BUILDING/TESTING/READY/DELIVERED, notes, timestamps) |
+| AppStoreConfig | app_store_configs | Apple/Google credentials per project (platform IOS/ANDROID, accountId, bundleId, apiKey encrypted at rest, connectionVerified) |
+| AppFactoryEnhancement | app_factory_enhancements | Customer-requested changes to a delivered build (description, AI diff JSON, status REQUESTED→APPROVED→BUILDING→DELIVERED) |
 
 ### Key Enums
 - `LeadSource`: MANUAL, AGENT, BARK, LINKEDIN_SALES_NAV, APOLLO, LINKEDIN_COMPANY_PAGE, REFERRAL, WEBSITE, COLD_OUTREACH, EVENT, OTHER
@@ -183,6 +191,11 @@ leads-portal/
 | `/knowledge/new` | Create/edit article with Markdown editor, category selector, slug auto-gen |
 | `/messages` | Live Chat inbox — unread messages tab + all conversations tab, click to navigate to lead |
 | `/naics-codes` | NAICS industry code browser — searchable, expandable sector/subsector accordion |
+| `/questionnaires` | Questionnaire template library — list with per-template question count, search |
+| `/questionnaires/new` | Build a new questionnaire template (drag-to-reorder questions, types, required flag, help text) |
+| `/questionnaires/[id]` | Edit an existing template |
+| `/app-factory` | App Factory project list with status filter, sort (Recent activity / Newest / Oldest), per-row Delete with typed-confirmation modal |
+| `/app-factory/[id]` | App Factory project detail — Overview / Screens / Requirements / Builds / Enhancements / Stores tabs; admin advances build status + leaves notes (auto-emails customer) |
 | `/api-docs` | Swagger UI |
 
 ## Admin API Routes
@@ -812,12 +825,13 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - Customers and admins can share files (PDF/DOC/DOCX/XLS/XLSX/PNG/JPG, max 25MB) via the `/project?tab=documents` Documents tab on the customer portal and the Documents section on the admin lead detail page
 - **Storage**: dedicated S3 bucket `kitlabs-leads-portal-documents`, organized as `leads/{leadId}/{uuid}-{filename}` so every lead has its own subfolder. Bucket has block-public-access on, AES256 SSE, versioning enabled, and CORS for browser PUTs from admin/customer/localhost origins
 - **Auth/credentials**: production uses an EC2 IAM role (`leads-portal-ec2-role`) attached to the instance — no static AWS keys in env. The AWS SDK auto-discovers credentials via IMDS. Local dev uses `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` env vars
+- **Multi-file upload**: file inputs accept multiple. Uploads run 3-in-parallel with per-file progress bars; oversize files (>25MB) fail individually without blocking the rest. Successful items auto-clear after 2.5s; failures stay visible with a dismiss button. Pattern is identical on both customer and admin sides.
 - **Upload flow** (presigned PUT — server never proxies the file):
   1. Client requests `POST /api/leads/[id]/documents/presign` (admin) or `POST /api/documents/presign` (customer) with fileName/mimeType/fileSize
   2. Server validates mime/size, generates an S3 key scoped to the lead, signs a 5-minute PUT URL
   3. Client `PUT`s the file directly to S3 (with `XMLHttpRequest` for progress UI)
   4. Client `POST`s a metadata record to `/api/leads/[id]/documents` or `/api/documents`
-- **Download**: server signs a 5-minute GET URL with `Content-Disposition: attachment` and returns it; client opens in a new tab
+- **Download vs preview**: GET endpoints accept `?inline=1` to switch the presigned URL's `Content-Disposition` from `attachment` to `inline`. The shared `DocumentPreviewModal` (one copy in each portal) takes a `previewEndpoint` URL, calls it with `inline=1`, and renders PDFs in an iframe and images in `<img>`. Word/Excel show a "preview not available — please download" prompt since browsers can't render them natively.
 - **Permissions**: customer can delete only their own uploads (`uploadedByType=customer` AND `uploadedById=session.id`); admin can delete any document. Both routes verify s3Key starts with `leads/{leadId}/` to prevent cross-lead access
 - **Notifications**: customer upload triggers `notifyDocumentUploaded()` in `apps/customer/src/lib/email.ts` — emails assigned admin + watchers, respects `customerComment` notification preference
 - **Audit log**: `Document Uploaded`, `Document Uploaded by Customer`, `Document Deleted`, `Document Deleted by Customer`
@@ -826,14 +840,49 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 
 ## Kiosk QR Pairing (App Factory)
 - For trade-show kiosks where customers don't want to type passwords on a public machine. Sign-in is gated at the AppFactory prompt-submit step (`/start`).
-- **Flow**: kiosk shows a QR pointing at `https://leadsportal.kitlabs.us/pair?token=…`. Customer scans on phone, completes Google/LinkedIn OAuth on the customer portal (where they're often already authenticated), explicitly confirms pairing, and the kiosk's poll picks up the LINKED status and redeems → AppFactory `customer-session` cookie set, kiosk continues automatically.
+- **Modal layout** (since kiosk modal v2): two-column dialog. Left side has email/password sign-in + "Continue with Google" so customers who prefer the conventional path can use it directly on the kiosk. Right side has the QR code, countdown, and step-by-step phone instructions. Mobile collapses to single column.
+- **QR flow**: kiosk shows a QR pointing at `https://leadsportal.kitlabs.us/pair?token=…`. Customer scans on phone, signs in with Google on the customer portal (where they're often already authenticated), explicitly confirms pairing, and the kiosk's 2s poll picks up the LINKED status, redeems → AppFactory `customer-session` cookie set, kiosk auto-continues with the original prompt submission.
 - **Why explicit confirm on phone**: prevents a malicious QR from auto-pairing a stranger's session. Customer sees "Sign in to KITLabs App Factory on the kiosk?" with their identity, taps Confirm.
 - **Security**: opaque 32-char URL-safe token, 10-min expiry, one-shot redeem (status flips PENDING → LINKED → REDEEMED), lazy-expiry on read. Token never travels in a cookie or query string the attacker can guess
 - **Data model**: `PairingSession { token, status, customerUserId?, expiresAt, redeemedAt }` in shared schema. `CustomerUser` gets a back-relation
 - **AppFactory endpoints**: `POST /api/pair/start` (returns token + qrUrl), `GET /api/pair/[token]` (kiosk polls every 2s), `POST /api/pair/[token]/redeem` (sets cookie, marks REDEEMED)
-- **Customer portal endpoints**: `GET /pair?token=…` (server component branches on auth state — login buttons, confirm screen, error/expired/success), `POST /api/pair/[token]/link` (authed-only, marks LINKED)
+- **Customer portal endpoints**: `GET /pair?token=…` (server component branches on auth state — Google sign-in, confirm screen, error/expired/success), `POST /api/pair/[token]/link` (authed-only, marks LINKED)
 - **Components**: `apps/app-factory/src/components/KioskSignInModal.tsx` (renders QR via `qrcode` npm lib, polls, redeems, "Try again" on expiry); `apps/customer/src/app/pair/page.tsx` + `PairConfirmClient.tsx` (phone confirm UI)
+- **NavBar auto-refresh**: `NavBar.tsx` listens for a `window` `auth:changed` event and re-runs `/api/auth/me` when fired. The kiosk modal's `onSignedIn` callback dispatches the event after redeem; the existing logout flow dispatches it too. Without this, the top-right corner kept showing "Sign In" after a successful QR pairing because the NavBar's `useEffect` only ran once on mount.
+- **Form preservation across Google OAuth**: the `/start` page saves the typed prompt + platform choices to localStorage via `onBeforeRedirect` before any full-page Google redirect. They're restored on mount when the user lands back signed in.
+- **LinkedIn removed from UI**: customer portal login/register/pair pages and AppFactory login/register no longer show LinkedIn buttons (the integration was unreliable). The `/api/auth/linkedin` server route stays in place — re-enabling is a UI-only change.
 - **Kiosk housekeeping**: NavBar's existing Sign Out is upgraded to a prominent "Sign out & finish" button (coral/pink, with icon) and confirm dialog, so trade-show users can clearly clear their session before the next person uses the kiosk
+
+## Per-Lead Questionnaires
+- For pre-SOW discovery (and any other survey use case). Admin builds reusable templates once at `/questionnaires`, then attaches an instance to a lead from the lead detail page's questionnaire panel.
+- **Status flow**: `DRAFT → SENT → IN_PROGRESS → SUBMITTED`. Customer-side fetch ignores DRAFT (so they don't see the admin still composing). SUBMITTED is locked — no more edits.
+- **Question types**: `short_text`, `long_text`, `single_choice` (with options), `yes_no`. Each question can be marked required and given help text. Drag-to-reorder in the editor.
+- **Per-lead instance** snapshots the template's questions at creation time so editing the template later doesn't change already-sent questionnaires. Admin can edit the per-lead copy before sending or while the customer is in progress (their answers are preserved).
+- **Customer side**: action card on the project Overview when status = SENT/IN_PROGRESS, plus a dedicated Questionnaire tab in the sidebar with status pill (amber dot pending, green dot submitted). Form auto-saves a draft 1.5s after typing stops; "Submit" enforces required questions both client- and server-side.
+- **Admin side**: lead detail panel shows status pill, question count, answered count, inline collapsible "Show answers" view, and Send / Resend / Edit / Delete buttons (Send gated on `doNotContact`).
+- **Email + audit**: customer email on send (system template `system_questionnaire_sent`, falls back to inline HTML), watcher email on submit (respects `customerComment` notification preference). Audit entries: Created / Updated / Sent / Saved by Customer / Submitted by Customer / Deleted.
+- **Seeded template**: `Marketplace App — Pre-SOW Discovery` (30 questions covering dispatch, pricing, payouts, refunds, cancellations, verification, notifications). Idempotent — re-running the seed never duplicates. Admin can edit, copy, or delete it like any other template.
+- **API routes**: admin `GET/POST /api/questionnaire-templates`, `GET/PUT/DELETE /api/questionnaire-templates/[id]`, `GET/POST/PUT/DELETE /api/leads/[id]/questionnaire`, `POST /api/leads/[id]/questionnaire/send`. Customer `GET/PUT /api/questionnaire?leadId=X` (PUT body has `submit: true` to lock).
+
+## App Factory Admin
+- `/app-factory` lists all `AppFactoryProject` rows with three visible counts per row: builds, enhancements, and app-store configs (X/2 since iOS + Android).
+- **Filter + sort**: status dropdown (`All`/`Ideating`/`Designing`/`Submitted`/`Building`/`Delivered`/`Enhancing`) with per-bucket counts; sort dropdown (`Recent activity` = updatedAt desc / `Newest` = createdAt desc / `Oldest`). The "Needs Attention" grouping (SUBMITTED + BUILDING at top) only renders when no filter is applied.
+- **Delete with double-confirm**: per-row trash icon opens a typed-confirmation modal — admin must check an "I understand this is permanent" checkbox AND type the customer name (or `DELETE` if no name) before the destructive button enables. ESC and the backdrop only close the modal — they never trigger delete. Cascades through flows / builds / app-store configs / enhancement requests via the existing `onDelete: Cascade` FKs.
+- **Project detail** at `/app-factory/[id]` has tabs: Overview (latest build status dropdown + notes textarea), Screens, Requirements, Builds (full history with per-build status dropdown), Enhancements, Stores. Status changes auto-email the customer with status-specific copy (👀 In Review, 🔨 Building, 🧪 Testing, ✅ Ready, 🎉 Delivered) and create an in-app notification. Setting status to DELIVERED stamps `deliveredAt` and flips parent project status to DELIVERED.
+- **API**: `GET /api/app-factory` (list), `GET/DELETE /api/app-factory/[id]` (admin-only, single transaction with cascade), `PUT /api/app-factory/[id]/builds/[buildId]` (status / notes update with customer notification).
+
+## App Store Credential Encryption
+- `AppStoreConfig.apiKey` (Apple App Store Connect API key or Google Service Account JSON) is AES-256-GCM encrypted at rest. Format: `v1:{iv-b64}.{tag-b64}.{ct-b64}` — version prefix lets us bump the format later without breaking old rows.
+- Per-row 12-byte IV, GCM auth tag detects tampering. Decrypt is backward-compatible: rows written before encryption was wired return as-is and get re-encrypted on the next save.
+- **Key source**: `APP_FACTORY_SECRET_KEY` env var, base64-encoded 32 bytes. Generate with `openssl rand -base64 32`. Encrypt fails loudly if the env var is missing (no silent plaintext fallback). Wired through `docker-compose.prod.yml` and `.github/workflows/deploy.yml`.
+- **API behavior**: `GET /api/projects/[publicId]/app-store` exposes `hasApiKey: boolean` instead of the key itself — never leaks the encrypted blob. `POST` treats empty `apiKey` from the form as "preserve existing" (fixes a previous bug where editing accountId silently wiped a saved key). The customer build-page modal shows a green "Saved" pill next to the API key field when one's already on file.
+- Library: `apps/app-factory/src/lib/secrets.ts` exports `encryptSecret`, `decryptSecret`, `isEncrypted`.
+
+## App Factory Landing Page
+- Public landing at `https://appfactory.kitlabs.us` ends with a "See it in action" promo video section above the footer.
+- **Bundled, not S3-served**: video lives at `apps/app-factory/public/promo-video.mp4` (~14MB). Same-origin serving means Next.js/Nginx automatically attach long-lived cache headers, the browser keeps it after first load, and S3 isn't a runtime dependency. Swapping the video means replacing the file and pushing — no S3 round-trip on visits.
+- **Auto-orientation**: `apps/app-factory/src/components/PromoVideo.tsx` reads the source's `videoWidth`/`videoHeight` once metadata loads. Portrait (reel) videos render in a centered phone-shaped 9:16 container with a soft gradient backdrop; landscape renders in a full-width 16:9 card. Default first-paint is portrait so reels don't flash a giant black 16:9 frame before metadata arrives.
+- **Autoplay config**: `autoPlay loop muted playsInline controls preload="metadata"` — the only combination every browser will reliably autoplay. Controls remain visible so visitors can unmute or pause.
 
 ## Customer Portal Design
 - **Left sidebar navigation**: Collapsible sidebar (ProjectShell + ProjectSidebar) replacing top tabs. Collapse/expand, hover-expand, pin/lock, localStorage persistence. Mobile: hamburger + overlay sidebar
