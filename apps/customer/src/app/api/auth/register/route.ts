@@ -27,22 +27,34 @@ export async function POST(req: Request) {
     );
   }
 
-  // If leadId provided, verify the lead exists and email matches
+  // If leadId provided, verify the lead exists and the registering email
+  // matches either the primary customer email OR one of the lead's
+  // secondary contacts (added by admin so both partners can share a lead).
   const leadIds: string[] = [];
   if (leadId) {
     const lead = await prisma.lead.findUnique({
       where: { id: leadId },
-      select: { customerEmail: true },
+      select: { customerEmail: true, contacts: { select: { email: true } } },
     });
 
-    if (lead && lead.customerEmail.toLowerCase() === normalizedEmail) {
-      leadIds.push(leadId);
+    if (lead) {
+      const primaryMatches = lead.customerEmail.toLowerCase() === normalizedEmail;
+      const secondaryMatches = lead.contacts.some(
+        (c) => c.email.toLowerCase() === normalizedEmail,
+      );
+      if (primaryMatches || secondaryMatches) leadIds.push(leadId);
     }
   }
 
-  // Also find any leads matching this email
+  // Also find any leads matching this email — either as the primary customer
+  // or as a secondary contact.
   const matchingLeads = await prisma.lead.findMany({
-    where: { customerEmail: { equals: normalizedEmail, mode: "insensitive" } },
+    where: {
+      OR: [
+        { customerEmail: { equals: normalizedEmail, mode: "insensitive" } },
+        { contacts: { some: { email: { equals: normalizedEmail, mode: "insensitive" } } } },
+      ],
+    },
     select: { id: true },
   });
 

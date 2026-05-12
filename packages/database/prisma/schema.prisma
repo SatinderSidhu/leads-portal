@@ -149,6 +149,7 @@ model Lead {
   receivedEmails  ReceivedEmail[]
   files           LeadFile[]
   documents       LeadDocument[]
+  contacts        LeadContact[]
   questionnaire   LeadQuestionnaire?
   scopeOfWorks    ScopeOfWork[]
   appFlows        AppFlow[]
@@ -262,6 +263,23 @@ model LeadQuestionnaire {
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
   @@map("lead_questionnaires")
+}
+
+model LeadContact {
+  id        String   @id @default(uuid())
+  leadId    String   @map("lead_id")
+  lead      Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  name      String
+  email     String
+  phone     String?
+  role      String?
+  createdBy String?  @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([leadId])
+  @@index([email])
+  @@map("lead_contacts")
 }
 
 model LeadDocument {

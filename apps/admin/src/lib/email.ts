@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { prisma } from "@leads-portal/database";
+import { getLeadCcEmails } from "./lead-contacts";
 
 export const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
@@ -127,11 +128,13 @@ export async function sendWelcomeEmail(lead: Lead, admin?: AdminInfo): Promise<{
   }, fallbackSubject, fallbackHtml);
 
   const htmlWithUnsub = html + getUnsubscribeFooter(lead.customerEmail, lead.id);
+  const cc = (await getLeadCcEmails(lead.id)) ?? undefined;
 
   const info = await transporter.sendMail({
     from: getFromAddress(admin?.name),
     replyTo: getReplyToAddress(lead.id, admin?.name),
     to: lead.customerEmail,
+    cc,
     subject,
     html: htmlWithUnsub,
   });
@@ -193,11 +196,13 @@ export async function sendStatusUpdateEmail(
   }, fallbackSubject, fallbackHtml);
 
   const finalHtml = statusHtml + getUnsubscribeFooter(lead.customerEmail, lead.id);
+  const cc = (await getLeadCcEmails(lead.id)) ?? undefined;
 
   const info = await transporter.sendMail({
     from: getFromAddress(admin?.name),
     replyTo: getReplyToAddress(lead.id, admin?.name),
     to: lead.customerEmail,
+    cc,
     subject,
     html: finalHtml,
   });
@@ -237,11 +242,13 @@ export async function sendNdaReadyEmail(lead: Lead, admin?: AdminInfo): Promise<
   }, fallbackSubject, fallbackHtml);
 
   const ndaHtmlWithUnsub = html + getUnsubscribeFooter(lead.customerEmail, lead.id);
+  const cc = (await getLeadCcEmails(lead.id)) ?? undefined;
 
   const info = await transporter.sendMail({
     from: getFromAddress(admin?.name),
     replyTo: getReplyToAddress(lead.id, admin?.name),
     to: lead.customerEmail,
+    cc,
     subject,
     html: ndaHtmlWithUnsub,
   });
@@ -353,11 +360,13 @@ export async function sendSowReadyEmail(
   }, fallbackSubject, fallbackHtml);
 
   const sowHtmlWithUnsub = html + getUnsubscribeFooter(lead.customerEmail, leadId);
+  const cc = (await getLeadCcEmails(leadId)) ?? undefined;
 
   const info = await transporter.sendMail({
     from: getFromAddress(admin?.name),
     replyTo: getReplyToAddress(leadId, admin?.name),
     to: lead.customerEmail,
+    cc,
     subject,
     html: sowHtmlWithUnsub,
   });
@@ -412,11 +421,13 @@ export async function sendQuestionnaireSentEmail(
   );
 
   const htmlWithUnsub = html + getUnsubscribeFooter(lead.customerEmail, leadId);
+  const cc = (await getLeadCcEmails(leadId)) ?? undefined;
 
   const info = await transporter.sendMail({
     from: getFromAddress(admin?.name),
     replyTo: getReplyToAddress(leadId, admin?.name),
     to: lead.customerEmail,
+    cc,
     subject,
     html: htmlWithUnsub,
   });
@@ -511,11 +522,13 @@ export async function sendAppFlowReadyEmail(
   }, fallbackSubject, fallbackHtml);
 
   const flowHtmlWithUnsub = html + getUnsubscribeFooter(lead.customerEmail, leadId);
+  const cc = (await getLeadCcEmails(leadId)) ?? undefined;
 
   const info = await transporter.sendMail({
     from: getFromAddress(admin?.name),
     replyTo: getReplyToAddress(leadId, admin?.name),
     to: lead.customerEmail,
+    cc,
     subject,
     html: flowHtmlWithUnsub,
   });

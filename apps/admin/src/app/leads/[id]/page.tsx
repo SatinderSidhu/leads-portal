@@ -29,6 +29,11 @@ const LeadQuestionnairePanel = dynamic(
   { ssr: false, loading: () => <div className="h-32 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse" /> }
 );
 
+const LeadContactsPanel = dynamic(
+  () => import("../../../components/LeadContactsPanel"),
+  { ssr: false, loading: () => <div className="h-24 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse" /> }
+);
+
 const STATUS_OPTIONS = [
   "NEW",
   "SOW_READY",
@@ -3501,6 +3506,11 @@ export default function LeadDetailPage() {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Additional Contacts (full width within right column) */}
+            <div className="md:col-span-2">
+              <LeadContactsPanel leadId={lead.id} />
             </div>
 
             {/* Questionnaire Section (full width within right column) */}
