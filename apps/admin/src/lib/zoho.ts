@@ -200,6 +200,7 @@ const SOURCE_MAP: Record<string, string> = {
   BARK: "External Referral",
   EVENT: "Trade Show",
   SMB_APP_CONTEST_2026: "Trade Show",
+  SMB_NY_2026: "Trade Show",
   MANUAL: "Web Form",
   AGENT: "Web Form",
   OTHER: "Other",

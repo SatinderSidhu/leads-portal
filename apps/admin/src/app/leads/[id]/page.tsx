@@ -1816,6 +1816,7 @@ export default function LeadDetailPage() {
                         <option value="COLD_OUTREACH">Cold Outreach</option>
                         <option value="EVENT">Event</option>
                         <option value="SMB_APP_CONTEST_2026">SMB App Contest 2026</option>
+                        <option value="SMB_NY_2026">SMB NY 2026</option>
                         <option value="OTHER">Other</option>
                       </select>
                     </div>

@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 
 const GOAL_LABELS: Record<string, string> = { BOOK_MEETING: "Book a Meeting", GET_REPLY: "Get a Reply", DRIVE_PURCHASE: "Drive a Purchase", NURTURE_ONLY: "Nurture Only" };
 const TRIGGER_LABELS: Record<string, string> = { MANUAL: "Manual", STAGE_CHANGE: "Stage Changes", LEAD_CREATED: "New Lead Created", ADDED_TO_LIST: "Added to List" };
-const SOURCE_LABELS: Record<string, string> = { APP_FACTORY: "App Factory", MANUAL: "Manual", APOLLO: "Apollo", LINKEDIN_SALES_NAV: "LinkedIn Sales Nav", WEBSITE: "Website", REFERRAL: "Referral", COLD_OUTREACH: "Cold Outreach", AGENT: "Agent", BARK: "Bark", EVENT: "Event", SMB_APP_CONTEST_2026: "SMB App Contest 2026", OTHER: "Other" };
+const SOURCE_LABELS: Record<string, string> = { APP_FACTORY: "App Factory", MANUAL: "Manual", APOLLO: "Apollo", LINKEDIN_SALES_NAV: "LinkedIn Sales Nav", WEBSITE: "Website", REFERRAL: "Referral", COLD_OUTREACH: "Cold Outreach", AGENT: "Agent", BARK: "Bark", EVENT: "Event", SMB_APP_CONTEST_2026: "SMB App Contest 2026", SMB_NY_2026: "SMB NY 2026", OTHER: "Other" };
 const EXIT_LABELS: Record<string, string> = { REPLIED: "Contact replied", MEETING_BOOKED: "Meeting booked", UNSUBSCRIBED: "Unsubscribed / DNC" };
 const STATUS_COLORS: Record<string, string> = { DRAFT: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300", ACTIVE: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300", PAUSED: "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300" };
 const CONDITION_LABELS: Record<string, string> = { ALWAYS: "Always proceed", OPENED: "If opened", NOT_OPENED: "If not opened", CLICKED: "If clicked a link", NOT_CLICKED: "If no link clicked", REPLIED: "If replied", NOT_REPLIED: "If no reply" };

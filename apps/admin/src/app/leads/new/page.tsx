@@ -15,6 +15,7 @@ const SOURCE_OPTIONS = [
   { value: "COLD_OUTREACH", label: "Cold Outreach" },
   { value: "EVENT", label: "Event" },
   { value: "SMB_APP_CONTEST_2026", label: "SMB App Contest 2026" },
+  { value: "SMB_NY_2026", label: "SMB NY 2026" },
   { value: "OTHER", label: "Other" },
 ];
 

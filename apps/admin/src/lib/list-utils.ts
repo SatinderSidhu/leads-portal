@@ -130,7 +130,7 @@ export const FILTER_FIELD_OPTIONS = [
   { value: "companyName", label: "Company Name", type: "text" },
   { value: "companySize", label: "Company Size", type: "select", options: ["1-10", "11-50", "51-200", "201-500", "501-1000", "1001-5000", "5001-10000", "10000+"] },
   { value: "stage", label: "Lead Stage", type: "select", options: ["COLD", "WARM", "HOT", "ACTIVE", "CLOSED", "NEW", "CONTACTED", "RESPONDED", "MEETING_BOOKED", "QUALIFIED", "DISQUALIFIED", "NURTURE"] },
-  { value: "source", label: "Lead Source", type: "select", options: ["MANUAL", "AGENT", "BARK", "LINKEDIN_SALES_NAV", "APOLLO", "LINKEDIN_COMPANY_PAGE", "REFERRAL", "WEBSITE", "COLD_OUTREACH", "EVENT", "SMB_APP_CONTEST_2026", "OTHER"] },
+  { value: "source", label: "Lead Source", type: "select", options: ["MANUAL", "AGENT", "BARK", "LINKEDIN_SALES_NAV", "APOLLO", "LINKEDIN_COMPANY_PAGE", "REFERRAL", "WEBSITE", "COLD_OUTREACH", "EVENT", "SMB_APP_CONTEST_2026", "SMB_NY_2026", "OTHER"] },
   { value: "location", label: "Location", type: "text" },
   { value: "city", label: "City", type: "text" },
   { value: "naicsSectorCode", label: "NAICS Sector", type: "text" },
