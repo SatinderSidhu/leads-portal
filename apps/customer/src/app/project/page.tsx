@@ -7,6 +7,7 @@ import ProjectFeedback from "../../components/ProjectFeedback";
 import NdaRequestCard from "../../components/NdaRequestCard";
 import DocumentsSection from "../../components/DocumentsSection";
 import QuestionnaireSection from "../../components/QuestionnaireSection";
+import RequirementsSection from "../../components/RequirementsSection";
 import ProjectShell from "../../components/ProjectShell";
 import VisitTracker from "../../components/VisitTracker";
 import ChatWidget from "../../components/ChatWidget";
@@ -44,6 +45,7 @@ const TABS = [
   { key: "overview", label: "Overview", icon: "overview" },
   { key: "documents", label: "Documents", icon: "folder" },
   { key: "questionnaire", label: "Questionnaire", icon: "checklist" },
+  { key: "requirements", label: "Requirements", icon: "stack" },
   { key: "sow", label: "Scope of Work", icon: "document" },
   { key: "app-flow", label: "App Flow", icon: "flow" },
   { key: "nda", label: "NDA", icon: "shield" },
@@ -215,6 +217,7 @@ export default async function ProjectPage({
       statusColor: visibleQuestionnaire?.status === "SUBMITTED" ? "bg-emerald-400" : questionnaireActionRequired ? "bg-amber-400" : undefined,
       disabled: !visibleQuestionnaire,
     },
+    { key: "requirements", label: "Requirements", icon: "stack" },
     {
       key: "sow",
       label: "Scope of Work",
@@ -516,6 +519,17 @@ export default async function ProjectPage({
         {activeTab === "questionnaire" && (
           <div className="p-5 md:p-8 max-w-3xl">
             <QuestionnaireSection
+              leadId={lead.id}
+              isLoggedIn={isLoggedIn}
+              returnTo={returnTo}
+            />
+          </div>
+        )}
+
+        {/* ── Requirements Tab ── */}
+        {activeTab === "requirements" && (
+          <div className="p-5 md:p-8 max-w-5xl">
+            <RequirementsSection
               leadId={lead.id}
               isLoggedIn={isLoggedIn}
               returnTo={returnTo}

@@ -34,6 +34,11 @@ const LeadContactsPanel = dynamic(
   { ssr: false, loading: () => <div className="h-24 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse" /> }
 );
 
+const LeadRequirementsPanel = dynamic(
+  () => import("../../../components/LeadRequirementsPanel"),
+  { ssr: false, loading: () => <div className="h-32 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse" /> }
+);
+
 const STATUS_OPTIONS = [
   "NEW",
   "SOW_READY",
@@ -3520,6 +3525,11 @@ export default function LeadDetailPage() {
                 customerName={lead.customerName}
                 doNotContact={lead.doNotContact}
               />
+            </div>
+
+            {/* Requirements (full width within right column) */}
+            <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-5">
+              <LeadRequirementsPanel leadId={lead.id} />
             </div>
 
             {/* Notes Section */}
