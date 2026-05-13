@@ -1,6 +1,23 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const PUBLIC_PATHS = ["/login", "/api/auth", "/api/v1", "/api-docs", "/api/track", "/api/webhooks"];
+// Public / self-auth paths. The cron-driven endpoints
+// (/api/sequences/process, /api/drafts/process, /api/sequences/archive-old)
+// validate a Bearer CRON_SECRET token internally — they have to bypass the
+// cookie check here so the node-cron worker's self-call (which has no
+// admin cookie) can actually reach the handler. Before this allow-list,
+// those calls were 307-redirected to /login, which kept the cron's
+// consecutiveFailures counter ticking up forever.
+const PUBLIC_PATHS = [
+  "/login",
+  "/api/auth",
+  "/api/v1",
+  "/api-docs",
+  "/api/track",
+  "/api/webhooks",
+  "/api/sequences/process",
+  "/api/sequences/archive-old",
+  "/api/drafts/process",
+];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
