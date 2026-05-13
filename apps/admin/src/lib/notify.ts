@@ -33,9 +33,12 @@ interface NotifyParams {
   subject: string;
   body: string;
   excludeAdminId?: string;
-  // If provided, only notify these specific admin IDs (plus watchers/assigned)
-  // If not provided, notify all admins for broadcast events (e.g. new_lead_created)
+  /** Broadcast to every active admin (e.g. new_lead_created). */
   broadcastToAll?: boolean;
+  /** Explicit admin IDs to also notify, on top of watchers + assigned. Use
+   *  this for things like task assignments where the new assignee may not
+   *  be watching the lead and would otherwise miss the email entirely. */
+  targetAdminIds?: string[];
 }
 
 /**
@@ -112,6 +115,21 @@ export async function sendNotification(params: NotifyParams) {
       if (lead.assignedTo && lead.assignedTo.id !== params.excludeAdminId && !recipientMap.has(lead.assignedTo.id)) {
         const email = await getAdminNotificationEmail(lead.assignedTo.id, lead.assignedTo.email);
         recipientMap.set(lead.assignedTo.id, email);
+      }
+    }
+
+    // Explicit targets (e.g. a task's new assignee who isn't a watcher).
+    // These are merged in regardless of broadcast vs lead-scoped mode.
+    if (params.targetAdminIds?.length) {
+      const extras = await prisma.adminUser.findMany({
+        where: { id: { in: params.targetAdminIds }, active: true },
+        select: { id: true, email: true },
+      });
+      for (const a of extras) {
+        if (a.id === params.excludeAdminId) continue;
+        if (recipientMap.has(a.id)) continue;
+        const email = await getAdminNotificationEmail(a.id, a.email);
+        recipientMap.set(a.id, email);
       }
     }
 

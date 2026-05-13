@@ -65,7 +65,9 @@ export async function POST(
 
   logAudit(id, "Task Created", `"${content.trim().slice(0, 80)}" assigned to ${assigneeName}${dueDateStr}`, session.name).catch(() => {});
 
-  // Send notification to assignee if different from creator (using system template)
+  // Send notification to assignee if different from creator (using system template).
+  // Pass the assignee's id explicitly via targetAdminIds so they get the
+  // email even when they aren't a watcher on the lead.
   if (assignedToId && assignedToId !== session.id) {
     const adminUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
     const dueDateLabel = dueDate ? new Date(dueDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "No due date";
@@ -82,6 +84,7 @@ export async function POST(
       subject: taskSubj,
       body: taskBody,
       excludeAdminId: session.id,
+      targetAdminIds: [assignedToId],
     }).catch(() => {});
   }
 
@@ -132,7 +135,22 @@ export async function PUT(
   const adminUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
 
   if (completed !== undefined) {
-    logAudit(id, "Task " + (updated.completed ? "Completed" : "Reopened"), step.content.slice(0, 100), session.name).catch(() => {});
+    // Look up the original assignee so the audit shows who was supposed
+    // to do this vs who actually did it (catches "Jane completed Mike's task").
+    let assigneeName: string | null = null;
+    if (step.assignedToId && step.assignedToId !== session.id) {
+      const a = await prisma.adminUser.findUnique({
+        where: { id: step.assignedToId },
+        select: { name: true },
+      });
+      assigneeName = a?.name ?? null;
+    }
+    const completionDetail = updated.completed
+      ? assigneeName
+        ? `${session.name} completed ${assigneeName}'s task: "${step.content.slice(0, 80)}"`
+        : `Completed: "${step.content.slice(0, 80)}"`
+      : `Reopened: "${step.content.slice(0, 80)}"`;
+    logAudit(id, "Task " + (updated.completed ? "Completed" : "Reopened"), completionDetail, session.name).catch(() => {});
 
     // Notify both assignedTo and assignedBy on task completion
     if (updated.completed && lead) {
@@ -143,7 +161,8 @@ export async function PUT(
         leadUrl: `${adminUrl}/leads/${id}`,
       }, `Task Completed: ${lead.projectName}`, `<p><strong>${session.name}</strong> completed a task on <strong>${lead.projectName}</strong>: ${step.content.slice(0, 100)}</p>`);
 
-      // Notify assignedTo (if not the person completing)
+      // Notify assignedTo (if not the person completing) — target them
+      // directly so they get the email regardless of watcher status.
       if (step.assignedToId && step.assignedToId !== session.id) {
         sendNotification({
           event: "task_completed",
@@ -151,6 +170,7 @@ export async function PUT(
           subject: compSubj,
           body: compBody,
           excludeAdminId: session.id,
+          targetAdminIds: [step.assignedToId],
         }).catch(() => {});
       }
       // Notify assignedBy (if different from both completer and assignedTo)
@@ -179,11 +199,25 @@ export async function PUT(
 
   // If reassigned, notify new assignee + update assignedBy
   if (assignedToId !== undefined && assignedToId !== step.assignedToId) {
+    // Look up the previous assignee's name so the audit entry tells the
+    // "from X to Y" story instead of just naming the new owner.
+    let previousAssigneeName: string | null = null;
+    if (step.assignedToId) {
+      const prev = await prisma.adminUser.findUnique({
+        where: { id: step.assignedToId },
+        select: { name: true },
+      });
+      previousAssigneeName = prev?.name ?? null;
+    }
+
     // Update assignedById to current user
     await prisma.nextStep.update({ where: { id: stepId }, data: { assignedById: session.id } }).catch(() => {});
 
     const assigneeName = updated.assignedTo?.name || "Unknown";
-    logAudit(id, "Task Reassigned", `"${step.content.slice(0, 80)}" reassigned to ${assigneeName}`, session.name).catch(() => {});
+    const auditDetail = previousAssigneeName
+      ? `"${step.content.slice(0, 80)}" reassigned from ${previousAssigneeName} to ${assigneeName}`
+      : `"${step.content.slice(0, 80)}" assigned to ${assigneeName}`;
+    logAudit(id, "Task Reassigned", auditDetail, session.name).catch(() => {});
 
     if (assignedToId !== session.id && lead) {
       const dueDateLabel = step.dueDate ? new Date(step.dueDate).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "No due date";
@@ -197,6 +231,9 @@ export async function PUT(
         subject: taskSubj,
         body: taskBody,
         excludeAdminId: session.id,
+        // Target the new assignee directly — they may not be a watcher on
+        // this lead, in which case the default recipient set would skip them.
+        targetAdminIds: [assignedToId],
       }).catch(() => {});
     }
   }
