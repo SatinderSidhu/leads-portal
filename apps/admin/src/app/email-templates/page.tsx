@@ -59,6 +59,7 @@ const SAMPLE_DATA: Record<string, string> = {
   customerName: "Sarah Johnson",
   projectName: "Acme Mobile App",
   portalUrl: "https://leadsportal.kitlabs.us/project?id=sample",
+  customerPortalUrl: "https://leadsportal.kitlabs.us?id=sample",
   statusLabel: "Design Ready",
   ndaUrl: "https://leadsportal.kitlabs.us/project?id=sample&tab=nda",
   sowUrl: "https://leadsportal.kitlabs.us/project?id=sample&tab=sow&v=2",

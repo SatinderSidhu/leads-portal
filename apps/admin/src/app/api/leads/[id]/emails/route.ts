@@ -165,6 +165,9 @@ export async function POST(
   const dateLabel = lead.dateCreated
     ? new Date(lead.dateCreated).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
     : "";
+  const customerPortalBase = process.env.CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us";
+  // `id` is the route param above — lead.id is not selected. Same value.
+  const customerPortalUrl = `${customerPortalBase}?id=${id}`;
   const mergeTemplateTags = (text: string) =>
     text
       .replace(/\{\{customerName\}\}/g, lead.customerName)
@@ -175,7 +178,8 @@ export async function POST(
       .replace(/\{\{status\}\}/g, STATUS_LABELS[lead.status] || lead.status)
       .replace(/\{\{stage\}\}/g, STAGE_LABELS[lead.stage] || lead.stage)
       .replace(/\{\{source\}\}/g, lead.source || "")
-      .replace(/\{\{dateCreated\}\}/g, dateLabel);
+      .replace(/\{\{dateCreated\}\}/g, dateLabel)
+      .replace(/\{\{customerPortalUrl\}\}/g, customerPortalUrl);
 
   // Append signature if requested
   let finalBody = mergeTemplateTags(emailBody.trim());

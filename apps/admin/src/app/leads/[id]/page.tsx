@@ -1151,6 +1151,8 @@ export default function LeadDetailPage() {
     const dateLabel = lead.dateCreated
       ? new Date(lead.dateCreated).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })
       : "";
+    const portalBase = process.env.NEXT_PUBLIC_CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us";
+    const customerPortalUrl = `${portalBase}?id=${lead.id}`;
     return text
       .replace(/\{\{customerName\}\}/g, lead.customerName)
       .replace(/\{\{projectName\}\}/g, lead.projectName)
@@ -1160,7 +1162,8 @@ export default function LeadDetailPage() {
       .replace(/\{\{status\}\}/g, statusLabel)
       .replace(/\{\{stage\}\}/g, stageLabel)
       .replace(/\{\{source\}\}/g, lead.source || "")
-      .replace(/\{\{dateCreated\}\}/g, dateLabel);
+      .replace(/\{\{dateCreated\}\}/g, dateLabel)
+      .replace(/\{\{customerPortalUrl\}\}/g, customerPortalUrl);
   }
 
   function handleTemplateSelect(templateId: string) {
