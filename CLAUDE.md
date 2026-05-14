@@ -116,6 +116,8 @@ leads-portal/
 | ListMembership | list_memberships | Join table for list members (listId FK, leadId FK, source, addedBy, addedAt). @@unique([listId, leadId]) |
 | QuestionnaireTemplate | questionnaire_templates | Reusable question sets (name, description, questions JSON) — admin-managed library, applied to leads |
 | LeadQuestionnaire | lead_questionnaires | Per-lead instance (one per lead, FK to template, snapshot of questions JSON, answers JSON, status DRAFT/SENT/IN_PROGRESS/SUBMITTED, sentAt, submittedAt) |
+| LeadContact | lead_contacts | Secondary contacts on a lead (name, email, optional phone + role). CC'd on every customer-facing email; customer-portal registration auto-links by email match |
+| Requirement | requirements | JIRA-style work item per lead (parentId self-FK, type EPIC/FEATURE/USER_STORY, RequirementPriority, title, description as sanitized HTML, sortOrder, createdByType admin/customer) |
 | PairingSession | pairing_sessions | Kiosk-to-phone QR sign-in handoff (token, status PENDING/LINKED/REDEEMED/EXPIRED, customerUserId?, expiresAt, redeemedAt) |
 | AppFactoryProject | app_factory_projects | App Factory customer project (publicId, status, idea, platforms, customer info, optional leadId FK to Lead) |
 | AppFactoryFlow | app_factory_flows | Versioned design flows per project (nodes/edges/screens JSON, requirements, isFinalized, AI conversation history) |
@@ -124,7 +126,7 @@ leads-portal/
 | AppFactoryEnhancement | app_factory_enhancements | Customer-requested changes to a delivered build (description, AI diff JSON, status REQUESTED→APPROVED→BUILDING→DELIVERED) |
 
 ### Key Enums
-- `LeadSource`: MANUAL, AGENT, BARK, LINKEDIN_SALES_NAV, APOLLO, LINKEDIN_COMPANY_PAGE, REFERRAL, WEBSITE, COLD_OUTREACH, EVENT, OTHER
+- `LeadSource`: MANUAL, AGENT, BARK, LINKEDIN_SALES_NAV, APOLLO, LINKEDIN_COMPANY_PAGE, REFERRAL, WEBSITE, COLD_OUTREACH, EVENT, SMB_APP_CONTEST_2026, SMB_NY_2026, APP_FACTORY, OTHER
 - `LeadStatus`: NEW → SOW_READY → SOW_SIGNED → APP_FLOW_READY → DESIGN_READY → DESIGN_APPROVED → BUILD_IN_PROGRESS → BUILD_READY_FOR_REVIEW → BUILD_SUBMITTED → GO_LIVE | LOST | NO_RESPONSE | ON_HOLD | CANCELLED
 - `LeadStage`: COLD, WARM, HOT, ACTIVE, CLOSED, NEW, CONTACTED, RESPONDED, MEETING_BOOKED, QUALIFIED, DISQUALIFIED, NURTURE
 - `AppFlowType`: BASIC, WIREFRAME
@@ -479,7 +481,7 @@ docker compose exec db pg_dump -U postgres leads_portal > backup.sql  # DB backu
 ```
 
 ## Email System
-- Templates support `{{customerName}}`, `{{projectName}}`, `{{phone}}`, `{{city}}`, `{{status}}`, `{{stage}}`, `{{source}}`, `{{dateCreated}}` placeholders
+- Templates support `{{customerName}}`, `{{projectName}}`, `{{phone}}`, `{{city}}`, `{{status}}`, `{{stage}}`, `{{source}}`, `{{dateCreated}}`, `{{companyName}}`, `{{jobTitle}}`, and `{{customerPortalUrl}}` placeholders. `{{customerPortalUrl}}` resolves to `${CUSTOMER_PORTAL_URL}?id=<leadId>` and fires the customer-portal visit tracker when clicked, so admins can see when a customer opens the portal from an email
 - Email compose on lead detail page has RichTextEditor with code/visual toggle
 - "Include signature" checkbox appends admin's email signature (set in profile page)
 - Signature appended server-side in the email API route
@@ -750,6 +752,7 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 
 ## Smart Sequence Sending Pipeline
 - **Cron wiring**: `apps/admin/src/instrumentation.ts` (Next.js startup hook) calls `startSequenceCron()` from `lib/sequence-cron.ts`. node-cron runs inside the admin container and self-calls the app via HTTP with `Bearer ${CRON_SECRET}` — no external scheduler, no separate worker process
+- **Middleware allow-list**: `apps/admin/middleware.ts` must include the three cron paths (`/api/sequences/process`, `/api/drafts/process`, `/api/sequences/archive-old`) in `PUBLIC_PATHS`. The cron's self-call carries a Bearer token, not the `admin-session` cookie — if the middleware isn't aware, it 307-redirects to `/login`, the cron's `fetch` follows, gets HTML back, `res.json()` throws, and `tickWithHealth` increments `consecutiveFailures` forever. Each endpoint validates `Bearer CRON_SECRET` internally, so allow-listing them is safe
 - **Three schedules**:
   - **Process**: `* * * * *` (every minute) → `POST /api/sequences/process` — claims up to 50 due enrollments per tick
   - **Drafts**: `*/5 * * * *` (every 5 min) → `POST /api/drafts/process` — sends scheduled email drafts with claim-and-lock (lockedUntil + retryCount on EmailDraft, max 5 retries then FAILED)
@@ -852,6 +855,23 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - **Form preservation across Google OAuth**: the `/start` page saves the typed prompt + platform choices to localStorage via `onBeforeRedirect` before any full-page Google redirect. They're restored on mount when the user lands back signed in.
 - **LinkedIn removed from UI**: customer portal login/register/pair pages and AppFactory login/register no longer show LinkedIn buttons (the integration was unreliable). The `/api/auth/linkedin` server route stays in place — re-enabling is a UI-only change.
 - **Kiosk housekeeping**: NavBar's existing Sign Out is upgraded to a prominent "Sign out & finish" button (coral/pink, with icon) and confirm dialog, so trade-show users can clearly clear their session before the next person uses the kiosk
+
+## Secondary Contacts on Leads
+- `LeadContact` rows (name, email, optional phone + role) attached to a Lead. Cascading delete from the parent lead.
+- **Auto-CC**: every customer-facing email helper (welcome, status update, NDA ready, SOW ready, App Flow ready, questionnaire sent) fetches the lead's secondary contacts and adds them to the outgoing email's `cc` field via `getLeadCcEmails(leadId)` in `apps/admin/src/lib/lead-contacts.ts`. The manual email-compose route merges the admin-typed CC with the auto-list (de-duped case-insensitively) so `SentEmail.cc` and the real outgoing mail agree.
+- **Customer-portal auto-link**: `POST /api/auth/register` (customer) matches the registering email against the lead's primary `customerEmail` OR any `LeadContact.email`. Either match adds the lead to the user's `leadIds`, so a spouse / partner / sponsor can sign in with their own email and immediately see the project.
+- **Admin UI**: "Additional Contacts" panel on the lead detail page — inline add form (name + email required; phone + role optional), per-row Edit / Remove. Audit log on every change.
+- **What stays private**: internal admin-only notifications (NDA signed, SOW signed, lead assigned, watcher emails) do NOT CC secondary contacts. Only customer-facing communications.
+- **API**: admin `GET/POST /api/leads/[id]/contacts`, `PUT/DELETE /api/leads/[id]/contacts/[contactId]`. Validates email format, blocks duplicates within a lead, blocks adding the primary customer's email as a "secondary".
+
+## Requirements Module (JIRA-style)
+- Three-level hierarchy: Epic → Feature → User Story. Each item has a `RequirementPriority` (LOW / MEDIUM / HIGH / CRITICAL, default MEDIUM), `sortOrder` for drag-to-rank, `createdByType` ("admin" or "customer") so admin-added items render a "From KITLabs" badge to the customer.
+- **Relaxed parent rules**: only Epics are required to be parentless. Features and User Stories MAY have a parent but don't have to — non-technical customers can dump ideas at the top level and structure them later.
+- **Customer surface**: new "Requirements" tab in the project sidebar. Always-visible quick-add bar at the top (type dropdown defaults to User Story, title input with placeholder "Add your requirement…", Enter to submit). A "More options" link still opens the full form for description / priority / parent picker. Anything parentless renders at the top level alongside Epics. The Overview tab's Project Description card ends with an "Add Requirement" button that links straight to `?tab=requirements`.
+- **Admin surface**: matching panel embedded on the lead detail page below the Questionnaire section. Same UI, same API.
+- **Drag-to-rank**: native HTML5 DnD, sibling-only reorder (no cross-parent or cross-type moves yet). One drop = one batched `$transaction` update covering the whole sibling group via `POST /api/requirements/reorder` (customer) or `POST /api/leads/[id]/requirements/reorder` (admin).
+- **HTML sanitizer**: `apps/{admin,customer}/src/lib/requirement-html.ts` — strips `<script>`, `<style>`, `on*=` handlers, `javascript:` / `data:` URIs, and any tag outside the formatting allow-list. Customer-pasted HTML is rendered to admins (and vice versa), so the sanitizer protects both sides from stored XSS.
+- **API**: admin `GET/POST /api/leads/[id]/requirements`, `PUT/DELETE /api/leads/[id]/requirements/[reqId]`. Customer `GET/POST /api/requirements`, `PUT/DELETE /api/requirements/[id]`. Audit log entries: "Requirement Added/Removed" (admin) and "Requirement Added/Removed by Customer".
 
 ## Per-Lead Questionnaires
 - For pre-SOW discovery (and any other survey use case). Admin builds reusable templates once at `/questionnaires`, then attaches an instance to a lead from the lead detail page's questionnaire panel.

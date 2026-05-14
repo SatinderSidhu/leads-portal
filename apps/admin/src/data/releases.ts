@@ -7,6 +7,171 @@ export interface Release {
 
 export const releases: Release[] = [
   {
+    version: "4.31",
+    date: "2026-05-14",
+    commitId: "2d081e2",
+    changes: [
+      "New email-template merge tag {{customerPortalUrl}} — resolves to <CUSTOMER_PORTAL_URL>?id=<leadId>, which fires the customer-portal visit tracker on click",
+      "Wired through every merge path: shared template-merge.ts util (Smart Sequences + scheduled Drafts), manual email-compose route, client-side preview when admin picks a template, template preview modal",
+      "Requirements module simplified for non-technical customers: parent now optional for Features and User Stories, always-visible quick-add bar at the top of the Requirements tab (User Story default), Overview tab gains an 'Add Requirement' button below the project description",
+    ],
+  },
+  {
+    version: "4.30",
+    date: "2026-05-13",
+    commitId: "8b6ee8c",
+    changes: [
+      "Critical fix: admin middleware was 307-redirecting the node-cron worker's self-call to /login, so /api/sequences/process, /api/drafts/process, and /api/sequences/archive-old never actually ran in production (47k+ silent failures on the sequence cron alone). Endpoints are now allow-listed; they still validate Bearer CRON_SECRET internally",
+      "Task assignment email now reaches the assignee even when they aren't a watcher on the lead — sendNotification gains a targetAdminIds param and the task POST + PUT pass [assignedToId] through it",
+      "Audit detail beefed up: 'Task Reassigned' shows 'from Mike to Jane' and 'Task Completed' shows 'Jane completed Mike's task' when the completer is different from the assignee",
+    ],
+  },
+  {
+    version: "4.29",
+    date: "2026-05-12",
+    commitId: "a30f2b7",
+    changes: [
+      "New LeadSource enum values SMB_APP_CONTEST_2026 and SMB_NY_2026 — surfaced in the new-lead form, lead-detail edit dropdown, dashboard source label, smart-sequence trigger filter, contact-list filter builder, and the external v1 API allow-list",
+      "Both map to 'Trade Show' in Zoho CRM sync",
+    ],
+  },
+  {
+    version: "4.28",
+    date: "2026-05-11",
+    commitId: "e6b3289",
+    changes: [
+      "JIRA-style Requirements module on both portals: 3-level Epic → Feature → User Story hierarchy with cascade delete, sortOrder, RequirementPriority (LOW/MEDIUM/HIGH/CRITICAL), createdByType so admin-added items show a 'From KITLabs' badge to the customer",
+      "Customer surface: new Requirements tab in project sidebar with expand/collapse tree, '+ Add item' form, inline 'From KITLabs' badges on admin-authored items",
+      "Admin surface: matching panel embedded on the lead detail page below the questionnaire section",
+      "Drag-to-rank: native HTML5 DnD, sibling-only reorder, one batched $transaction update per drop",
+      "HTML sanitizer at apps/{admin,customer}/src/lib/requirement-html.ts — strips <script>, <style>, on*= handlers, javascript:/data: URIs, and tags outside the formatting allow-list",
+      "Audit log entries: Requirement Added/Removed (admin) and Requirement Added/Removed by Customer",
+    ],
+  },
+  {
+    version: "4.27",
+    date: "2026-05-11",
+    commitId: "fa26838",
+    changes: [
+      "Secondary contacts on a lead: new LeadContact table (name, email, optional phone + role), cascading delete from Lead",
+      "All 6 customer-facing email helpers (welcome, status update, NDA ready, SOW ready, App Flow ready, questionnaire sent) auto-CC the lead's secondary contacts via getLeadCcEmails helper",
+      "Manual email-compose route merges admin-typed CC with the auto-list (de-duped case-insensitively) so saved SentEmail.cc and the actual outgoing mail agree",
+      "Customer-portal registration auto-links the lead when the registering email matches the primary customer OR any secondary contact",
+      "Admin UI: 'Additional Contacts' panel on the lead detail page with inline add/edit/remove and audit log entries on every change",
+    ],
+  },
+  {
+    version: "4.26",
+    date: "2026-05-08",
+    commitId: "5ffc5fc",
+    changes: [
+      "AppFactory project list (admin): status filter dropdown (All + 6 statuses with per-bucket counts), sort dropdown (Recent activity / Newest / Oldest), 'Showing X of Y' counter",
+      "Per-row Delete with typed-confirmation modal: must check 'I understand this is permanent' AND type the customer name (or 'DELETE' if no name) to enable the destructive button; ESC and the backdrop only close — they never fire delete",
+      "Cascades through flows / builds / app-store configs / enhancement requests via existing onDelete: Cascade FKs",
+      "'Needs Attention' grouping (SUBMITTED + BUILDING at top) only renders when no filter is applied",
+    ],
+  },
+  {
+    version: "4.25",
+    date: "2026-05-07",
+    commitId: "b5e37b6",
+    changes: [
+      "App Factory public landing page (appfactory.kitlabs.us) gains a 'See it in action' promo video section above the footer",
+      "PromoVideo client component auto-detects orientation on metadata load: portrait reels render in a centered 9:16 phone frame with a soft gradient backdrop, landscape renders in a full-width 16:9 card",
+      "Video bundled into apps/app-factory/public/promo-video.mp4 (~14MB) so it's served same-origin with long-lived cache headers — no S3 round-trip on visits, eliminates S3 as a runtime dependency",
+      "Autoplay config (autoPlay + loop + muted + playsInline + controls + preload='metadata') — the only combination every browser reliably autoplays",
+    ],
+  },
+  {
+    version: "4.24",
+    date: "2026-05-04",
+    commitId: "0551933",
+    changes: [
+      "Per-lead questionnaire system: new QuestionnaireTemplate library + LeadQuestionnaire per-lead instance with status flow DRAFT → SENT → IN_PROGRESS → SUBMITTED",
+      "4 question types — short_text, long_text, single_choice (with options), yes_no — each with required flag and help text; drag-to-reorder in the editor",
+      "Template snapshot: per-lead questionnaire captures the template's questions at creation, so editing the template later doesn't change already-sent ones",
+      "Customer surface: action card on Overview when SENT/IN_PROGRESS, dedicated Questionnaire tab with auto-save drafts (1.5s after stop typing), Submit enforces required questions client- AND server-side",
+      "Admin surface: lead-detail panel with status pill, question count, answered count, inline 'Show answers' view, Send / Resend / Edit / Delete buttons (Send gated on doNotContact)",
+      "Email + audit: customer email on send (system_questionnaire_sent template), watcher email on submit (respects customerComment notification preference), Audit log Created / Updated / Sent / Saved by Customer / Submitted by Customer / Deleted",
+      "Seeded 'Marketplace App — Pre-SOW Discovery' template with 30 questions covering dispatch, pricing, payouts, refunds, cancellations, verification, notifications",
+    ],
+  },
+  {
+    version: "4.23",
+    date: "2026-05-03",
+    commitId: "0a8d638",
+    changes: [
+      "App Store API key encryption at rest: AppStoreConfig.apiKey is AES-256-GCM encrypted, format v1:{iv-b64}.{tag-b64}.{ct-b64} with per-row IV + auth tag",
+      "Decrypt is backward-compatible — rows written before encryption was wired return as-is and get re-encrypted on next save",
+      "Key source: APP_FACTORY_SECRET_KEY env var (base64 32 bytes — generate with `openssl rand -base64 32`). Encrypt fails loudly if missing rather than silent plaintext fallback",
+      "GET /api/projects/[publicId]/app-store exposes hasApiKey boolean instead of the encrypted blob",
+      "Fixed silent-wipe bug: editing accountId/bundleId no longer clobbers the saved key — empty form value means 'preserve existing'",
+    ],
+  },
+  {
+    version: "4.22",
+    date: "2026-05-02",
+    commitId: "6e7a393",
+    changes: [
+      "QR-code kiosk sign-in for App Factory trade-show use: new PairingSession table (opaque 32-char URL-safe token, 10-min TTL, one-shot redeem)",
+      "Two-column kiosk modal: email/password + Google sign-in on the left, QR + step-by-step phone instructions on the right; LinkedIn buttons removed everywhere (server route stays for future re-enable)",
+      "Phone flow: scan QR → /pair?token=… on customer portal → sign in with Google → explicit Confirm tap → kiosk's 2s poll picks up LINKED → redeems → AppFactory customer-session cookie set → kiosk auto-continues the original prompt submission",
+      "Form preservation across Google OAuth: /start saves typed prompt + platform choices to localStorage before any full-page OAuth redirect",
+      "NavBar auto-refreshes on a 'auth:changed' window event so the top-right corner immediately shows the signed-in user after QR pairing (previously stayed on 'Sign In' until manual refresh)",
+      "Prominent 'Sign out & finish' button (coral/pink, with icon) and confirm dialog for kiosk walk-away",
+    ],
+  },
+  {
+    version: "4.21",
+    date: "2026-05-02",
+    commitId: "5f928ad",
+    changes: [
+      "Externally-signed NDA upload: admin can attach a PDF or Word NDA that was signed outside the system from the lead-detail NDA card",
+      "Stored in S3 at leads/{leadId}/nda/{uuid}-{filename}, Nda.uploadedExternally=true, status set to SIGNED with the signer name and date the admin enters",
+      "Customer NDA tab detects nda.fileName and renders a preview/download view (PDF iframe or Word download prompt) instead of the digital sign form",
+    ],
+  },
+  {
+    version: "4.20",
+    date: "2026-05-02",
+    commitId: "21f0526",
+    changes: [
+      "Multi-file document upload (both portals): file inputs accept multiple, uploads run 3-in-parallel with per-file progress bars, oversize files fail individually without blocking the rest",
+      "DocumentPreviewModal — shared component (one copy per portal) renders PDFs in an iframe and images in <img>; Word/Excel show a 'preview not available — download instead' prompt",
+      "ChatWidget no longer auto-opens after 10s on the customer portal — only opens on click",
+    ],
+  },
+  {
+    version: "4.19",
+    date: "2026-05-02",
+    commitId: "03e3613",
+    changes: [
+      "S3-backed Documents feature: customer Documents tab + admin section on lead detail page, both share PDFs / DOC(X) / XLS(X) / PNG / JPG (max 25 MB) on a single timeline",
+      "Dedicated bucket kitlabs-leads-portal-documents with leads/{leadId}/{uuid}-{filename} layout, block-public-access on, AES256 SSE, versioning enabled, CORS for the admin + customer + localhost origins",
+      "Presigned PUT uploads — server never proxies the file. Production uses an EC2 IAM role for auto-discovered credentials, no static AWS keys in env",
+      "New LeadDocument model. Customer can only delete their own uploads; admin can delete any. Customer-upload notification emails assigned admin + watchers (respects customerComment preference)",
+      "One-time aws-s3-setup.sh script provisions bucket + IAM policy + role + instance profile and attaches to EC2 (re-run-safe — reuses existing instance profile if present)",
+    ],
+  },
+  {
+    version: "4.18",
+    date: "2026-04-23",
+    commitId: "e12070c",
+    changes: [
+      "App Factory 'Get Inspired' panel uses real KITLabs portfolio apps instead of placeholder data",
+      "Fix: NavBar overlap on smaller screens",
+    ],
+  },
+  {
+    version: "4.17",
+    date: "2026-04-12",
+    commitId: "04ec1c8",
+    changes: [
+      "Custom SVG illustrations replace stock imagery on App Factory's 'Get Inspired' cards",
+      "Smart Sequences: trigger configuration (e.g. stage matching for STAGE_CHANGE, source filter for LEAD_CREATED) now shown on the sequence detail page",
+    ],
+  },
+  {
     version: "4.16",
     date: "2026-04-10",
     commitId: "4d4e2a3",
