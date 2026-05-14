@@ -99,13 +99,16 @@ async function validateParent(
   type: RequirementType,
   parentId: string | null,
 ): Promise<{ error?: string }> {
+  // Epics never have a parent.
   if (type === "EPIC") {
     if (parentId) return { error: "Epics can't have a parent" };
     return {};
   }
-  if (!parentId) {
-    return { error: `${type === "FEATURE" ? "Feature" : "User Story"} needs a parent` };
-  }
+  // Features and User Stories MAY have a parent — but it's not required.
+  // Non-technical customers add ideas at the top level without thinking
+  // about structure; structure can be added later by setting parents.
+  if (!parentId) return {};
+
   const parent = await prisma.requirement.findUnique({
     where: { id: parentId },
     select: { id: true, leadId: true, type: true },

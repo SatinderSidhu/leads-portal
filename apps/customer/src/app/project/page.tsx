@@ -287,9 +287,23 @@ export default async function ProjectPage({
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
               {/* Project Description — first thing after welcome */}
               {lead.projectDescription && (
-                <div className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+                <div className="lg:col-span-2 bg-white dark:bg-gray-900 rounded-2xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col">
                   <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-3">Project Description (as we know)</p>
-                  <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap">{lead.projectDescription}</p>
+                  <p className="text-gray-600 dark:text-gray-300 text-sm leading-relaxed whitespace-pre-wrap flex-1">{lead.projectDescription}</p>
+                  <div className="mt-5 pt-4 border-t border-gray-100 dark:border-gray-800">
+                    <a
+                      href={`/project?id=${lead.id}&tab=requirements`}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[#01358d] hover:bg-[#012a70] text-white text-sm font-semibold transition"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                      </svg>
+                      Add Requirement
+                    </a>
+                    <span className="ml-3 text-xs text-gray-500 dark:text-gray-400">
+                      Tell us what you need — type anything, we&apos;ll organize it together.
+                    </span>
+                  </div>
                 </div>
               )}
 

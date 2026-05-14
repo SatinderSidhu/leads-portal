@@ -96,7 +96,24 @@ export default function RequirementsSection({ leadId, isLoggedIn, returnTo }: Pr
 
   // Build the tree once per items change.
   const tree = useMemo(() => buildTree(items), [items]);
+  // Top level shows ANY item without a parent — Epics plus orphan Features
+  // and User Stories that the customer added quickly without thinking about
+  // structure. The tree builder already promotes parentless items to roots.
+  const topLevel = tree;
   const epics = tree.filter((r) => r.type === "EPIC");
+  const features = useMemo(() => {
+    // Features visible as parent options for the quick-add include both
+    // nested-under-an-epic and orphan Features.
+    const out: TreeNode[] = [];
+    function walk(nodes: TreeNode[]) {
+      for (const n of nodes) {
+        if (n.type === "FEATURE") out.push(n);
+        if (n.children.length) walk(n.children);
+      }
+    }
+    walk(tree);
+    return out;
+  }, [tree]);
 
   function toggle(id: string) {
     setExpanded((prev) => {
@@ -185,19 +202,11 @@ export default function RequirementsSection({ leadId, isLoggedIn, returnTo }: Pr
 
   return (
     <div>
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Requirements</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Capture project scope as Epics → Features → User Stories. Drag any item to reorder it within its siblings.
-          </p>
-        </div>
-        <button
-          onClick={() => setAddContext({ type: "EPIC", parentId: null })}
-          className="px-4 py-2 bg-[#01358d] hover:bg-[#012a70] text-white rounded-xl text-sm font-semibold transition whitespace-nowrap"
-        >
-          + Add item
-        </button>
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">Requirements</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400">
+          Just type what you need below. Add as many as you want — we&apos;ll help organize them with you later.
+        </p>
       </div>
 
       {error && (
@@ -206,29 +215,40 @@ export default function RequirementsSection({ leadId, isLoggedIn, returnTo }: Pr
         </div>
       )}
 
+      {/* Quick-add bar — always visible, encourages non-technical customers
+          to just dump ideas without thinking about epic/feature hierarchy. */}
+      <QuickAdd
+        onSubmit={async (input) =>
+          handleCreate({
+            type: input.type,
+            parentId: null,
+            title: input.title,
+            description: "",
+            priority: "MEDIUM",
+          })
+        }
+        onOpenAdvanced={() => setAddContext({ type: "USER_STORY", parentId: null })}
+      />
+
       {addContext && (
         <AddForm
           context={addContext}
-          epics={tree.filter((r) => r.type === "EPIC")}
-          features={tree.filter((r) => r.type === "FEATURE")}
+          epics={epics}
+          features={features}
           onCancel={() => setAddContext(null)}
           onSubmit={handleCreate}
         />
       )}
 
-      {epics.length === 0 && !addContext ? (
-        <div className="bg-white dark:bg-gray-900 rounded-2xl p-10 border-2 border-dashed border-gray-200 dark:border-gray-700 text-center">
-          <p className="text-sm text-gray-400 dark:text-gray-500 mb-4">No requirements yet. Start by adding an Epic.</p>
-          <button
-            onClick={() => setAddContext({ type: "EPIC", parentId: null })}
-            className="px-5 py-2 bg-[#01358d] hover:bg-[#012a70] text-white rounded-xl text-sm font-semibold transition"
-          >
-            + Add first Epic
-          </button>
+      {topLevel.length === 0 && !addContext ? (
+        <div className="bg-white dark:bg-gray-900 rounded-2xl p-8 border-2 border-dashed border-gray-200 dark:border-gray-700 text-center mt-4">
+          <p className="text-sm text-gray-400 dark:text-gray-500">
+            Your requirements will appear here as you add them.
+          </p>
         </div>
       ) : (
         <SiblingList
-          siblings={epics}
+          siblings={topLevel}
           allItems={items}
           expanded={expanded}
           onToggle={toggle}
@@ -527,6 +547,77 @@ function Row({
 
 /* ─── Add form (modal-like inline panel) ─── */
 
+/* ─── Quick-add bar (the inviting empty-state textbox) ─── */
+
+function QuickAdd({
+  onSubmit,
+  onOpenAdvanced,
+}: {
+  onSubmit: (input: { type: ReqType; title: string }) => Promise<boolean>;
+  onOpenAdvanced: () => void;
+}) {
+  const [type, setType] = useState<ReqType>("USER_STORY");
+  const [title, setTitle] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submit() {
+    const t = title.trim();
+    if (!t || submitting) return;
+    setSubmitting(true);
+    const ok = await onSubmit({ type, title: t });
+    setSubmitting(false);
+    if (ok) {
+      setTitle("");
+      // Keep the selected type so the customer can rattle off a few of the
+      // same kind without re-picking.
+    }
+  }
+
+  return (
+    <div className="mb-4 bg-white dark:bg-gray-900 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm p-3 flex flex-col sm:flex-row items-stretch gap-2">
+      <select
+        value={type}
+        onChange={(e) => setType(e.target.value as ReqType)}
+        disabled={submitting}
+        className="px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none focus:ring-2 focus:ring-[#01358d] disabled:opacity-50 flex-shrink-0"
+      >
+        <option value="USER_STORY">📝 User Story</option>
+        <option value="EPIC">🎯 Epic</option>
+        <option value="FEATURE">✨ Feature</option>
+      </select>
+      <input
+        type="text"
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            submit();
+          }
+        }}
+        disabled={submitting}
+        placeholder="Add your requirement…"
+        className="flex-1 min-w-0 px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-[#01358d] focus:border-[#01358d] disabled:opacity-50"
+      />
+      <button
+        onClick={submit}
+        disabled={!title.trim() || submitting}
+        className="px-4 py-2 bg-[#01358d] hover:bg-[#012a70] text-white rounded-lg text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+      >
+        {submitting ? "Adding…" : "Add"}
+      </button>
+      <button
+        onClick={onOpenAdvanced}
+        disabled={submitting}
+        className="px-3 py-2 text-xs text-gray-500 hover:text-[#01358d] dark:text-gray-400 dark:hover:text-blue-400 transition whitespace-nowrap"
+        title="Add description, priority, parent"
+      >
+        More options
+      </button>
+    </div>
+  );
+}
+
 function AddForm({
   context,
   epics,
@@ -548,19 +639,19 @@ function AddForm({
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    // When user changes type, reset parent to a sensible default.
-    if (type === "EPIC") setParentId(null);
-    else if (type === "FEATURE") setParentId(epics[0]?.id ?? null);
-    else if (type === "USER_STORY") setParentId(features[0]?.id ?? null);
+    // When user changes type, reset parent to "no parent" so the form
+    // doesn't pre-pick something they didn't intend.
+    setParentId(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [type]);
 
-  const needsParent = type !== "EPIC";
+  // Parent is optional for Feature + User Story now. The form just offers
+  // it as a "place under" choice rather than a hard requirement.
+  const canHaveParent = type !== "EPIC";
   const parentOptions = type === "FEATURE" ? epics : type === "USER_STORY" ? features : [];
 
   async function submit() {
     if (!title.trim()) return;
-    if (needsParent && !parentId) return;
     setSubmitting(true);
     const ok = await onSubmit({ type, parentId, title: title.trim(), description, priority });
     setSubmitting(false);
@@ -586,26 +677,22 @@ function AddForm({
             <option value="USER_STORY">📝 User Story</option>
           </select>
         </div>
-        {needsParent && (
+        {canHaveParent && (
           <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
-              Parent {type === "FEATURE" ? "Epic" : "Feature"}
+              Place under <span className="text-gray-400 font-normal">(optional)</span>
             </label>
             <select
               value={parentId ?? ""}
               onChange={(e) => setParentId(e.target.value || null)}
               className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-[#01358d]"
             >
-              {parentOptions.length === 0 ? (
-                <option value="">— None available, add one first —</option>
-              ) : (
-                <>
-                  <option value="">— Choose —</option>
-                  {parentOptions.map((p) => (
-                    <option key={p.id} value={p.id}>{p.title}</option>
-                  ))}
-                </>
-              )}
+              <option value="">— No parent —</option>
+              {parentOptions.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {type === "FEATURE" ? `Epic: ${p.title}` : `Feature: ${p.title}`}
+                </option>
+              ))}
             </select>
           </div>
         )}
@@ -648,7 +735,7 @@ function AddForm({
         <button onClick={onCancel} disabled={submitting} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition disabled:opacity-50">Cancel</button>
         <button
           onClick={submit}
-          disabled={submitting || !title.trim() || (needsParent && !parentId)}
+          disabled={submitting || !title.trim()}
           className="px-4 py-2 bg-[#01358d] hover:bg-[#012a70] text-white rounded-lg text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {submitting ? "Adding…" : "Add"}
