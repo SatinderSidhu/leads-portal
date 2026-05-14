@@ -2250,456 +2250,6 @@ export default function LeadDetailPage() {
               )}
             </div>
 
-            {/* Email Compose */}
-            <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {replyMode ? "Reply to Email" : "Send Email"}
-                </h2>
-                {!composeOpen && (
-                  <button
-                    onClick={() => {
-                      if (lead.doNotContact) { alert("Cannot send email — Do Not Contact is enabled. Disable it first."); return; }
-                      resetCompose(); setComposeOpen(true);
-                    }}
-                    disabled={lead.doNotContact}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition ${lead.doNotContact ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-teal-600 text-white hover:bg-teal-700"}`}
-                  >
-                    Compose Email
-                  </button>
-                )}
-              </div>
-
-              {/* Drafts List */}
-              {!composeOpen && drafts.length > 0 && (
-                <div className="mt-3 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Drafts ({drafts.length})</p>
-                    <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
-                      <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> Draft
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block ml-1" /> Approved
-                      <span className="w-2 h-2 rounded-full bg-blue-400 inline-block ml-1" /> Scheduled
-                      <span className="w-2 h-2 rounded-full bg-gray-400 inline-block ml-1" /> Cancelled
-                    </div>
-                  </div>
-                  {drafts.map((draft) => {
-                    const statusColors: Record<string, string> = {
-                      DRAFT: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800",
-                      APPROVED: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800",
-                      SCHEDULED: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800",
-                      CANCELLED: "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 opacity-60",
-                    };
-                    const badgeColors: Record<string, string> = {
-                      DRAFT: "bg-amber-100 text-amber-700 dark:bg-amber-800 dark:text-amber-300",
-                      APPROVED: "bg-emerald-100 text-emerald-700 dark:bg-emerald-800 dark:text-emerald-300",
-                      SCHEDULED: "bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300",
-                      CANCELLED: "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400",
-                    };
-                    return (
-                      <div key={draft.id} className={`rounded-xl border p-3 transition-all ${statusColors[draft.status] || statusColors.DRAFT}`}>
-                        <div className="flex items-start justify-between gap-2 mb-2">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 mb-0.5">
-                              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{draft.subject || "(no subject)"}</p>
-                              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${badgeColors[draft.status] || badgeColors.DRAFT}`}>
-                                {draft.status}
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-gray-500">{draft.createdBy} — {new Date(draft.updatedAt).toLocaleString()}</p>
-                            {draft.status === "SCHEDULED" && draft.scheduledAt && (
-                              <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5 flex items-center gap-1">
-                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
-                                Scheduled: {new Date(draft.scheduledAt).toLocaleString()}
-                              </p>
-                            )}
-                          </div>
-                          {/* Status dropdown */}
-                          <select
-                            value={draft.status}
-                            onChange={async (e) => {
-                              const newStatus = e.target.value;
-                              if (newStatus === "SCHEDULED") {
-                                // Will be set when user picks datetime
-                                await fetch(`/api/leads/${lead.id}/drafts`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draftId: draft.id, status: newStatus }) });
-                              } else {
-                                await fetch(`/api/leads/${lead.id}/drafts`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draftId: draft.id, status: newStatus, scheduledAt: null }) });
-                              }
-                              fetchDrafts();
-                            }}
-                            className="text-[10px] px-1.5 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 outline-none cursor-pointer"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <option value="DRAFT">Draft</option>
-                            <option value="APPROVED">Approved</option>
-                            <option value="SCHEDULED">Scheduled</option>
-                            <option value="CANCELLED">Cancelled</option>
-                          </select>
-                        </div>
-                        {/* Schedule datetime picker (shown when status is SCHEDULED) */}
-                        {draft.status === "SCHEDULED" && (
-                          <div className="mb-2 flex items-center gap-2">
-                            <input
-                              type="datetime-local"
-                              defaultValue={draft.scheduledAt ? new Date(new Date(draft.scheduledAt).getTime() - new Date(draft.scheduledAt).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""}
-                              onChange={async (e) => {
-                                if (e.target.value) {
-                                  await fetch(`/api/leads/${lead.id}/drafts`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draftId: draft.id, scheduledAt: new Date(e.target.value).toISOString() }) });
-                                  fetchDrafts();
-                                }
-                              }}
-                              className="text-xs px-2 py-1.5 border border-blue-300 dark:border-blue-700 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
-                              min={new Date().toISOString().slice(0, 16)}
-                            />
-                          </div>
-                        )}
-                        {/* Actions */}
-                        <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-700/50">
-                          <button onClick={() => handleLoadDraft(draft)} className="text-[10px] font-medium text-gray-600 dark:text-gray-400 hover:text-[#01358d] dark:hover:text-blue-400 transition flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
-                            Edit
-                          </button>
-                          <button onClick={() => setPreviewDraftId(previewDraftId === draft.id ? null : draft.id)} className="text-[10px] font-medium text-gray-600 dark:text-gray-400 hover:text-[#01358d] dark:hover:text-blue-400 transition flex items-center gap-1">
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
-                            {previewDraftId === draft.id ? "Hide" : "Preview"}
-                          </button>
-                          <button onClick={() => { if (confirm("Delete this draft?")) handleDeleteDraft(draft.id); }} className="text-[10px] font-medium text-red-500 hover:text-red-700 transition flex items-center gap-1 ml-auto">
-                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
-                            Delete
-                          </button>
-                        </div>
-                        {/* Inline Preview */}
-                        {previewDraftId === draft.id && (
-                          <div className="mt-2 border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden bg-white dark:bg-gray-900">
-                            <div className="px-3 py-1.5 bg-gray-50 dark:bg-gray-800 text-[10px] text-gray-500 border-b border-gray-100 dark:border-gray-700">
-                              Subject: <span className="text-gray-900 dark:text-white font-medium">{draft.subject || "(no subject)"}</span>
-                            </div>
-                            <div className="p-3 max-h-48 overflow-y-auto">
-                              {draft.body ? (
-                                <div className="text-xs text-gray-700 dark:text-gray-300 prose prose-xs dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: draft.body }} />
-                              ) : (
-                                <p className="text-xs text-gray-400 italic">No content</p>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {composeOpen && (
-                <div className="space-y-4">
-                  {/* Reply mode banner */}
-                  {replyMode && (
-                    <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                      <span className="text-sm text-blue-700 dark:text-blue-300">
-                        Replying to: <strong>{composeSubject.replace(/^Re:\s*/, "")}</strong>
-                      </span>
-                      <button
-                        onClick={() => { resetCompose(); setComposeOpen(true); }}
-                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
-                      >
-                        Switch to new email
-                      </button>
-                    </div>
-                  )}
-
-                  {!replyMode && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                        Use Template
-                      </label>
-                      <select
-                        value={composeTemplateId}
-                        onChange={(e) => handleTemplateSelect(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
-                      >
-                        <option value="">-- No template (blank) --</option>
-                        {templates.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.title}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                        Tags auto-merge on send: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerName}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{projectName}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerEmail}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerPhone}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerCity}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{status}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{stage}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{source}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{dateCreated}}"}</code>
-                      </p>
-                    </div>
-                  )}
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
-                        To
-                      </label>
-                      {!showCcBcc && (
-                        <button
-                          type="button"
-                          onClick={() => setShowCcBcc(true)}
-                          className="text-xs text-teal-600 dark:text-teal-400 hover:underline"
-                        >
-                          CC/BCC
-                        </button>
-                      )}
-                    </div>
-                    <input
-                      type="text"
-                      value={lead.customerEmail}
-                      disabled
-                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
-                    />
-                  </div>
-
-                  {/* CC / BCC */}
-                  {showCcBcc && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          CC
-                        </label>
-                        <input
-                          type="text"
-                          value={composeCc}
-                          onChange={(e) => setComposeCc(e.target.value)}
-                          placeholder="email1@example.com, email2@example.com"
-                          className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                          BCC
-                        </label>
-                        <input
-                          type="text"
-                          value={composeBcc}
-                          onChange={(e) => setComposeBcc(e.target.value)}
-                          placeholder="email@example.com"
-                          className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Subject *
-                    </label>
-                    <input
-                      type="text"
-                      value={composeSubject}
-                      onChange={(e) => setComposeSubject(e.target.value)}
-                      placeholder="Email subject..."
-                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Body *
-                    </label>
-                    <RichTextEditor
-                      content={composeBody}
-                      onChange={setComposeBody}
-                      placeholder="Compose your email..."
-                    />
-                  </div>
-
-                  {/* Attachments */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Attachments
-                    </label>
-                    <label className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition">
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
-                      </svg>
-                      Add files
-                      <input
-                        type="file"
-                        multiple
-                        onChange={(e) => {
-                          const files = Array.from(e.target.files || []);
-                          setComposeAttachments((prev) => [...prev, ...files]);
-                          e.target.value = "";
-                        }}
-                        className="hidden"
-                      />
-                    </label>
-                    <span className="text-xs text-gray-400 ml-2">Max 10MB per file, 25MB total</span>
-                    {composeAttachments.length > 0 && (
-                      <div className="mt-2 space-y-1">
-                        {composeAttachments.map((file, idx) => (
-                          <div key={idx} className="flex items-center justify-between px-3 py-1.5 bg-gray-50 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600">
-                            <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
-                              {file.name} <span className="text-xs text-gray-400">({formatFileSize(file.size)})</span>
-                            </span>
-                            <button
-                              onClick={() => setComposeAttachments((prev) => prev.filter((_, i) => i !== idx))}
-                              className="text-red-500 hover:text-red-700 text-xs ml-2"
-                            >
-                              Remove
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Signature checkbox */}
-                  {adminSignature && (
-                    <div>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={includeSignature}
-                          onChange={(e) => setIncludeSignature(e.target.checked)}
-                          className="w-4 h-4 text-teal-600 rounded border-gray-300 focus:ring-teal-500"
-                        />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">
-                          Include email signature
-                        </span>
-                      </label>
-                      {includeSignature && (
-                        <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
-                          <p className="text-xs text-gray-400 mb-1">Signature preview:</p>
-                          <div
-                            className="text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none"
-                            dangerouslySetInnerHTML={{ __html: adminSignature }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="flex gap-3">
-                    <button
-                      onClick={handleSaveDraft}
-                      disabled={draftSaving || (!composeSubject.trim() && !composeBody.trim())}
-                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition"
-                    >
-                      {draftSaving ? "Saving..." : activeDraftId ? "Update Draft" : "Save Draft"}
-                    </button>
-                    <button
-                      onClick={handleSendEmail}
-                      disabled={!composeSubject.trim() || !composeBody.trim() || composeSending}
-                      className="bg-teal-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                    >
-                      {composeSending ? "Sending..." : replyMode ? "Send Reply" : "Send Email"}
-                    </button>
-                    <button
-                      onClick={() => setPreviewOpen(true)}
-                      disabled={!composeBody.trim()}
-                      className="px-4 py-2.5 border border-blue-300 dark:border-blue-600 rounded-lg text-sm text-blue-600 dark:text-blue-400 font-medium hover:bg-blue-50 dark:hover:bg-blue-900/30 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                    >
-                      Preview
-                    </button>
-                    <button
-                      onClick={resetCompose}
-                      className="px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Email Preview Modal */}
-            {previewOpen && (
-              <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-                  <div className="flex items-center justify-between px-6 py-4 border-b dark:border-gray-700">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Email Preview</h3>
-                    <button
-                      onClick={() => setPreviewOpen(false)}
-                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl leading-none"
-                    >
-                      &times;
-                    </button>
-                  </div>
-                  <div className="px-6 py-3 bg-gray-50 dark:bg-gray-900 border-b dark:border-gray-700 space-y-1">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      <span className="font-medium">To:</span> {lead?.customerEmail}
-                    </p>
-                    {composeCc.trim() && (
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        <span className="font-medium">CC:</span> {composeCc}
-                      </p>
-                    )}
-                    {composeBcc.trim() && (
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        <span className="font-medium">BCC:</span> {composeBcc}
-                      </p>
-                    )}
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      <span className="font-medium">Subject:</span> {composeSubject || "(no subject)"}
-                    </p>
-                    {composeAttachments.length > 0 && (
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        <span className="font-medium">Attachments:</span> {composeAttachments.map((f) => f.name).join(", ")}
-                      </p>
-                    )}
-                  </div>
-                  <div className="flex-1 overflow-auto p-6 bg-white">
-                    <div className="mx-auto" style={{ maxWidth: 600 }}>
-                      <iframe
-                        title="Email Preview"
-                        srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.6;color:#333;background:#fff}img{max-width:100%}a{color:#2563eb}</style></head><body>${composeBody}${includeSignature && adminSignature ? '<hr style="border:none;border-top:1px solid #eee;margin:20px 0" />' + adminSignature : ""}</body></html>`}
-                        className="w-full border border-gray-200 rounded-lg"
-                        style={{ minHeight: 400, background: "#fff" }}
-                      />
-                    </div>
-                  </div>
-                  <div className="px-6 py-4 border-t dark:border-gray-700 flex justify-end gap-3">
-                    <button
-                      onClick={() => setPreviewOpen(false)}
-                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
-                    >
-                      Back to Editor
-                    </button>
-                    <button
-                      onClick={() => { setPreviewOpen(false); handleSendEmail(); }}
-                      disabled={!composeSubject.trim() || !composeBody.trim() || composeSending}
-                      className="bg-teal-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
-                    >
-                      Send Email
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Recommended Next Email */}
-            {recommendations.length > 0 && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Recommended Next Email
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {recommendations.map((rec) => (
-                    <button
-                      key={rec.templateId}
-                      onClick={() => loadRecommendation(rec)}
-                      className="text-left p-4 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition"
-                    >
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">
-                        {rec.templateTitle}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {rec.templateSubject}
-                      </div>
-                      <div className="text-xs text-teal-600 dark:text-teal-400 mt-2">
-                        {rec.edgeLabel
-                          ? `After: ${rec.fromTemplateName} → ${rec.edgeLabel}`
-                          : `From flow: ${rec.flowName}`}
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Messages handled by floating chat widget below */}
 
             {/* Files Section */}
@@ -3172,6 +2722,456 @@ export default function LeadDetailPage() {
                 </div>
               );
             })()}
+
+            {/* Email Compose */}
+            <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  {replyMode ? "Reply to Email" : "Send Email"}
+                </h2>
+                {!composeOpen && (
+                  <button
+                    onClick={() => {
+                      if (lead.doNotContact) { alert("Cannot send email — Do Not Contact is enabled. Disable it first."); return; }
+                      resetCompose(); setComposeOpen(true);
+                    }}
+                    disabled={lead.doNotContact}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition ${lead.doNotContact ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-teal-600 text-white hover:bg-teal-700"}`}
+                  >
+                    Compose Email
+                  </button>
+                )}
+              </div>
+
+              {/* Drafts List */}
+              {!composeOpen && drafts.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Drafts ({drafts.length})</p>
+                    <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
+                      <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> Draft
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 inline-block ml-1" /> Approved
+                      <span className="w-2 h-2 rounded-full bg-blue-400 inline-block ml-1" /> Scheduled
+                      <span className="w-2 h-2 rounded-full bg-gray-400 inline-block ml-1" /> Cancelled
+                    </div>
+                  </div>
+                  {drafts.map((draft) => {
+                    const statusColors: Record<string, string> = {
+                      DRAFT: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800",
+                      APPROVED: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800",
+                      SCHEDULED: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800",
+                      CANCELLED: "bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 opacity-60",
+                    };
+                    const badgeColors: Record<string, string> = {
+                      DRAFT: "bg-amber-100 text-amber-700 dark:bg-amber-800 dark:text-amber-300",
+                      APPROVED: "bg-emerald-100 text-emerald-700 dark:bg-emerald-800 dark:text-emerald-300",
+                      SCHEDULED: "bg-blue-100 text-blue-700 dark:bg-blue-800 dark:text-blue-300",
+                      CANCELLED: "bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400",
+                    };
+                    return (
+                      <div key={draft.id} className={`rounded-xl border p-3 transition-all ${statusColors[draft.status] || statusColors.DRAFT}`}>
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{draft.subject || "(no subject)"}</p>
+                              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full whitespace-nowrap ${badgeColors[draft.status] || badgeColors.DRAFT}`}>
+                                {draft.status}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-gray-500">{draft.createdBy} — {new Date(draft.updatedAt).toLocaleString()}</p>
+                            {draft.status === "SCHEDULED" && draft.scheduledAt && (
+                              <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-0.5 flex items-center gap-1">
+                                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
+                                Scheduled: {new Date(draft.scheduledAt).toLocaleString()}
+                              </p>
+                            )}
+                          </div>
+                          {/* Status dropdown */}
+                          <select
+                            value={draft.status}
+                            onChange={async (e) => {
+                              const newStatus = e.target.value;
+                              if (newStatus === "SCHEDULED") {
+                                // Will be set when user picks datetime
+                                await fetch(`/api/leads/${lead.id}/drafts`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draftId: draft.id, status: newStatus }) });
+                              } else {
+                                await fetch(`/api/leads/${lead.id}/drafts`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draftId: draft.id, status: newStatus, scheduledAt: null }) });
+                              }
+                              fetchDrafts();
+                            }}
+                            className="text-[10px] px-1.5 py-1 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 outline-none cursor-pointer"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <option value="DRAFT">Draft</option>
+                            <option value="APPROVED">Approved</option>
+                            <option value="SCHEDULED">Scheduled</option>
+                            <option value="CANCELLED">Cancelled</option>
+                          </select>
+                        </div>
+                        {/* Schedule datetime picker (shown when status is SCHEDULED) */}
+                        {draft.status === "SCHEDULED" && (
+                          <div className="mb-2 flex items-center gap-2">
+                            <input
+                              type="datetime-local"
+                              defaultValue={draft.scheduledAt ? new Date(new Date(draft.scheduledAt).getTime() - new Date(draft.scheduledAt).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ""}
+                              onChange={async (e) => {
+                                if (e.target.value) {
+                                  await fetch(`/api/leads/${lead.id}/drafts`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ draftId: draft.id, scheduledAt: new Date(e.target.value).toISOString() }) });
+                                  fetchDrafts();
+                                }
+                              }}
+                              className="text-xs px-2 py-1.5 border border-blue-300 dark:border-blue-700 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-blue-500"
+                              min={new Date().toISOString().slice(0, 16)}
+                            />
+                          </div>
+                        )}
+                        {/* Actions */}
+                        <div className="flex items-center gap-2 pt-2 border-t border-gray-100 dark:border-gray-700/50">
+                          <button onClick={() => handleLoadDraft(draft)} className="text-[10px] font-medium text-gray-600 dark:text-gray-400 hover:text-[#01358d] dark:hover:text-blue-400 transition flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /></svg>
+                            Edit
+                          </button>
+                          <button onClick={() => setPreviewDraftId(previewDraftId === draft.id ? null : draft.id)} className="text-[10px] font-medium text-gray-600 dark:text-gray-400 hover:text-[#01358d] dark:hover:text-blue-400 transition flex items-center gap-1">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" /></svg>
+                            {previewDraftId === draft.id ? "Hide" : "Preview"}
+                          </button>
+                          <button onClick={() => { if (confirm("Delete this draft?")) handleDeleteDraft(draft.id); }} className="text-[10px] font-medium text-red-500 hover:text-red-700 transition flex items-center gap-1 ml-auto">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" /></svg>
+                            Delete
+                          </button>
+                        </div>
+                        {/* Inline Preview */}
+                        {previewDraftId === draft.id && (
+                          <div className="mt-2 border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden bg-white dark:bg-gray-900">
+                            <div className="px-3 py-1.5 bg-gray-50 dark:bg-gray-800 text-[10px] text-gray-500 border-b border-gray-100 dark:border-gray-700">
+                              Subject: <span className="text-gray-900 dark:text-white font-medium">{draft.subject || "(no subject)"}</span>
+                            </div>
+                            <div className="p-3 max-h-48 overflow-y-auto">
+                              {draft.body ? (
+                                <div className="text-xs text-gray-700 dark:text-gray-300 prose prose-xs dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: draft.body }} />
+                              ) : (
+                                <p className="text-xs text-gray-400 italic">No content</p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {composeOpen && (
+                <div className="space-y-4">
+                  {/* Reply mode banner */}
+                  {replyMode && (
+                    <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                      <span className="text-sm text-blue-700 dark:text-blue-300">
+                        Replying to: <strong>{composeSubject.replace(/^Re:\s*/, "")}</strong>
+                      </span>
+                      <button
+                        onClick={() => { resetCompose(); setComposeOpen(true); }}
+                        className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                      >
+                        Switch to new email
+                      </button>
+                    </div>
+                  )}
+
+                  {!replyMode && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                        Use Template
+                      </label>
+                      <select
+                        value={composeTemplateId}
+                        onChange={(e) => handleTemplateSelect(e.target.value)}
+                        className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                      >
+                        <option value="">-- No template (blank) --</option>
+                        {templates.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.title}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+                        Tags auto-merge on send: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerName}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{projectName}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerEmail}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerPhone}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerCity}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{status}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{stage}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{source}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{dateCreated}}"}</code>
+                      </p>
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                        To
+                      </label>
+                      {!showCcBcc && (
+                        <button
+                          type="button"
+                          onClick={() => setShowCcBcc(true)}
+                          className="text-xs text-teal-600 dark:text-teal-400 hover:underline"
+                        >
+                          CC/BCC
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      type="text"
+                      value={lead.customerEmail}
+                      disabled
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
+                    />
+                  </div>
+
+                  {/* CC / BCC */}
+                  {showCcBcc && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          CC
+                        </label>
+                        <input
+                          type="text"
+                          value={composeCc}
+                          onChange={(e) => setComposeCc(e.target.value)}
+                          placeholder="email1@example.com, email2@example.com"
+                          className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          BCC
+                        </label>
+                        <input
+                          type="text"
+                          value={composeBcc}
+                          onChange={(e) => setComposeBcc(e.target.value)}
+                          placeholder="email@example.com"
+                          className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Subject *
+                    </label>
+                    <input
+                      type="text"
+                      value={composeSubject}
+                      onChange={(e) => setComposeSubject(e.target.value)}
+                      placeholder="Email subject..."
+                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Body *
+                    </label>
+                    <RichTextEditor
+                      content={composeBody}
+                      onChange={setComposeBody}
+                      placeholder="Compose your email..."
+                    />
+                  </div>
+
+                  {/* Attachments */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Attachments
+                    </label>
+                    <label className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+                      </svg>
+                      Add files
+                      <input
+                        type="file"
+                        multiple
+                        onChange={(e) => {
+                          const files = Array.from(e.target.files || []);
+                          setComposeAttachments((prev) => [...prev, ...files]);
+                          e.target.value = "";
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                    <span className="text-xs text-gray-400 ml-2">Max 10MB per file, 25MB total</span>
+                    {composeAttachments.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        {composeAttachments.map((file, idx) => (
+                          <div key={idx} className="flex items-center justify-between px-3 py-1.5 bg-gray-50 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600">
+                            <span className="text-sm text-gray-700 dark:text-gray-300 truncate">
+                              {file.name} <span className="text-xs text-gray-400">({formatFileSize(file.size)})</span>
+                            </span>
+                            <button
+                              onClick={() => setComposeAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                              className="text-red-500 hover:text-red-700 text-xs ml-2"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Signature checkbox */}
+                  {adminSignature && (
+                    <div>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={includeSignature}
+                          onChange={(e) => setIncludeSignature(e.target.checked)}
+                          className="w-4 h-4 text-teal-600 rounded border-gray-300 focus:ring-teal-500"
+                        />
+                        <span className="text-sm text-gray-700 dark:text-gray-300">
+                          Include email signature
+                        </span>
+                      </label>
+                      {includeSignature && (
+                        <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg border border-gray-200 dark:border-gray-600">
+                          <p className="text-xs text-gray-400 mb-1">Signature preview:</p>
+                          <div
+                            className="text-sm text-gray-700 dark:text-gray-300 prose prose-sm dark:prose-invert max-w-none"
+                            dangerouslySetInnerHTML={{ __html: adminSignature }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleSaveDraft}
+                      disabled={draftSaving || (!composeSubject.trim() && !composeBody.trim())}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 transition"
+                    >
+                      {draftSaving ? "Saving..." : activeDraftId ? "Update Draft" : "Save Draft"}
+                    </button>
+                    <button
+                      onClick={handleSendEmail}
+                      disabled={!composeSubject.trim() || !composeBody.trim() || composeSending}
+                      className="bg-teal-600 text-white px-6 py-2.5 rounded-lg text-sm font-medium hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
+                      {composeSending ? "Sending..." : replyMode ? "Send Reply" : "Send Email"}
+                    </button>
+                    <button
+                      onClick={() => setPreviewOpen(true)}
+                      disabled={!composeBody.trim()}
+                      className="px-4 py-2.5 border border-blue-300 dark:border-blue-600 rounded-lg text-sm text-blue-600 dark:text-blue-400 font-medium hover:bg-blue-50 dark:hover:bg-blue-900/30 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
+                      Preview
+                    </button>
+                    <button
+                      onClick={resetCompose}
+                      className="px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Email Preview Modal */}
+            {previewOpen && (
+              <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+                  <div className="flex items-center justify-between px-6 py-4 border-b dark:border-gray-700">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Email Preview</h3>
+                    <button
+                      onClick={() => setPreviewOpen(false)}
+                      className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl leading-none"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                  <div className="px-6 py-3 bg-gray-50 dark:bg-gray-900 border-b dark:border-gray-700 space-y-1">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      <span className="font-medium">To:</span> {lead?.customerEmail}
+                    </p>
+                    {composeCc.trim() && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        <span className="font-medium">CC:</span> {composeCc}
+                      </p>
+                    )}
+                    {composeBcc.trim() && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        <span className="font-medium">BCC:</span> {composeBcc}
+                      </p>
+                    )}
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      <span className="font-medium">Subject:</span> {composeSubject || "(no subject)"}
+                    </p>
+                    {composeAttachments.length > 0 && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                        <span className="font-medium">Attachments:</span> {composeAttachments.map((f) => f.name).join(", ")}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex-1 overflow-auto p-6 bg-white">
+                    <div className="mx-auto" style={{ maxWidth: 600 }}>
+                      <iframe
+                        title="Email Preview"
+                        srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.6;color:#333;background:#fff}img{max-width:100%}a{color:#2563eb}</style></head><body>${composeBody}${includeSignature && adminSignature ? '<hr style="border:none;border-top:1px solid #eee;margin:20px 0" />' + adminSignature : ""}</body></html>`}
+                        className="w-full border border-gray-200 rounded-lg"
+                        style={{ minHeight: 400, background: "#fff" }}
+                      />
+                    </div>
+                  </div>
+                  <div className="px-6 py-4 border-t dark:border-gray-700 flex justify-end gap-3">
+                    <button
+                      onClick={() => setPreviewOpen(false)}
+                      className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+                    >
+                      Back to Editor
+                    </button>
+                    <button
+                      onClick={() => { setPreviewOpen(false); handleSendEmail(); }}
+                      disabled={!composeSubject.trim() || !composeBody.trim() || composeSending}
+                      className="bg-teal-600 text-white px-6 py-2 rounded-lg text-sm font-medium hover:bg-teal-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                    >
+                      Send Email
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Recommended Next Email */}
+            {recommendations.length > 0 && (
+              <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                  Recommended Next Email
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {recommendations.map((rec) => (
+                    <button
+                      key={rec.templateId}
+                      onClick={() => loadRecommendation(rec)}
+                      className="text-left p-4 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition"
+                    >
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {rec.templateTitle}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {rec.templateSubject}
+                      </div>
+                      <div className="text-xs text-teal-600 dark:text-teal-400 mt-2">
+                        {rec.edgeLabel
+                          ? `After: ${rec.fromTemplateName} → ${rec.edgeLabel}`
+                          : `From flow: ${rec.flowName}`}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Audit Log */}
             <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
