@@ -13,6 +13,33 @@ interface RichTextEditorProps {
   placeholder?: string;
 }
 
+/**
+ * TipTap's StarterKit + Link + Image schema only preserves a small set of
+ * elements (headings, paragraphs, lists, blockquotes, bold/italic/strike,
+ * links, images). Any richer HTML — `<table>`, `<style>`, inline
+ * `style="background:..."`, `<center>`, framework class names — gets silently
+ * stripped when TipTap parses the input. That's fine for casual composition
+ * but disastrous for email templates: the admin pastes a beautifully styled
+ * Gmail-friendly template, TipTap eats it, and the recipient gets plain text.
+ *
+ * This heuristic flags content that the visual editor can't round-trip. When
+ * it returns true we open the editor in raw-HTML (code) mode so the template
+ * goes through unmangled. The admin can still flip to visual at their own
+ * risk via the toolbar button.
+ */
+function isComplexEmailHtml(html: string): boolean {
+  if (!html) return false;
+  return (
+    /<table\b/i.test(html) ||
+    /<style\b/i.test(html) ||
+    /<center\b/i.test(html) ||
+    /<html\b/i.test(html) ||
+    /style\s*=\s*["'][^"']*(background|padding|border|gradient|color)/i.test(html) ||
+    /<div\b[^>]*style\s*=/i.test(html) ||
+    /<span\b[^>]*style\s*=/i.test(html)
+  );
+}
+
 function ToolbarButton({
   onClick,
   active,
@@ -45,8 +72,12 @@ export default function RichTextEditor({
   onChange,
   placeholder = "Start writing...",
 }: RichTextEditorProps) {
-  const [mode, setMode] = useState<"visual" | "code">("visual");
+  // Start in code mode if the initial content looks like a styled email
+  // template — see isComplexEmailHtml. Admin can still toggle to visual.
+  const initialMode: "visual" | "code" = isComplexEmailHtml(content) ? "code" : "visual";
+  const [mode, setMode] = useState<"visual" | "code">(initialMode);
   const [codeContent, setCodeContent] = useState(content);
+  const [autoCodeNotice, setAutoCodeNotice] = useState(initialMode === "code");
   const lastContentRef = useRef(content);
 
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -68,14 +99,28 @@ export default function RichTextEditor({
     },
   });
 
-  // Sync editor content when the content prop changes externally (e.g. template selected)
+  // Sync editor content when the content prop changes externally (e.g. template selected).
+  // If the incoming content is styled email HTML and we're currently in visual mode,
+  // flip to code mode automatically so TipTap doesn't strip the styling on parse.
   useEffect(() => {
     if (editor && content !== lastContentRef.current) {
       lastContentRef.current = content;
-      editor.commands.setContent(content);
-      setCodeContent(content);
+      const complex = isComplexEmailHtml(content);
+      if (complex && mode === "visual") {
+        setMode("code");
+        setAutoCodeNotice(true);
+        setCodeContent(content);
+        // Push the same raw HTML upward so the consumer (compose form) sees
+        // the un-stripped value if it reads onChange later.
+        onChange(content);
+      } else {
+        editor.commands.setContent(content);
+        setCodeContent(content);
+        // Reset the notice when content is no longer complex (template cleared).
+        if (!complex) setAutoCodeNotice(false);
+      }
     }
-  }, [content, editor]);
+  }, [content, editor, mode, onChange]);
 
   const setLink = useCallback(() => {
     if (!editor) return;
@@ -121,12 +166,23 @@ export default function RichTextEditor({
   }
 
   function switchToVisual() {
+    // Switching to visual makes TipTap parse the current HTML through its
+    // schema and strip anything it doesn't recognize. For styled email
+    // templates that means losing tables, inline styles, background colors,
+    // etc. — warn the admin before discarding all that.
+    if (isComplexEmailHtml(codeContent)) {
+      const ok = window.confirm(
+        "Switching to the visual editor will strip table layouts, inline styles, and other email-template formatting that the visual editor can't preserve. Continue?"
+      );
+      if (!ok) return;
+    }
     if (editor) {
       lastContentRef.current = codeContent;
       editor.commands.setContent(codeContent);
       onChange(codeContent);
     }
     setMode("visual");
+    setAutoCodeNotice(false);
   }
 
   function handleCodeChange(value: string) {
@@ -234,6 +290,17 @@ export default function RichTextEditor({
           </ToolbarButton>
         </div>
       </div>
+      {autoCodeNotice && mode === "code" && (
+        <div className="px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900 text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+          <svg className="w-3.5 h-3.5 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M11.42 15.17 17.25 21A2.652 2.652 0 0 0 21 17.25l-5.877-5.877M11.42 15.17l2.496-3.03c.317-.384.74-.626 1.208-.766M11.42 15.17l-4.655 5.653a2.548 2.548 0 1 1-3.586-3.586l6.837-5.63m5.108-.233c.55-.164 1.163-.188 1.743-.14a4.5 4.5 0 0 0 4.486-6.336l-3.276 3.277a3.004 3.004 0 0 1-2.25-2.25l3.276-3.276a4.5 4.5 0 0 0-6.336 4.486c.091 1.076-.071 2.264-.904 2.95l-.102.085m-1.745 1.437L5.909 7.5H4.5L2.25 3.75l1.5-1.5L7.5 4.5v1.409l4.26 4.26m-1.745 1.437 1.745-1.437m6.615 8.206L15.75 15.75M4.867 19.125h.008v.008h-.008v-.008Z" />
+          </svg>
+          <div>
+            <p className="font-semibold">Editing as raw HTML to preserve template styling.</p>
+            <p>The visual editor would strip tables, inline styles, and email-template layouts. Use the <code className="font-mono">Visual</code> button only if you're rewriting from scratch.</p>
+          </div>
+        </div>
+      )}
       {mode === "visual" ? (
         <EditorContent
           editor={editor}
