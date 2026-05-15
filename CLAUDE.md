@@ -391,7 +391,7 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 | AdminShell | `apps/admin/src/components/AdminShell.tsx` | Layout wrapper: sidebar + sticky breadcrumb bar + main content area. Excluded on /login |
 | Sidebar | `apps/admin/src/components/Sidebar.tsx` | Fixed left nav (w-56): logo, New Lead button, grouped nav links, theme toggle, logout |
 | Breadcrumbs | `apps/admin/src/components/Breadcrumbs.tsx` | Auto-generated from URL path, handles UUIDs as "Lead Detail", clickable parent segments |
-| RichTextEditor | `apps/admin/src/components/RichTextEditor.tsx` | TipTap editor with visual/code toggle, syncs external content changes via useEffect |
+| RichTextEditor | `apps/admin/src/components/RichTextEditor.tsx` | TipTap editor with visual/code toggle, syncs external content changes via useEffect. Auto-switches to raw-HTML (code) mode when content contains email-template structures (tables, `<style>`, inline `background`/`padding`/`border`/`gradient`/`color`, styled `<div>`/`<span>`) since TipTap's schema strips them on parse — banner explains why; switching back to visual prompts a confirm |
 | FlowBuilder | `apps/admin/src/components/FlowBuilder.tsx` | @xyflow drag-and-drop email flow builder |
 | AppFlowBuilder | `apps/admin/src/components/AppFlowBuilder.tsx` | @xyflow app flow editor with AI sidebar, save, PNG download |
 | BasicNode / WireframeNode | `apps/admin/src/components/app-flow-nodes.tsx` | Custom ReactFlow node types for app flows |

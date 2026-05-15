@@ -7,6 +7,16 @@ export interface Release {
 
 export const releases: Release[] = [
   {
+    version: "4.32",
+    date: "2026-05-15",
+    commitId: "68d6404",
+    changes: [
+      "Email-template styling no longer gets silently stripped on send: RichTextEditor detects 'complex' email HTML (tables, <style>/<center>/<html>, inline styles with background/padding/border/gradient/color, styled <div>/<span>) and auto-opens in raw-HTML code mode so TipTap's schema can't eat the markup",
+      "Amber banner explains why visual is locked when auto-switched, and switching back to visual now prompts a confirm so the admin knows the styling will be discarded",
+      "Lead detail layout: Compose Email moved from the left column into the right column directly under the Email Conversation thread — the writing surface now sits next to the reply context, left column stays focused on lead facts / files / SOW / app flows",
+    ],
+  },
+  {
     version: "4.31",
     date: "2026-05-14",
     commitId: "2d081e2",
