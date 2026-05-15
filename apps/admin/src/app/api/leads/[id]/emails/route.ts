@@ -90,6 +90,7 @@ export async function POST(
     select: {
       customerEmail: true, customerName: true, projectName: true,
       phone: true, city: true, status: true, stage: true, source: true, dateCreated: true,
+      companyName: true, jobTitle: true,
       doNotContact: true,
     },
   });
@@ -168,13 +169,23 @@ export async function POST(
   const customerPortalBase = process.env.CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us";
   // `id` is the route param above — lead.id is not selected. Same value.
   const customerPortalUrl = `${customerPortalBase}?id=${id}`;
+  // first_name: best-effort split on customerName for casual greetings.
+  // 44+ existing templates use {{first_name}} — keep them rendering correctly
+  // without forcing rewrites.
+  const firstName = (lead.customerName || "").trim().split(/\s+/)[0] || "";
   const mergeTemplateTags = (text: string) =>
     text
       .replace(/\{\{customerName\}\}/g, lead.customerName)
+      .replace(/\{\{first_name\}\}/g, firstName)
+      .replace(/\{\{firstName\}\}/g, firstName)
       .replace(/\{\{projectName\}\}/g, lead.projectName || "")
       .replace(/\{\{customerEmail\}\}/g, lead.customerEmail)
       .replace(/\{\{customerPhone\}\}/g, lead.phone || "")
       .replace(/\{\{customerCity\}\}/g, lead.city || "")
+      .replace(/\{\{companyName\}\}/g, lead.companyName || "")
+      // company_name snake_case alias used by ~32 templates.
+      .replace(/\{\{company_name\}\}/g, lead.companyName || "")
+      .replace(/\{\{jobTitle\}\}/g, lead.jobTitle || "")
       .replace(/\{\{status\}\}/g, STATUS_LABELS[lead.status] || lead.status)
       .replace(/\{\{stage\}\}/g, STAGE_LABELS[lead.stage] || lead.stage)
       .replace(/\{\{source\}\}/g, lead.source || "")

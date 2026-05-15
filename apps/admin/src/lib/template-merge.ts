@@ -38,8 +38,16 @@ export function mergeTags(text: string, ctx: MergeContext): string {
     customerPortalUrl = `${base}?id=${ctx.id}`;
   }
 
+  // first_name: best-effort split on the customerName so casual greetings
+  // ("Hi Sarah,") render correctly. Templates were written using {{first_name}}
+  // before the renderer learned the tag — covering both spellings keeps the
+  // 44 templates already in the DB working without rewrites.
+  const firstName = (ctx.customerName || "").trim().split(/\s+/)[0] || "";
+
   const replacements: Record<string, string> = {
     customerName: ctx.customerName || "",
+    first_name: firstName,
+    firstName,
     projectName: ctx.projectName || "",
     phone: ctx.phone || "",
     city: ctx.city || "",
@@ -48,6 +56,8 @@ export function mergeTags(text: string, ctx: MergeContext): string {
     source: ctx.source || "",
     dateCreated: formattedDate,
     companyName: ctx.companyName || "",
+    // company_name is a snake_case alias used by ~32 templates in the DB.
+    company_name: ctx.companyName || "",
     jobTitle: ctx.jobTitle || "",
     customerPortalUrl,
   };
