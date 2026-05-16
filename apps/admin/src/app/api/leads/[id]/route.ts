@@ -30,6 +30,10 @@ export async function GET(
         include: { admin: { select: { id: true, name: true, email: true } } },
         orderBy: { createdAt: "asc" },
       },
+      // Secondary contacts are surfaced inline so the compose form can
+      // pre-fill the CC field with them. The /api/leads/[id]/contacts
+      // endpoint stays the source of truth for mutations.
+      contacts: { orderBy: { createdAt: "asc" } },
       _count: { select: { sentEmails: true } },
     },
   });

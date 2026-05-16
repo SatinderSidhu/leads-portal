@@ -14,11 +14,15 @@ interface Contact {
 
 interface Props {
   leadId: string;
+  /** Fired after add / edit / remove so the parent (e.g. the lead detail
+   *  page) can refresh state that depends on the contact list — most
+   *  notably the compose form's auto-CC prefill. */
+  onContactsChanged?: () => void;
 }
 
 const EMPTY_FORM = { name: "", email: "", phone: "", role: "" };
 
-export default function LeadContactsPanel({ leadId }: Props) {
+export default function LeadContactsPanel({ leadId, onContactsChanged }: Props) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
@@ -82,6 +86,7 @@ export default function LeadContactsPanel({ leadId }: Props) {
       }
       cancel();
       await load();
+      onContactsChanged?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed");
     } finally {
@@ -92,7 +97,10 @@ export default function LeadContactsPanel({ leadId }: Props) {
   async function remove(c: Contact) {
     if (!confirm(`Remove ${c.name} <${c.email}> from this lead? They'll stop receiving project emails.`)) return;
     const res = await fetch(`/api/leads/${leadId}/contacts/${c.id}`, { method: "DELETE" });
-    if (res.ok) load();
+    if (res.ok) {
+      await load();
+      onContactsChanged?.();
+    }
   }
 
   const isFormOpen = adding || editingId !== null;

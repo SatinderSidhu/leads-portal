@@ -266,6 +266,7 @@ interface Lead {
   files: LeadFileItem[];
   assignedTo?: { id: string; name: string; email: string } | null;
   watchers?: { admin: { id: string; name: string; email: string } }[];
+  contacts?: { id: string; name: string; email: string; phone: string | null; role: string | null }[];
   previewToken?: string;
 }
 
@@ -1189,6 +1190,14 @@ export default function LeadDetailPage() {
       setComposeSubject(mergeTags(rec.templateSubject));
       setComposeBody("");
     }
+    // Pre-fill CC with additional contacts if not already populated.
+    if (!composeCc) {
+      const auto = defaultAutoCc();
+      if (auto) {
+        setComposeCc(auto);
+        setShowCcBcc(true);
+      }
+    }
     setComposeOpen(true);
   }
 
@@ -1208,6 +1217,29 @@ export default function LeadDetailPage() {
     setActiveDraftId(null);
   }
 
+  /**
+   * Comma-joined list of secondary-contact emails to seed the compose CC
+   * field. The server-side compose route already merges these into the
+   * outgoing mail; surfacing them in the UI lets the admin see (and
+   * optionally remove) them before sending instead of finding out from
+   * the SentEmail.cc record after the fact.
+   */
+  function defaultAutoCc(): string {
+    if (!lead?.contacts?.length) return "";
+    return lead.contacts.map((c) => c.email).join(", ");
+  }
+
+  /** Open a fresh compose form with CC pre-filled from additional contacts. */
+  function openCompose() {
+    resetCompose();
+    setComposeOpen(true);
+    const auto = defaultAutoCc();
+    if (auto) {
+      setComposeCc(auto);
+      setShowCcBcc(true);
+    }
+  }
+
   function handleReply(item: { id: string; type: string; subject: string; date: string; fromName: string | null; fromEmail: string | null; body: string | null; bodyText: string | null }) {
     setReplyMode(true);
     setReplyToEmailId(item.id);
@@ -1218,9 +1250,10 @@ export default function LeadDetailPage() {
     const quotedContent = `<br/><br/><div style="border-left:2px solid #ccc;padding-left:12px;margin-left:4px;color:#666"><p><strong>On ${new Date(item.date).toLocaleString()}, ${sender} wrote:</strong></p>${item.body || (item.bodyText ? `<p>${item.bodyText}</p>` : "")}</div>`;
     setComposeBody(quotedContent);
     setComposeTemplateId("");
-    setComposeCc("");
+    const auto = defaultAutoCc();
+    setComposeCc(auto);
     setComposeBcc("");
-    setShowCcBcc(false);
+    setShowCcBcc(Boolean(auto));
     setComposeAttachments([]);
     setIncludeSignature(false);
     setComposeOpen(true);
@@ -2253,6 +2286,10 @@ export default function LeadDetailPage() {
               )}
             </div>
 
+            {/* Additional Contacts — sits under Project Details so the
+                admin sees who'll be CC'd before opening the compose form. */}
+            <LeadContactsPanel leadId={lead.id} onContactsChanged={fetchLead} />
+
             {/* Messages handled by floating chat widget below */}
 
             {/* Files Section */}
@@ -2756,7 +2793,7 @@ export default function LeadDetailPage() {
                   <button
                     onClick={() => {
                       if (lead.doNotContact) { alert("Cannot send email — Do Not Contact is enabled. Disable it first."); return; }
-                      resetCompose(); setComposeOpen(true);
+                      openCompose();
                     }}
                     disabled={lead.doNotContact}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition ${lead.doNotContact ? "bg-gray-300 text-gray-500 cursor-not-allowed" : "bg-teal-600 text-white hover:bg-teal-700"}`}
@@ -2893,7 +2930,7 @@ export default function LeadDetailPage() {
                         Replying to: <strong>{composeSubject.replace(/^Re:\s*/, "")}</strong>
                       </span>
                       <button
-                        onClick={() => { resetCompose(); setComposeOpen(true); }}
+                        onClick={() => openCompose()}
                         className="text-xs text-blue-600 dark:text-blue-400 hover:underline"
                       >
                         Switch to new email
@@ -2961,6 +2998,11 @@ export default function LeadDetailPage() {
                           placeholder="email1@example.com, email2@example.com"
                           className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none transition text-gray-900 dark:text-white bg-white dark:bg-gray-700 text-sm"
                         />
+                        {(lead?.contacts?.length ?? 0) > 0 && (
+                          <p className="mt-1 text-[11px] text-gray-400 dark:text-gray-500">
+                            Pre-filled from Additional Contacts — remove any you don&apos;t want CC&apos;d on this email.
+                          </p>
+                        )}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -3539,11 +3581,6 @@ export default function LeadDetailPage() {
                   )}
                 </div>
               )}
-            </div>
-
-            {/* Additional Contacts (full width within right column) */}
-            <div className="md:col-span-2">
-              <LeadContactsPanel leadId={lead.id} />
             </div>
 
             {/* Questionnaire Section (full width within right column) */}

@@ -2,7 +2,6 @@ import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { getAdminSession } from "../../../../../lib/session";
 import { transporter, getFromAddress, getReplyToAddress, getUnsubscribeFooter } from "../../../../../lib/email";
-import { getLeadCcEmailList, mergeCc } from "../../../../../lib/lead-contacts";
 import { sendNotification } from "../../../../../lib/notify";
 import { logAudit } from "../../../../../lib/audit";
 
@@ -128,12 +127,13 @@ export async function POST(
     }
   }
 
-  // Auto-CC the lead's secondary contacts on top of any admin-typed CCs.
-  // The lead detail UI shows the auto-list to the admin, but we merge here
-  // as the source of truth so the saved SentEmail record and the actual
-  // outgoing mail agree.
-  const autoCc = await getLeadCcEmailList(id);
-  const mergedCc = mergeCc(cc, autoCc);
+  // The lead detail compose form pre-fills the CC field with secondary
+  // contacts before the admin sends, so the value on the wire is already
+  // the authoritative list — anything the admin removed should stay
+  // removed. (Auto-CC still applies to the system-triggered helpers in
+  // email.ts that have no compose UI: welcome, status, NDA, SOW, app
+  // flow, questionnaire.)
+  const mergedCc = cc?.trim() || null;
 
   // Create sent email record
   const sentEmail = await prisma.sentEmail.create({
