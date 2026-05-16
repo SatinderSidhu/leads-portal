@@ -57,6 +57,17 @@ interface EmailTemplate {
 // Sample data for previewing system templates
 const SAMPLE_DATA: Record<string, string> = {
   customerName: "Sarah Johnson",
+  first_name: "Sarah",
+  firstName: "Sarah",
+  companyName: "Acme Corp",
+  company_name: "Acme Corp",
+  customerEmail: "sarah@acme.com",
+  customerPhone: "+1 (555) 123-4567",
+  customerCity: "New York",
+  jobTitle: "Director of Product",
+  stage: "Warm",
+  source: "Cold Outreach",
+  dateCreated: new Date().toLocaleDateString(),
   projectName: "Acme Mobile App",
   portalUrl: "https://leadsportal.kitlabs.us/project?id=sample",
   customerPortalUrl: "https://leadsportal.kitlabs.us?id=sample",

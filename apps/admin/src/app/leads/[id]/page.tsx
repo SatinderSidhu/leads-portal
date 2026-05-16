@@ -174,9 +174,12 @@ interface SentEmail {
   bcc: string | null;
   replyToEmailId: string | null;
   replyToType: string | null;
+  enrollmentId: string | null;
+  enrollmentStep: number | null;
   createdAt: string;
   template: { title: string; purpose: string } | null;
   attachments: EmailAttachmentItem[];
+  sequence: { id: string; name: string } | null;
 }
 
 interface ReceivedEmail {
@@ -2629,6 +2632,7 @@ export default function LeadDetailPage() {
                   type: "sent" as const, id: e.id, subject: e.subject, date: e.createdAt, status: e.status,
                   openedAt: e.openedAt, sentBy: e.sentBy, template: e.template, body: e.body,
                   cc: e.cc, bcc: e.bcc, attachments: e.attachments,
+                  sequence: e.sequence, enrollmentStep: e.enrollmentStep,
                   fromName: null as string | null, fromEmail: null as string | null,
                   bodyText: null as string | null, bodyHtml: null as string | null,
                 })),
@@ -2638,11 +2642,14 @@ export default function LeadDetailPage() {
                   sentBy: null as string | null, template: null as { title: string; purpose: string } | null,
                   body: null as string | null, cc: null as string | null, bcc: null as string | null,
                   attachments: [] as EmailAttachmentItem[],
+                  sequence: null as { id: string; name: string } | null, enrollmentStep: null as number | null,
                   fromName: e.fromName, fromEmail: e.fromEmail, bodyText: e.bodyText, bodyHtml: e.bodyHtml,
                 })),
               ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
               const totalCount = allEmails.length;
               const visibleEmails = threadCollapsed ? allEmails.slice(0, 3) : allEmails;
+              const sequenceSentCount = lead.sentEmails.filter((e) => e.sequence).length;
+              const uniqueSequences = new Set(lead.sentEmails.filter((e) => e.sequence).map((e) => e.sequence!.id)).size;
               return (
                 <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
                   <button onClick={() => setThreadCollapsed(!threadCollapsed)} className="flex items-center justify-between w-full mb-3">
@@ -2653,6 +2660,12 @@ export default function LeadDetailPage() {
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className={`w-3.5 h-3.5 text-gray-400 transition-transform ${threadCollapsed ? "" : "rotate-180"}`}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
                     </div>
                   </button>
+                  {sequenceSentCount > 0 && (
+                    <div className="mb-3 px-2.5 py-1.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-100 dark:border-indigo-900/40 text-[11px] text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5">
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
+                      <span><strong>{sequenceSentCount}</strong> of {lead.sentEmails.length} sent emails came from {uniqueSequences} smart sequence{uniqueSequences === 1 ? "" : "s"}.</span>
+                    </div>
+                  )}
                   {totalCount === 0 ? (
                     <p className="text-gray-400 text-xs">No email activity yet</p>
                   ) : (
@@ -2676,6 +2689,16 @@ export default function LeadDetailPage() {
                                   </span>
                                 )}
                                 {item.status && <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium ${EMAIL_STATUS_COLORS[item.status] || "bg-gray-100 text-gray-800"}`}>{item.status}</span>}
+                                {item.sequence && (
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); router.push(`/sequences/${item.sequence!.id}`); }}
+                                    title={`From: ${item.sequence.name}${item.enrollmentStep ? ` · Step ${item.enrollmentStep}` : ""}`}
+                                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-medium bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 hover:bg-indigo-200 dark:hover:bg-indigo-900/50 transition"
+                                  >
+                                    <svg className="w-2.5 h-2.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z" /></svg>
+                                    Sequence{item.enrollmentStep ? ` · ${item.enrollmentStep}` : ""}
+                                  </button>
+                                )}
                               </div>
                               <span className="text-[10px] text-gray-400 whitespace-nowrap">{new Date(item.date).toLocaleString()}</span>
                             </div>

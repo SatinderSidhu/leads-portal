@@ -14,7 +14,37 @@ const WAIT_UNIT_OPTIONS = [{ value: "HOURS", label: "Hours" }, { value: "DAYS", 
 const ENROLLMENT_COLORS: Record<string, string> = { ACTIVE: "bg-green-100 text-green-800", PAUSED: "bg-yellow-100 text-yellow-800", COMPLETED: "bg-blue-100 text-blue-800", EXITED: "bg-purple-100 text-purple-800", REMOVED: "bg-red-100 text-red-800" };
 const ACTION_LABELS: Record<string, string> = { NONE: "No action", OPENED: "Opened", CLICKED: "Clicked", REPLIED: "Replied" };
 
-interface Template { id: string; title: string; subject: string; purpose: string; sendAfterDays: number | null }
+interface Template { id: string; title: string; subject: string; body: string; purpose: string; sendAfterDays: number | null }
+
+// Sample values for the in-page preview modal so admins can see how merge
+// tags render before sending. Mirrors SAMPLE_DATA on the /email-templates
+// page — keep them in sync when new tags are added to the renderer.
+const PREVIEW_SAMPLE: Record<string, string> = {
+  customerName: "Sarah Johnson",
+  first_name: "Sarah",
+  firstName: "Sarah",
+  projectName: "Acme Mobile App",
+  companyName: "Acme Corp",
+  company_name: "Acme Corp",
+  customerEmail: "sarah@acme.com",
+  customerPhone: "+1 (555) 123-4567",
+  customerCity: "New York",
+  jobTitle: "Director of Product",
+  status: "Design Ready",
+  stage: "Warm",
+  source: "Cold Outreach",
+  dateCreated: new Date().toLocaleDateString(),
+  customerPortalUrl: "https://leadsportal.kitlabs.us?id=sample",
+};
+
+function mergeSample(text: string): string {
+  if (!text) return text;
+  let result = text;
+  for (const [key, value] of Object.entries(PREVIEW_SAMPLE)) {
+    result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, "g"), value);
+  }
+  return result;
+}
 interface Step { id?: string; templateId: string; template?: Template; waitValue: number; waitUnit: string; condition: string; goToStepOrder: number | null; exitOnCondition: string | null }
 interface Enrollment { id: string; currentStepOrder: number; status: string; enrolledAt: string; lastEmailSentAt: string | null; lastAction: string; nextSendAt: string | null; exitReason: string | null; lead: { id: string; customerName: string; customerEmail: string; projectName: string; companyName: string | null } }
 interface PreviewData { name: string; goal: string; stepCount: number; preview: string[] }
@@ -47,6 +77,7 @@ export default function SequenceDetailPage() {
   const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
+  const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
 
   const fetchSequence = useCallback(() => {
     Promise.all([
@@ -290,7 +321,21 @@ export default function SequenceDetailPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                   {/* Template */}
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Send Template</label>
+                    <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1 flex items-center justify-between">
+                      <span>Send Template</span>
+                      {step.templateId && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const tpl = templates.find((t) => t.id === step.templateId);
+                            if (tpl) setPreviewTemplate(tpl);
+                          }}
+                          className="text-[10px] font-medium text-indigo-600 dark:text-indigo-400 hover:underline normal-case"
+                        >
+                          Preview
+                        </button>
+                      )}
+                    </label>
                     <select value={step.templateId} onChange={(e) => updateStep(i, "templateId", e.target.value)} className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-gray-900 dark:text-white bg-white dark:bg-gray-700">
                       {templates.map((t) => <option key={t.id} value={t.id}>{t.title} — {t.subject}</option>)}
                     </select>
@@ -560,6 +605,45 @@ export default function SequenceDetailPage() {
               )}
             </>
           )}
+        </div>
+      )}
+
+      {/* Template Preview Modal */}
+      {previewTemplate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setPreviewTemplate(null)} />
+          <div className="relative bg-white dark:bg-gray-800 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Email Preview</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{previewTemplate.title}</p>
+              </div>
+              <button onClick={() => setPreviewTemplate(null)} className="w-8 h-8 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 flex items-center justify-center transition">
+                <svg className="w-4 h-4 text-gray-600 dark:text-gray-300" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+            <div className="px-4 py-3 bg-gray-50 dark:bg-gray-900 border-b dark:border-gray-700">
+              <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Subject</p>
+              <p className="text-sm font-medium text-gray-900 dark:text-white">{mergeSample(previewTemplate.subject)}</p>
+            </div>
+            <div className="flex-1 overflow-auto p-4 bg-white dark:bg-gray-900">
+              <iframe
+                srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;padding:16px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.6;color:#333;background:#fff}img{max-width:100%}a{color:#2563eb}</style></head><body>${mergeSample(previewTemplate.body)}</body></html>`}
+                className="w-full border border-gray-200 dark:border-gray-700 rounded-lg bg-white"
+                style={{ minHeight: 400 }}
+                title="Email Preview"
+              />
+            </div>
+            <div className="p-3 border-t dark:border-gray-700 flex justify-between items-center">
+              <p className="text-[10px] text-gray-400">Sample values shown for personalization tags.</p>
+              <button
+                onClick={() => router.push(`/email-templates/${previewTemplate.id}`)}
+                className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+              >
+                Edit template →
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

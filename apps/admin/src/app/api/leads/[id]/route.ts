@@ -38,7 +38,28 @@ export async function GET(
     return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ ...lead, previewToken: generatePreviewToken(id) });
+  // Enrich sentEmails with their parent sequence info. SentEmail has an
+  // enrollmentId column but no formal Prisma relation, so we do a second
+  // grouped lookup rather than altering the schema. Cheap on a single lead.
+  const enrollmentIds = lead.sentEmails
+    .map((e) => e.enrollmentId)
+    .filter((eid): eid is string => Boolean(eid));
+  let sequenceByEnrollment = new Map<string, { id: string; name: string }>();
+  if (enrollmentIds.length > 0) {
+    const enrollments = await prisma.sequenceEnrollment.findMany({
+      where: { id: { in: Array.from(new Set(enrollmentIds)) } },
+      select: { id: true, sequence: { select: { id: true, name: true } } },
+    });
+    sequenceByEnrollment = new Map(
+      enrollments.map((en) => [en.id, { id: en.sequence.id, name: en.sequence.name }])
+    );
+  }
+  const sentEmails = lead.sentEmails.map((e) => ({
+    ...e,
+    sequence: e.enrollmentId ? sequenceByEnrollment.get(e.enrollmentId) ?? null : null,
+  }));
+
+  return NextResponse.json({ ...lead, sentEmails, previewToken: generatePreviewToken(id) });
 }
 
 export async function PUT(
