@@ -2,6 +2,7 @@ import { prisma } from "@leads-portal/database";
 import { NextResponse } from "next/server";
 import { getCustomerSession } from "../../../lib/session";
 import { sanitizeRequirementHtml } from "../../../lib/requirement-html";
+import { notifyRequirementAdded } from "../../../lib/email";
 import type { RequirementType, RequirementPriority } from "@prisma/client";
 
 const VALID_TYPES: RequirementType[] = ["EPIC", "FEATURE", "USER_STORY"];
@@ -47,6 +48,14 @@ export async function POST(req: Request) {
   if (!title?.trim()) {
     return NextResponse.json({ error: "Title is required" }, { status: 400 });
   }
+
+  // Load projectName here so we can use it both for the audit detail and
+  // for the email subject without a second fetch.
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId },
+    select: { projectName: true },
+  });
+  if (!lead) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
   const pri = priority && VALID_PRIORITIES.includes(priority as RequirementPriority)
     ? (priority as RequirementPriority)
     : "MEDIUM";
@@ -90,6 +99,17 @@ export async function POST(req: Request) {
       },
     })
     .catch(() => {});
+
+  // Notify assigned admin + watchers (non-blocking, pref-gated on customerComment).
+  notifyRequirementAdded(leadId, lead.projectName, {
+    customerName: session.name,
+    requirementType: row.type,
+    title: row.title,
+    priority: row.priority,
+    description: row.description,
+  }).catch((err) => {
+    console.error("[requirements] notifyRequirementAdded failed:", err);
+  });
 
   return NextResponse.json(row, { status: 201 });
 }

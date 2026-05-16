@@ -543,3 +543,96 @@ export async function sendAppFlowCommentNotification(
     `,
   });
 }
+
+/**
+ * Notify watchers + the assigned admin when a customer adds a requirement.
+ * Same pref-gating shape as notifyLeadWatchers — opting out of customer
+ * comments also opts out of requirement notifications, since the customer
+ * adding a requirement is conceptually the same class of input event.
+ *
+ * Non-blocking: callers should swallow rejections.
+ */
+export async function notifyRequirementAdded(
+  leadId: string,
+  projectName: string,
+  context: {
+    customerName: string;
+    requirementType: string; // EPIC | FEATURE | USER_STORY
+    title: string;
+    priority: string; // LOW | MEDIUM | HIGH | CRITICAL
+    description: string | null;
+  }
+) {
+  const lead = await prisma.lead.findUnique({
+    where: { id: leadId },
+    select: {
+      watchers: { include: { admin: { select: { id: true, email: true } } } },
+      assignedTo: { select: { id: true, email: true } },
+    },
+  });
+  if (!lead) return;
+
+  // Build recipient list — watchers + assigned, de-duped by adminId.
+  const adminEmails = new Map<string, string>();
+  for (const w of lead.watchers) adminEmails.set(w.adminId, w.admin.email);
+  if (lead.assignedTo) adminEmails.set(lead.assignedTo.id, lead.assignedTo.email);
+  if (adminEmails.size === 0) return;
+
+  // Respect notification preferences. customerComment is the closest
+  // existing toggle; admins who opt out of comments also opt out here.
+  const prefs = await prisma.notificationPreference.findMany({
+    where: { adminId: { in: Array.from(adminEmails.keys()) } },
+  });
+  const prefsMap = new Map(prefs.map((p) => [p.adminId, p]));
+
+  const emailList: string[] = [];
+  for (const [adminId, fallbackEmail] of adminEmails) {
+    const pref = prefsMap.get(adminId);
+    if (pref && pref.customerComment === false) continue;
+    emailList.push(pref?.notificationEmail || fallbackEmail);
+  }
+  if (emailList.length === 0) return;
+
+  const typeLabel = context.requirementType.toLowerCase().replace("_", " ");
+  const adminUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
+  const leadUrl = `${adminUrl}/leads/${leadId}`;
+  const priorityColors: Record<string, string> = {
+    CRITICAL: "#dc2626",
+    HIGH: "#ea580c",
+    MEDIUM: "#0891b2",
+    LOW: "#65a30d",
+  };
+  const priColor = priorityColors[context.priority] || "#01358d";
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM || "noreply@leadsportal.com",
+    to: emailList[0],
+    ...(emailList.length > 1 && { bcc: emailList.slice(1).join(",") }),
+    subject: `New ${typeLabel} from ${context.customerName} — ${projectName}`,
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+        <div style="background: linear-gradient(135deg, #01358d 0%, #2870a8 100%); border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 30px;">
+          <h1 style="color: white; margin: 0; font-size: 20px;">New Customer Requirement</h1>
+          <p style="color: rgba(255,255,255,0.9); margin-top: 8px; font-size: 15px;">${projectName}</p>
+        </div>
+        <div style="background: #f8f9fa; border-radius: 12px; padding: 30px;">
+          <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">
+            <strong>${context.customerName}</strong> added a new ${typeLabel} on the customer portal:
+          </p>
+          <div style="background: white; border-left: 4px solid ${priColor}; padding: 16px; margin: 0 0 16px; border-radius: 0 8px 8px 0;">
+            <div style="margin-bottom: 8px;">
+              <span style="display: inline-block; background: ${priColor}; color: white; padding: 2px 10px; border-radius: 999px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 6px;">${context.priority}</span>
+              <span style="color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">${typeLabel}</span>
+            </div>
+            <p style="color: #1a1a1a; font-size: 16px; font-weight: 600; margin: 0 0 8px; line-height: 1.4;">${context.title}</p>
+            ${context.description ? `<div style="color: #4a4a4a; font-size: 14px; line-height: 1.6; margin: 8px 0 0;">${context.description}</div>` : ""}
+          </div>
+          <div style="text-align: center; margin: 24px 0 0;">
+            <a href="${leadUrl}" style="display: inline-block; background: #01358d; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-size: 15px; font-weight: 600;">View in Admin</a>
+          </div>
+        </div>
+        <p style="color: #999; font-size: 12px; text-align: center; margin-top: 20px;">You're receiving this because you're watching this lead or it's assigned to you.</p>
+      </div>
+    `,
+  });
+}
