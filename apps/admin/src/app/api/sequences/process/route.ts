@@ -115,11 +115,22 @@ export async function POST(req: Request) {
         continue;
       }
 
-      // Check sequence is still active
+      // Check sequence is still active. If the parent sequence is DRAFT or
+      // PAUSED, park the enrollment as PAUSED with a null nextSendAt so it
+      // stops being re-claimed every tick — otherwise the SELECT FOR UPDATE
+      // claim above keeps hitting the same poison-pill rows (status=ACTIVE,
+      // nextSendAt<=now) and blocks the entire queue behind them. Resuming
+      // the parent sequence is a separate admin action; PAUSED enrollments
+      // can be flipped back to ACTIVE explicitly.
       if (sequence.status !== "ACTIVE") {
         await prisma.sequenceEnrollment.update({
           where: { id: enrollment.id },
-          data: { lockedUntil: null },
+          data: {
+            status: "PAUSED",
+            nextSendAt: null,
+            lockedUntil: null,
+            exitReason: `Parent sequence is ${sequence.status}`,
+          },
         });
         skipped++;
         continue;
