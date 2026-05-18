@@ -34,6 +34,14 @@ export async function GET(
       // pre-fill the CC field with them. The /api/leads/[id]/contacts
       // endpoint stays the source of truth for mutations.
       contacts: { orderBy: { createdAt: "asc" } },
+      // Bookings on this lead so the lead detail page can highlight the
+      // next upcoming meeting + show recent history. Newest first.
+      meetingBookings: {
+        orderBy: { startsAt: "desc" },
+        include: {
+          meetingType: { select: { name: true, durationMin: true } },
+        },
+      },
       _count: { select: { sentEmails: true } },
     },
   });

@@ -267,6 +267,21 @@ interface Lead {
   assignedTo?: { id: string; name: string; email: string } | null;
   watchers?: { admin: { id: string; name: string; email: string } }[];
   contacts?: { id: string; name: string; email: string; phone: string | null; role: string | null }[];
+  meetingBookings?: {
+    id: string;
+    attendeeName: string;
+    attendeeEmail: string;
+    attendeePhone: string | null;
+    startsAt: string;
+    endsAt: string;
+    status: string;
+    notes: string | null;
+    conferencingLink: string | null;
+    zoomMeetingId: string | null;
+    conferencingError: string | null;
+    timezone: string | null;
+    meetingType: { name: string; durationMin: number };
+  }[];
   previewToken?: string;
 }
 
@@ -2666,6 +2681,114 @@ export default function LeadDetailPage() {
               </div>
             )}
 
+            {/* Meetings — highlight upcoming so admin can join straight from
+                here without bouncing to /meetings. The very next confirmed
+                upcoming meeting renders large with the Join button; past
+                meetings collapse into a compact list below. */}
+            {(() => {
+              const bookings = lead.meetingBookings ?? [];
+              if (bookings.length === 0) return null;
+              const now = Date.now();
+              const upcoming = bookings
+                .filter((b) => b.status === "CONFIRMED" && new Date(b.startsAt).getTime() > now)
+                .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+              const past = bookings
+                .filter((b) => !(b.status === "CONFIRMED" && new Date(b.startsAt).getTime() > now))
+                .sort((a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime());
+              const next = upcoming[0];
+              const minsUntilNext = next ? Math.round((new Date(next.startsAt).getTime() - now) / 60000) : null;
+              const isImminent = minsUntilNext !== null && minsUntilNext >= -15 && minsUntilNext <= 30;
+              const friendlyWhen = (iso: string) => {
+                const d = new Date(iso);
+                const ms = d.getTime() - now;
+                const mins = Math.round(ms / 60000);
+                if (ms > 0 && mins < 60) return `in ${mins} min`;
+                if (ms > 0 && mins < 24 * 60) return `in ${Math.round(mins / 60)}h`;
+                return d.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+              };
+
+              return (
+                <div className="md:col-span-2 space-y-3">
+                  {/* Next upcoming — prominent card */}
+                  {next && (
+                    <div className={`rounded-xl border-2 p-4 ${isImminent ? "border-emerald-400 bg-emerald-50 dark:bg-emerald-900/20" : "border-[#01358d] bg-blue-50 dark:bg-blue-900/20"}`}>
+                      <div className="flex items-start justify-between flex-wrap gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <svg className={`w-4 h-4 ${isImminent ? "text-emerald-600" : "text-[#01358d]"}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                            </svg>
+                            <span className={`text-[10px] font-bold uppercase tracking-wider ${isImminent ? "text-emerald-700 dark:text-emerald-300" : "text-[#01358d] dark:text-blue-300"}`}>
+                              {isImminent ? "Starting soon" : "Upcoming meeting"}
+                            </span>
+                            <span className="text-[10px] text-gray-500 dark:text-gray-400">· {next.meetingType.name} · {next.meetingType.durationMin} min</span>
+                          </div>
+                          <p className="text-base font-semibold text-gray-900 dark:text-white">
+                            {new Date(next.startsAt).toLocaleString(undefined, { weekday: "long", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                          </p>
+                          <p className="text-xs text-gray-600 dark:text-gray-300 mt-0.5">
+                            {friendlyWhen(next.startsAt)} · with <strong>{next.attendeeName}</strong> ({next.attendeeEmail})
+                          </p>
+                          {next.notes && (
+                            <p className="text-xs text-gray-600 dark:text-gray-300 mt-2 border-l-2 border-gray-300 dark:border-gray-600 pl-2 whitespace-pre-wrap">{next.notes}</p>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-2 items-stretch">
+                          {next.conferencingLink ? (
+                            <a
+                              href={next.conferencingLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className={`inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition ${isImminent ? "bg-emerald-600 hover:bg-emerald-700" : "bg-[#01358d] hover:bg-[#012a70]"}`}
+                            >
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z" />
+                              </svg>
+                              {isImminent ? "Join now" : "Join meeting"}
+                            </a>
+                          ) : next.conferencingError ? (
+                            <span title={next.conferencingError} className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                              ⚠ Zoom retrying
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                              <svg className="w-3 h-3 animate-spin" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="40 20" /></svg>
+                              Zoom link pending
+                            </span>
+                          )}
+                          <a
+                            href="/meetings"
+                            className="text-[11px] text-center text-gray-500 dark:text-gray-400 hover:text-[#01358d] dark:hover:text-blue-400 hover:underline"
+                          >
+                            Manage in /meetings
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Other upcoming + past meetings — compact list */}
+                  {(upcoming.length > 1 || past.length > 0) && (
+                    <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-4">
+                      <h2 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+                        Meetings ({bookings.length})
+                      </h2>
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {/* Additional upcoming meetings (after the prominent next one) */}
+                        {upcoming.slice(1).map((b) => (
+                          <MeetingRow key={b.id} booking={b} isUpcoming />
+                        ))}
+                        {/* Past meetings */}
+                        {past.map((b) => (
+                          <MeetingRow key={b.id} booking={b} isUpcoming={false} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Email Conversation Thread */}
             {(() => {
               const allEmails = [
@@ -3809,6 +3932,64 @@ export default function LeadDetailPage() {
             }
           }}
         />
+      )}
+    </div>
+  );
+}
+
+// Compact row used for the "other upcoming + past meetings" list under the
+// highlighted next-upcoming card. Click-to-toggle expands attendee/notes
+// detail inline so admins don't have to bounce to /meetings for the
+// majority of read-only inspection.
+function MeetingRow({
+  booking,
+  isUpcoming,
+}: {
+  booking: NonNullable<Lead["meetingBookings"]>[number];
+  isUpcoming: boolean;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const start = new Date(booking.startsAt);
+  const statusColor =
+    booking.status === "CONFIRMED"
+      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+      : booking.status === "CANCELLED"
+        ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+        : "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300";
+  return (
+    <div className={`rounded-lg border p-2.5 ${isUpcoming ? "border-blue-200 dark:border-blue-900 bg-blue-50/40 dark:bg-blue-900/10" : "border-gray-200 dark:border-gray-700"}`}>
+      <button
+        type="button"
+        onClick={() => setExpanded((x) => !x)}
+        className="w-full flex items-start justify-between gap-2 text-left"
+      >
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-gray-900 dark:text-white">
+            {start.toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+            <span className="text-gray-500 dark:text-gray-400 font-normal"> · {booking.meetingType.name} · {booking.meetingType.durationMin} min</span>
+          </p>
+          <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
+            {booking.attendeeName} <span className="text-gray-400">·</span> {booking.attendeeEmail}
+          </p>
+        </div>
+        <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full whitespace-nowrap flex-shrink-0 ${statusColor}`}>{booking.status}</span>
+      </button>
+      {expanded && (
+        <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700/50 text-[11px] text-gray-600 dark:text-gray-300 space-y-1">
+          {booking.notes && <p className="whitespace-pre-wrap">{booking.notes}</p>}
+          {booking.attendeePhone && <p>📞 {booking.attendeePhone}</p>}
+          {booking.conferencingLink && (
+            <p className="break-all">
+              🔗 <a href={booking.conferencingLink} target="_blank" rel="noopener noreferrer" className="text-[#01358d] dark:text-blue-400 hover:underline">{booking.conferencingLink}</a>
+            </p>
+          )}
+          {booking.zoomMeetingId && (
+            <p className="text-gray-400">Zoom #{booking.zoomMeetingId}{booking.timezone ? ` · booked from ${booking.timezone}` : ""}</p>
+          )}
+          {!booking.conferencingLink && booking.conferencingError && (
+            <p className="text-amber-600 dark:text-amber-400">⚠ Zoom: {booking.conferencingError}</p>
+          )}
+        </div>
       )}
     </div>
   );
