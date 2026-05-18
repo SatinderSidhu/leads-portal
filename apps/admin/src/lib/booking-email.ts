@@ -5,6 +5,7 @@
  * "your Zoom link is ready" message.
  */
 import nodemailer from "nodemailer";
+import { buildMeetingIcs } from "./ics";
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
@@ -17,6 +18,7 @@ const transporter = nodemailer.createTransport({
 });
 
 export interface ZoomLinkEmailArgs {
+  bookingId: string;
   attendeeName: string;
   attendeeEmail: string;
   meetingTypeName: string;
@@ -25,6 +27,7 @@ export interface ZoomLinkEmailArgs {
   timezone: string | null;
   joinUrl: string;
   password: string | null;
+  notes?: string | null;
 }
 
 export async function sendZoomLinkEmail(args: ZoomLinkEmailArgs) {
@@ -40,10 +43,33 @@ export async function sendZoomLinkEmail(args: ZoomLinkEmailArgs) {
     timeZoneName: "short",
   });
 
+  // Re-issue the .ics with SEQUENCE:1 and the Zoom link populated.
+  // RFC-5546-compliant clients (Outlook, Google Calendar, Apple) will
+  // update the existing event in place rather than create a duplicate.
+  const endsAt = new Date(args.startsAt.getTime() + args.durationMin * 60 * 1000);
+  const organizerEmail = process.env.SMTP_FROM?.match(/<(.+)>/)?.[1] || process.env.SMTP_FROM || "noreply@kitlabs.us";
+  const ics = buildMeetingIcs({
+    bookingId: args.bookingId,
+    startsAt: args.startsAt,
+    endsAt,
+    meetingTypeName: args.meetingTypeName,
+    attendeeName: args.attendeeName,
+    attendeeEmail: args.attendeeEmail,
+    organizerEmail,
+    conferencingLink: args.joinUrl,
+    notes: args.notes ?? null,
+    sequence: 1,
+  });
+
   await transporter.sendMail({
     from: process.env.SMTP_FROM || "noreply@leadsportal.com",
     to: args.attendeeEmail,
     subject: `Zoom link for your KITLabs meeting on ${args.startsAt.toLocaleDateString("en-US", { timeZone: tz, month: "short", day: "numeric" })}`,
+    icalEvent: {
+      filename: "meeting.ics",
+      method: "REQUEST",
+      content: ics,
+    },
     html: `
       <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
         <div style="background: linear-gradient(135deg, #01358d 0%, #2870a8 100%); border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 30px;">

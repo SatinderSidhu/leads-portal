@@ -122,7 +122,13 @@ export async function POST(req: Request) {
     meetingTypeName: type.name,
     durationMin: type.durationMin,
     startsAt: booking.startsAt,
+    endsAt: booking.endsAt,
     timezone: booking.timezone,
+    notes: booking.notes,
+    // Conferencing link is provisioned asynchronously by the Zoom cron;
+    // at this point in the flow it's null. The Zoom-link follow-up email
+    // re-attaches an updated .ics (SEQUENCE:1) with the actual link.
+    conferencingLink: null,
   }).catch((err) => console.error("[meeting] sendMeetingConfirmation failed:", err));
 
   notifyMeetingBooked({

@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { prisma } from "@leads-portal/database";
+import { buildMeetingIcs } from "./ics";
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
@@ -555,7 +556,10 @@ export async function sendMeetingConfirmation(opts: {
   meetingTypeName: string;
   durationMin: number;
   startsAt: Date;
+  endsAt?: Date;
   timezone: string | null;
+  notes?: string | null;
+  conferencingLink?: string | null;
 }) {
   const tz = opts.timezone || "America/New_York";
   const when = opts.startsAt.toLocaleString("en-US", {
@@ -567,6 +571,26 @@ export async function sendMeetingConfirmation(opts: {
     hour: "numeric",
     minute: "2-digit",
     timeZoneName: "short",
+  });
+
+  // Build the .ics so Outlook / Google Calendar / Apple Calendar can
+  // add the meeting in one click (or RSVP if the client supports it).
+  const endsAt = opts.endsAt || new Date(opts.startsAt.getTime() + opts.durationMin * 60 * 1000);
+  const organizerEmail = process.env.SMTP_FROM?.match(/<(.+)>/)?.[1] || process.env.SMTP_FROM || "noreply@kitlabs.us";
+  const ics = buildMeetingIcs({
+    bookingId: opts.bookingId,
+    startsAt: opts.startsAt,
+    endsAt,
+    meetingTypeName: opts.meetingTypeName,
+    attendeeName: opts.attendeeName,
+    attendeeEmail: opts.attendeeEmail,
+    organizerEmail,
+    conferencingLink: opts.conferencingLink ?? null,
+    notes: opts.notes ?? null,
+    // Initial confirmation. If Zoom link arrives later, the follow-up
+    // email re-sends with SEQUENCE:1 — RFC-5546 clients update the same
+    // event instead of duplicating.
+    sequence: 0,
   });
 
   await transporter.sendMail({
@@ -582,7 +606,7 @@ export async function sendMeetingConfirmation(opts: {
         <div style="background: #f8f9fa; border-radius: 12px; padding: 30px;">
           <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 0 0 8px;">Hi ${opts.attendeeName.split(/\s+/)[0]},</p>
           <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">
-            Your meeting with KITLabs is confirmed. We'll send the conferencing link separately.
+            Your meeting with KITLabs is confirmed. We've attached a calendar invite — open it to add this to Outlook, Google Calendar, or Apple Calendar. ${opts.conferencingLink ? "The Zoom link is included." : "We'll send the conferencing link separately."}
           </p>
           <div style="background: white; border-left: 4px solid #f9556d; padding: 16px; border-radius: 0 8px 8px 0; margin: 0 0 16px;">
             <p style="margin: 0 0 4px; color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">When</p>
@@ -595,6 +619,11 @@ export async function sendMeetingConfirmation(opts: {
         <p style="color: #999; font-size: 12px; text-align: center; margin-top: 20px;">KITLabs Inc · kitlabs.us</p>
       </div>
     `,
+    icalEvent: {
+      filename: "meeting.ics",
+      method: "REQUEST",
+      content: ics,
+    },
   });
 }
 
@@ -669,11 +698,34 @@ export async function notifyMeetingBooked(opts: {
   });
   const detailLink = `${adminUrl}/meetings`;
 
+  // Attach the same .ics so admins can drop the meeting into their own
+  // calendar. UID is keyed off bookingId; the Zoom-link follow-up will
+  // re-send a SEQUENCE:1 update with the actual link.
+  const endsAt = new Date(opts.startsAt.getTime() + opts.durationMin * 60 * 1000);
+  const organizerEmail = process.env.SMTP_FROM?.match(/<(.+)>/)?.[1] || process.env.SMTP_FROM || "noreply@kitlabs.us";
+  const ics = buildMeetingIcs({
+    bookingId: opts.bookingId,
+    startsAt: opts.startsAt,
+    endsAt,
+    meetingTypeName: opts.meetingTypeName,
+    attendeeName: opts.attendeeName,
+    attendeeEmail: opts.attendeeEmail,
+    organizerEmail,
+    conferencingLink: null,
+    notes: opts.notes,
+    sequence: 0,
+  });
+
   await transporter.sendMail({
     from: process.env.SMTP_FROM || "noreply@leadsportal.com",
     to: emailList[0],
     ...(emailList.length > 1 && { bcc: emailList.slice(1).join(",") }),
     subject: `New meeting booked — ${opts.attendeeName} (${opts.meetingTypeName})`,
+    icalEvent: {
+      filename: "meeting.ics",
+      method: "REQUEST",
+      content: ics,
+    },
     html: `
       <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
         <div style="background: linear-gradient(135deg, #01358d 0%, #2870a8 100%); border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 30px;">

@@ -80,6 +80,7 @@ export async function POST(req: Request) {
       // it'll be logged and the link is still on the booking record
       // for the admin to send manually.
       sendZoomLinkEmail({
+        bookingId: b.id,
         attendeeName: b.attendeeName,
         attendeeEmail: b.attendeeEmail,
         meetingTypeName: b.meetingType.name,
@@ -88,6 +89,7 @@ export async function POST(req: Request) {
         timezone: b.timezone,
         joinUrl: result.joinUrl,
         password: result.password,
+        notes: b.notes,
       }).catch((err) => console.error("[zoom] sendZoomLinkEmail failed:", err));
     } catch (err) {
       failed++;
