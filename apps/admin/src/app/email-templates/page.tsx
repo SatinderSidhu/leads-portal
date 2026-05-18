@@ -72,6 +72,7 @@ const SAMPLE_DATA: Record<string, string> = {
   portalUrl: "https://leadsportal.kitlabs.us/project?id=sample",
   customerPortalUrl: "https://leadsportal.kitlabs.us?id=sample",
   bookMeetingUrl: "https://leadsportal.kitlabs.us/book?leadId=sample",
+  projectBookingUrl: "https://leadsportal.kitlabs.us/project?id=sample&tab=appointments",
   statusLabel: "Design Ready",
   ndaUrl: "https://leadsportal.kitlabs.us/project?id=sample&tab=nda",
   sowUrl: "https://leadsportal.kitlabs.us/project?id=sample&tab=sow&v=2",

@@ -36,6 +36,7 @@ const PREVIEW_SAMPLE: Record<string, string> = {
   dateCreated: new Date().toLocaleDateString(),
   customerPortalUrl: "https://leadsportal.kitlabs.us?id=sample",
   bookMeetingUrl: "https://leadsportal.kitlabs.us/book?leadId=sample",
+  projectBookingUrl: "https://leadsportal.kitlabs.us/project?id=sample&tab=appointments",
 };
 
 function mergeSample(text: string): string {

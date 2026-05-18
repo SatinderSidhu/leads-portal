@@ -23,6 +23,10 @@ export interface MergeContext {
   /** Override the book-meeting URL. If omitted, the helper builds it
    *  from `process.env.CUSTOMER_PORTAL_URL + /book?leadId=<id>`. */
   bookMeetingUrl?: string;
+  /** Override the in-portal project-booking URL. If omitted, the helper
+   *  builds it from `process.env.CUSTOMER_PORTAL_URL +
+   *  /project?id=<id>&tab=appointments`. */
+  projectBookingUrl?: string;
 }
 
 export function mergeTags(text: string, ctx: MergeContext): string {
@@ -48,6 +52,16 @@ export function mergeTags(text: string, ctx: MergeContext): string {
     const base = process.env.CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us";
     bookMeetingUrl = ctx.id ? `${base}/book?leadId=${ctx.id}` : `${base}/book`;
   }
+  // projectBookingUrl: lands the customer on their *project* page, on
+  // the Book Meeting tab. Use this for emails to existing customers
+  // where the booking happens in the context of their project (vs.
+  // {{bookMeetingUrl}} which is the standalone public booking page for
+  // cold outreach).
+  let projectBookingUrl = ctx.projectBookingUrl || "";
+  if (!projectBookingUrl && ctx.id) {
+    const base = process.env.CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us";
+    projectBookingUrl = `${base}/project?id=${ctx.id}&tab=appointments`;
+  }
 
   // first_name: best-effort split on the customerName so casual greetings
   // ("Hi Sarah,") render correctly. Templates were written using {{first_name}}
@@ -72,6 +86,7 @@ export function mergeTags(text: string, ctx: MergeContext): string {
     jobTitle: ctx.jobTitle || "",
     customerPortalUrl,
     bookMeetingUrl,
+    projectBookingUrl,
   };
 
   let result = text;

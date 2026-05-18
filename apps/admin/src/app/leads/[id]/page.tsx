@@ -1158,6 +1158,7 @@ export default function LeadDetailPage() {
     const portalBase = process.env.NEXT_PUBLIC_CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us";
     const customerPortalUrl = `${portalBase}?id=${lead.id}`;
     const bookMeetingUrl = `${portalBase}/book?leadId=${lead.id}`;
+    const projectBookingUrl = `${portalBase}/project?id=${lead.id}&tab=appointments`;
     return text
       .replace(/\{\{customerName\}\}/g, lead.customerName)
       .replace(/\{\{projectName\}\}/g, lead.projectName)
@@ -1169,7 +1170,8 @@ export default function LeadDetailPage() {
       .replace(/\{\{source\}\}/g, lead.source || "")
       .replace(/\{\{dateCreated\}\}/g, dateLabel)
       .replace(/\{\{customerPortalUrl\}\}/g, customerPortalUrl)
-      .replace(/\{\{bookMeetingUrl\}\}/g, bookMeetingUrl);
+      .replace(/\{\{bookMeetingUrl\}\}/g, bookMeetingUrl)
+      .replace(/\{\{projectBookingUrl\}\}/g, projectBookingUrl);
   }
 
   function handleTemplateSelect(templateId: string) {
@@ -2958,7 +2960,7 @@ export default function LeadDetailPage() {
                         ))}
                       </select>
                       <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
-                        Tags auto-merge on send: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerName}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{projectName}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerEmail}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerPhone}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerCity}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{status}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{stage}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{source}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{dateCreated}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerPortalUrl}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{bookMeetingUrl}}"}</code>
+                        Tags auto-merge on send: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerName}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{projectName}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerEmail}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerPhone}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerCity}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{status}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{stage}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{source}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{dateCreated}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{customerPortalUrl}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{bookMeetingUrl}}"}</code> <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{"{{projectBookingUrl}}"}</code>
                       </p>
                     </div>
                   )}

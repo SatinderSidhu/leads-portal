@@ -2,51 +2,61 @@
 
 import { useState } from "react";
 
-const TAGS = [
+interface TagDef {
+  tag: string;
+  description: string;
+  example: string;
+}
+
+interface TagGroup {
+  label: string;
+  tags: TagDef[];
+}
+
+// Keep in sync with apps/admin/src/lib/template-merge.ts. Adding a new
+// tag to the renderer? Add it here too so admins can find it.
+const TAG_GROUPS: TagGroup[] = [
   {
-    tag: "{{customerName}}",
-    description: "The customer's full name",
-    example: "John Smith",
+    label: "Contact info",
+    tags: [
+      { tag: "{{customerName}}", description: "Full name", example: "Sarah Johnson" },
+      { tag: "{{first_name}}", description: "First name only (best for casual greetings)", example: "Sarah" },
+      { tag: "{{customerEmail}}", description: "Email address", example: "sarah@acme.com" },
+      { tag: "{{customerPhone}}", description: "Phone number", example: "(555) 123-4567" },
+      { tag: "{{customerCity}}", description: "City", example: "Toronto" },
+      { tag: "{{jobTitle}}", description: "Job title", example: "Director of Product" },
+      { tag: "{{companyName}}", description: "Company name", example: "Acme Corp" },
+    ],
   },
   {
-    tag: "{{projectName}}",
-    description: "The project/lead name",
-    example: "Website Redesign",
+    label: "Project info",
+    tags: [
+      { tag: "{{projectName}}", description: "Project / lead name", example: "Website Redesign" },
+      { tag: "{{status}}", description: "Current lead status", example: "Design Ready" },
+      { tag: "{{stage}}", description: "Current lead stage", example: "Warm" },
+      { tag: "{{source}}", description: "How the lead came in", example: "Bark" },
+      { tag: "{{dateCreated}}", description: "Date the lead was created", example: "March 8, 2026" },
+    ],
   },
   {
-    tag: "{{customerEmail}}",
-    description: "The customer's email address",
-    example: "john@example.com",
-  },
-  {
-    tag: "{{customerPhone}}",
-    description: "The customer's phone number",
-    example: "(555) 123-4567",
-  },
-  {
-    tag: "{{customerCity}}",
-    description: "The customer's city",
-    example: "Toronto",
-  },
-  {
-    tag: "{{status}}",
-    description: "Current lead status",
-    example: "Design Ready",
-  },
-  {
-    tag: "{{stage}}",
-    description: "Current lead stage (Cold, Warm, Hot, Active, Closed)",
-    example: "Warm",
-  },
-  {
-    tag: "{{source}}",
-    description: "How the lead was acquired",
-    example: "Bark",
-  },
-  {
-    tag: "{{dateCreated}}",
-    description: "Date the lead was created",
-    example: "March 8, 2026",
+    label: "Links (great for call-to-action buttons)",
+    tags: [
+      {
+        tag: "{{customerPortalUrl}}",
+        description: "Customer's project landing page",
+        example: "leadsportal.kitlabs.us?id=<leadId>",
+      },
+      {
+        tag: "{{bookMeetingUrl}}",
+        description: "Public booking page — best for cold leads / outreach",
+        example: "leadsportal.kitlabs.us/book?leadId=<leadId>",
+      },
+      {
+        tag: "{{projectBookingUrl}}",
+        description: "Existing customer's project page, opened on the Book Meeting tab",
+        example: "leadsportal.kitlabs.us/project?id=<leadId>&tab=appointments",
+      },
+    ],
   },
 ];
 
@@ -88,48 +98,59 @@ export default function TemplateTags() {
       </button>
 
       {isOpen && (
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-5">
           {/* Example usage */}
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
             <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wide mb-1.5">
-              Example Usage
+              Example
             </p>
             <p className="text-sm text-amber-800 dark:text-amber-300 font-mono leading-relaxed">
-              Hi {"{{customerName}}"}, your project <strong>{"{{projectName}}"}</strong> is now in the <strong>{"{{status}}"}</strong> phase.
+              Hi {"{{first_name}}"}, ready to chat? <a className="underline">Pick a time</a> ({"{{bookMeetingUrl}}"}).
             </p>
             <p className="text-xs text-amber-600 dark:text-amber-500 mt-2 flex items-center gap-1">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
               </svg>
-              Renders as: Hi John Smith, your project <strong>Website Redesign</strong> is now in the <strong>Design Ready</strong> phase.
+              Renders as: Hi Sarah, ready to chat? <span className="underline">Pick a time</span> (https://leadsportal.kitlabs.us/book?leadId=…).
             </p>
           </div>
 
-          {/* Tags grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {TAGS.map((item) => (
-              <button
-                key={item.tag}
-                type="button"
-                onClick={() => copyTag(item.tag)}
-                className="group text-left p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-teal-400 dark:hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition"
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <code className="text-xs font-bold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 px-1.5 py-0.5 rounded">
-                    {item.tag}
-                  </code>
-                  {copied === item.tag ? (
-                    <span className="text-xs text-green-600 dark:text-green-400 font-medium">Copied!</span>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5 text-gray-300 group-hover:text-teal-500 transition">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
-                    </svg>
-                  )}
-                </div>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{item.description}</p>
-                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 italic">e.g. {item.example}</p>
-              </button>
-            ))}
+          {/* Tags grouped by category */}
+          {TAG_GROUPS.map((group) => (
+            <div key={group.label}>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">
+                {group.label}
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {group.tags.map((item) => (
+                  <button
+                    key={item.tag}
+                    type="button"
+                    onClick={() => copyTag(item.tag)}
+                    className="group text-left p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-teal-400 dark:hover:border-teal-500 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition"
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <code className="text-xs font-bold text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-900/30 px-1.5 py-0.5 rounded break-all">
+                        {item.tag}
+                      </code>
+                      {copied === item.tag ? (
+                        <span className="text-xs text-green-600 dark:text-green-400 font-medium flex-shrink-0 ml-1">Copied!</span>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-3.5 h-3.5 text-gray-300 group-hover:text-teal-500 transition flex-shrink-0 ml-1">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9.75a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
+                        </svg>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">{item.description}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5 italic break-all">e.g. {item.example}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+
+          <div className="text-[11px] text-gray-400 dark:text-gray-500 border-t border-gray-100 dark:border-gray-700 pt-3">
+            <strong>Tip:</strong> for a styled CTA button, switch the editor to HTML source (the <code>{"</>"}</code> button) and wrap the tag in an anchor: <code>&lt;a href=&quot;{"{{bookMeetingUrl}}"}&quot;&gt;Book a meeting&lt;/a&gt;</code>.
           </div>
         </div>
       )}

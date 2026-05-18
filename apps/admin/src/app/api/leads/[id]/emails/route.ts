@@ -170,6 +170,7 @@ export async function POST(
   // `id` is the route param above — lead.id is not selected. Same value.
   const customerPortalUrl = `${customerPortalBase}?id=${id}`;
   const bookMeetingUrl = `${customerPortalBase}/book?leadId=${id}`;
+  const projectBookingUrl = `${customerPortalBase}/project?id=${id}&tab=appointments`;
   // first_name: best-effort split on customerName for casual greetings.
   // 44+ existing templates use {{first_name}} — keep them rendering correctly
   // without forcing rewrites.
@@ -192,7 +193,8 @@ export async function POST(
       .replace(/\{\{source\}\}/g, lead.source || "")
       .replace(/\{\{dateCreated\}\}/g, dateLabel)
       .replace(/\{\{customerPortalUrl\}\}/g, customerPortalUrl)
-      .replace(/\{\{bookMeetingUrl\}\}/g, bookMeetingUrl);
+      .replace(/\{\{bookMeetingUrl\}\}/g, bookMeetingUrl)
+      .replace(/\{\{projectBookingUrl\}\}/g, projectBookingUrl);
 
   // Append signature if requested
   let finalBody = mergeTemplateTags(emailBody.trim());
