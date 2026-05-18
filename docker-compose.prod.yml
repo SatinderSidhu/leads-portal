@@ -37,6 +37,10 @@ services:
       NEXT_PUBLIC_ADMIN_URL: ${ADMIN_PORTAL_URL}
       AWS_S3_BUCKET: ${AWS_S3_BUCKET}
       AWS_S3_REGION: ${AWS_S3_REGION:-us-east-1}
+      ZOOM_ACCOUNT_ID: ${ZOOM_ACCOUNT_ID:-}
+      ZOOM_CLIENT_ID: ${ZOOM_CLIENT_ID:-}
+      ZOOM_CLIENT_SECRET: ${ZOOM_CLIENT_SECRET:-}
+      ZOOM_HOST_USER_ID: ${ZOOM_HOST_USER_ID:-}
       NODE_ENV: production
     volumes:
       - uploads:/app/apps/admin/public/uploads

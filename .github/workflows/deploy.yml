@@ -141,6 +141,10 @@ jobs:
           AWS_S3_BUCKET=${{ secrets.AWS_S3_BUCKET }}
           AWS_S3_REGION=${{ secrets.AWS_S3_REGION || env.AWS_REGION }}
           APP_FACTORY_SECRET_KEY=${{ secrets.APP_FACTORY_SECRET_KEY }}
+          ZOOM_ACCOUNT_ID=${{ secrets.ZOOM_ACCOUNT_ID }}
+          ZOOM_CLIENT_ID=${{ secrets.ZOOM_CLIENT_ID }}
+          ZOOM_CLIENT_SECRET=${{ secrets.ZOOM_CLIENT_SECRET }}
+          ZOOM_HOST_USER_ID=${{ secrets.ZOOM_HOST_USER_ID }}
           EOF
 
             # Login to ECR

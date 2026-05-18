@@ -884,6 +884,60 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - **Seeded template**: `Marketplace App — Pre-SOW Discovery` (30 questions covering dispatch, pricing, payouts, refunds, cancellations, verification, notifications). Idempotent — re-running the seed never duplicates. Admin can edit, copy, or delete it like any other template.
 - **API routes**: admin `GET/POST /api/questionnaire-templates`, `GET/PUT/DELETE /api/questionnaire-templates/[id]`, `GET/POST/PUT/DELETE /api/leads/[id]/questionnaire`, `POST /api/leads/[id]/questionnaire/send`. Customer `GET/PUT /api/questionnaire?leadId=X` (PUT body has `submit: true` to lock).
 
+## Native Meeting Booking + Zoom
+
+Customers book a 15- or 30-minute call directly on the customer portal — no Zoho Bookings iframe in the loop. Two entry points:
+- **Public**: `https://leadsportal.kitlabs.us/book?leadId=<id>` — deep-linked from email campaigns via the `{{bookMeetingUrl}}` merge tag. Works with no login.
+- **In-portal**: `/project?tab=appointments` — renders the same `<BookingForm/>` component prefilled from the customer session.
+
+### Data model
+- `MeetingType { name, durationMin, description, isActive, sortOrder }` — seeded with `Quick Chat` (15 min) and `Discovery Call` (30 min). Soft-deletable via `isActive=false` so existing bookings stay linked.
+- `MeetingBooking { attendeeName/Email/Phone, optional leadId, startsAt/endsAt, status (CONFIRMED/CANCELLED/COMPLETED), timezone, conferencingLink, zoomMeetingId, conferencingError, conferencingAttempts, conferencingNotifiedAt, notes }`
+
+### Availability rules (v1)
+- Mon-Fri 9am-5pm in `America/New_York` (hardcoded in `meeting-slots.ts`)
+- 14-day booking horizon
+- 60-minute minimum lead time
+- Slots emitted at duration-aligned intervals; existing bookings exclude overlapping windows
+- Customer sees slots in their browser TZ; bookings stored UTC + their TZ saved on the row
+
+### Zoom integration (decoupled / async)
+The customer's booking succeeds even if Zoom is unreachable. A separate cron tick provisions the Zoom meeting after the fact.
+
+- **One-time setup** in Zoom Marketplace:
+  1. Create a **Server-to-Server OAuth** app
+  2. Add scopes: `meeting:write:meeting:admin`, `user:read:user:admin` (or the closest non-deprecated equivalents)
+  3. Activate the app; copy Account ID + Client ID + Client Secret
+- **Env vars** (set in GitHub Secrets so `.github/workflows/deploy.yml` writes them into the EC2 `.env`):
+  - `ZOOM_ACCOUNT_ID`
+  - `ZOOM_CLIENT_ID`
+  - `ZOOM_CLIENT_SECRET`
+  - `ZOOM_HOST_USER_ID` — optional; defaults to `"me"` (the OAuth app owner)
+- **Provisioning loop** runs every 2 minutes via `node-cron` (added to `lib/sequence-cron.ts`). Self-calls `POST /api/meetings/provision-zoom` with `Bearer ${CRON_SECRET}`. The endpoint is in `middleware.ts` PUBLIC_PATHS so the self-call clears the cookie check. Internal Bearer validation still applies.
+- **Per booking**: grabs up to 20 confirmed future bookings with no link yet, builds a topic (`<type name> — <project>` or `<type name> with <name>`), calls Zoom's `POST /users/<host>/meetings` with `start_time` + `duration` + `timezone`, stores `conferencingLink` + `zoomMeetingId`, fires `sendZoomLinkEmail()` to the attendee.
+- **Retries**: up to 4 attempts per booking. Errors stored in `MeetingBooking.conferencingError`; admins see a yellow "Zoom retry N/4" badge on `/meetings` and can paste a manual link in the inline field as a fallback.
+- **Graceful no-op**: `isZoomConfigured()` returns false when the three env vars aren't set; the cron logs `skipped` and the booking flow keeps working unchanged.
+- **Tokens**: cached in-process for ~1 hour. One 401 retry refreshes the cache before failing the booking.
+
+### Emails
+- **On book** (sent from customer app, immediate): "You're booked!" with the slot + "We'll send the conferencing link separately."
+- **Admin notification** (sent from customer app, immediate): "New meeting booked" to assigned admin + watchers (broadcasts to all active admins if the booking has no lead). Gated on `customerComment` preference.
+- **Zoom link follow-up** (sent from admin app, after provisioning): "Your Zoom link is ready" with `joinUrl` (+ password if Zoom returns one). Helper lives in `apps/admin/src/lib/booking-email.ts` because the cron runs in the admin container.
+
+### Admin UI
+- New `/meetings` page (sidebar nav between Live Chat and Activity Feed) with two tabs:
+  - **Bookings** — upcoming / past / all filter, inline conferencing-link editing, status dropdown, Zoom provisioning badge (pending / retry N/4)
+  - **Meeting Types** — add / edit / hide; deactivation is soft to preserve historical bookings
+- Routes: `GET /api/admin-meetings?filter=upcoming|past|all`, `PUT /api/admin-meetings/[id]` (status / conferencingLink / notes), `GET/POST /api/meeting-types`, `PUT/DELETE /api/meeting-types/[id]`
+
+### Customer-portal routes
+- `GET /api/meetings/types` — active types only, public
+- `GET /api/meetings/availability?typeId=X&date=YYYY-MM-DD` — days payload (no date) or slot list (with date), public
+- `POST /api/meetings/book` — public; re-validates slot, double-book guards, audit-logs if `leadId` resolved, fires confirmation + admin notification
+
+### Merge tag
+`{{bookMeetingUrl}}` resolves to `${CUSTOMER_PORTAL_URL}/book?leadId=<id>` when a lead is in scope, otherwise the generic `/book` URL. Wired through `template-merge.ts`, the manual compose route, and client-side previews on the lead page + `/email-templates` + `/sequences/[id]` step preview.
+
 ## App Factory Admin
 - `/app-factory` lists all `AppFactoryProject` rows with three visible counts per row: builds, enhancements, and app-store configs (X/2 since iOS + Android).
 - **Filter + sort**: status dropdown (`All`/`Ideating`/`Designing`/`Submitted`/`Building`/`Delivered`/`Enhancing`) with per-bucket counts; sort dropdown (`Recent activity` = updatedAt desc / `Newest` = createdAt desc / `Oldest`). The "Needs Attention" grouping (SUBMITTED + BUILDING at top) only renders when no filter is applied.

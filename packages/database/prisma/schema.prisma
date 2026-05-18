@@ -1207,6 +1207,12 @@ model MeetingBooking {
   timezone         String?              // IANA TZ the attendee saw when booking (display-only)
   status           MeetingBookingStatus @default(CONFIRMED)
   conferencingLink String?              @map("conferencing_link")
+  // Zoom integration. Provisioning is deferred to a cron tick so the
+  // booking flow doesn't depend on Zoom being reachable.
+  zoomMeetingId       String?  @map("zoom_meeting_id")
+  conferencingError   String?  @map("conferencing_error") @db.Text
+  conferencingAttempts Int     @default(0) @map("conferencing_attempts")
+  conferencingNotifiedAt DateTime? @map("conferencing_notified_at")
   createdAt        DateTime             @default(now()) @map("created_at")
   updatedAt        DateTime             @updatedAt @map("updated_at")
 

@@ -17,6 +17,7 @@ const PUBLIC_PATHS = [
   "/api/sequences/process",
   "/api/sequences/archive-old",
   "/api/drafts/process",
+  "/api/meetings/provision-zoom",
 ];
 
 export function middleware(request: NextRequest) {

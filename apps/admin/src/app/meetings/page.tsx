@@ -22,6 +22,9 @@ interface Booking {
   status: string;
   notes: string | null;
   conferencingLink: string | null;
+  zoomMeetingId: string | null;
+  conferencingError: string | null;
+  conferencingAttempts: number;
   timezone: string | null;
   meetingType: { name: string; durationMin: number };
   lead: { id: string; customerName: string; projectName: string } | null;
@@ -178,6 +181,22 @@ export default function MeetingsPage() {
                         )}
                       </div>
                       <div className="flex flex-col gap-2 min-w-[200px]">
+                        {/* Zoom provisioning status badge */}
+                        {!b.conferencingLink && b.status === "CONFIRMED" && (
+                          b.conferencingError ? (
+                            <span title={b.conferencingError} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                              ⚠ Zoom retry {b.conferencingAttempts}/4
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                              <svg className="w-2.5 h-2.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="40 20" /></svg>
+                              Zoom link pending
+                            </span>
+                          )
+                        )}
+                        {b.zoomMeetingId && (
+                          <span className="text-[10px] text-gray-400">Zoom #{b.zoomMeetingId}</span>
+                        )}
                         <input
                           type="text"
                           defaultValue={b.conferencingLink || ""}

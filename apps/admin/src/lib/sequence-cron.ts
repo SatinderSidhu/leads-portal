@@ -110,5 +110,21 @@ export function startSequenceCron() {
     }
   });
 
-  console.log("[sequence-cron] scheduled (process: * * * * *, drafts: */5 * * * *, archive: 0 3 * * *)");
+  // ── Zoom provisioning for booked meetings: every 2 min ──
+  // Decoupled from the booking write path so a Zoom outage / bad
+  // creds doesn't break the customer's confirmation. No health
+  // tracking — failure is recorded per-booking in
+  // MeetingBooking.conferencingError.
+  cron.schedule("*/2 * * * *", async () => {
+    try {
+      const data = await callRoute("/api/meetings/provision-zoom");
+      if (data && ((data.provisioned as number) > 0 || (data.failed as number) > 0)) {
+        console.log("[sequence-cron] zoom:", data);
+      }
+    } catch (err) {
+      console.error("[sequence-cron] zoom tick failed:", err);
+    }
+  });
+
+  console.log("[sequence-cron] scheduled (process: * * * * *, drafts: */5 * * * *, archive: 0 3 * * *, zoom: */2 * * * *)");
 }
