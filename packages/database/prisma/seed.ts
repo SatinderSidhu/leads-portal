@@ -1152,12 +1152,35 @@ async function seedQuestionnaireTemplates() {
   console.log(`Seeded questionnaire template: "${template.name}" (${questions.length} questions)`);
 }
 
+async function seedMeetingTypes() {
+  // Idempotent: each insert is keyed by name so re-runs don't duplicate.
+  const defaults = [
+    {
+      name: "Quick Chat",
+      durationMin: 15,
+      description: "A short intro call to talk through your idea and answer questions.",
+      sortOrder: 0,
+    },
+    {
+      name: "Discovery Call",
+      durationMin: 30,
+      description: "Deeper conversation about scope, timeline, and what it takes to build your project.",
+      sortOrder: 1,
+    },
+  ];
+  for (const t of defaults) {
+    const existing = await prisma.meetingType.findFirst({ where: { name: t.name } });
+    if (!existing) await prisma.meetingType.create({ data: t });
+  }
+}
+
 async function main() {
   await seedAdminUser();
   await seedEmailTemplates();
   await seedSystemEmailTemplates();
   await seedBranding();
   await seedQuestionnaireTemplates();
+  await seedMeetingTypes();
 }
 
 main()

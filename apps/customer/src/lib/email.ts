@@ -545,6 +545,159 @@ export async function sendAppFlowCommentNotification(
 }
 
 /**
+ * Confirmation email back to the attendee after a meeting booking.
+ * Non-blocking — callers should swallow rejections.
+ */
+export async function sendMeetingConfirmation(opts: {
+  bookingId: string;
+  attendeeName: string;
+  attendeeEmail: string;
+  meetingTypeName: string;
+  durationMin: number;
+  startsAt: Date;
+  timezone: string | null;
+}) {
+  const tz = opts.timezone || "America/New_York";
+  const when = opts.startsAt.toLocaleString("en-US", {
+    timeZone: tz,
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM || "noreply@leadsportal.com",
+    to: opts.attendeeEmail,
+    subject: `Meeting confirmed — ${opts.meetingTypeName} on ${opts.startsAt.toLocaleDateString("en-US", { timeZone: tz, month: "short", day: "numeric" })}`,
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+        <div style="background: linear-gradient(135deg, #01358d 0%, #2870a8 100%); border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 30px;">
+          <h1 style="color: white; margin: 0; font-size: 22px;">You're booked!</h1>
+          <p style="color: rgba(255,255,255,0.92); margin: 8px 0 0; font-size: 15px;">${opts.meetingTypeName} · ${opts.durationMin} minutes</p>
+        </div>
+        <div style="background: #f8f9fa; border-radius: 12px; padding: 30px;">
+          <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 0 0 8px;">Hi ${opts.attendeeName.split(/\s+/)[0]},</p>
+          <p style="color: #333; font-size: 15px; line-height: 1.6; margin: 0 0 16px;">
+            Your meeting with KITLabs is confirmed. We'll send the conferencing link separately.
+          </p>
+          <div style="background: white; border-left: 4px solid #f9556d; padding: 16px; border-radius: 0 8px 8px 0; margin: 0 0 16px;">
+            <p style="margin: 0 0 4px; color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">When</p>
+            <p style="margin: 0; color: #1a1a1a; font-size: 16px; font-weight: 600;">${when}</p>
+          </div>
+          <p style="color: #666; font-size: 13px; line-height: 1.5; margin: 16px 0 0;">
+            Need to reschedule? Reply to this email and we'll sort it out.
+          </p>
+        </div>
+        <p style="color: #999; font-size: 12px; text-align: center; margin-top: 20px;">KITLabs Inc · kitlabs.us</p>
+      </div>
+    `,
+  });
+}
+
+/**
+ * Notify the assigned admin + watchers when a meeting is booked.
+ * Falls back to a broadcast to all active admins if the booking isn't
+ * tied to a specific lead (cold booking from the public /book URL).
+ */
+export async function notifyMeetingBooked(opts: {
+  bookingId: string;
+  leadId: string | null;
+  attendeeName: string;
+  attendeeEmail: string;
+  attendeePhone: string | null;
+  meetingTypeName: string;
+  durationMin: number;
+  startsAt: Date;
+  notes: string | null;
+}) {
+  const adminUrl = process.env.ADMIN_PORTAL_URL || "http://localhost:3000";
+  const adminEmails = new Map<string, string>();
+
+  if (opts.leadId) {
+    const lead = await prisma.lead.findUnique({
+      where: { id: opts.leadId },
+      select: {
+        watchers: { include: { admin: { select: { id: true, email: true } } } },
+        assignedTo: { select: { id: true, email: true } },
+      },
+    });
+    if (lead) {
+      for (const w of lead.watchers) adminEmails.set(w.adminId, w.admin.email);
+      if (lead.assignedTo) adminEmails.set(lead.assignedTo.id, lead.assignedTo.email);
+    }
+  }
+
+  // Cold booking (no lead) or a lead with no watchers/assignee — broadcast
+  // to all active admins so the meeting doesn't go silently into the
+  // database.
+  if (adminEmails.size === 0) {
+    const admins = await prisma.adminUser.findMany({
+      where: { active: true },
+      select: { id: true, email: true },
+    });
+    for (const a of admins) adminEmails.set(a.id, a.email);
+    if (adminEmails.size === 0) return;
+  }
+
+  // Honour the customerComment preference — same toggle that covers
+  // requirement notifications and customer comments.
+  const prefs = await prisma.notificationPreference.findMany({
+    where: { adminId: { in: Array.from(adminEmails.keys()) } },
+  });
+  const prefsMap = new Map(prefs.map((p) => [p.adminId, p]));
+  const emailList: string[] = [];
+  for (const [adminId, fallback] of adminEmails) {
+    const pref = prefsMap.get(adminId);
+    if (pref && pref.customerComment === false) continue;
+    emailList.push(pref?.notificationEmail || fallback);
+  }
+  if (emailList.length === 0) return;
+
+  const tz = "America/New_York";
+  const when = opts.startsAt.toLocaleString("en-US", {
+    timeZone: tz,
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+  const detailLink = `${adminUrl}/meetings`;
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM || "noreply@leadsportal.com",
+    to: emailList[0],
+    ...(emailList.length > 1 && { bcc: emailList.slice(1).join(",") }),
+    subject: `New meeting booked — ${opts.attendeeName} (${opts.meetingTypeName})`,
+    html: `
+      <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px;">
+        <div style="background: linear-gradient(135deg, #01358d 0%, #2870a8 100%); border-radius: 12px; padding: 30px; text-align: center; margin-bottom: 30px;">
+          <h1 style="color: white; margin: 0; font-size: 20px;">New Meeting Booked</h1>
+          <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0; font-size: 14px;">${opts.meetingTypeName} · ${opts.durationMin} min</p>
+        </div>
+        <div style="background: #f8f9fa; border-radius: 12px; padding: 30px;">
+          <p style="color: #1a1a1a; font-size: 18px; font-weight: 600; margin: 0 0 4px;">${opts.attendeeName}</p>
+          <p style="color: #666; font-size: 14px; margin: 0 0 16px;">${opts.attendeeEmail}${opts.attendeePhone ? ` · ${opts.attendeePhone}` : ""}</p>
+          <div style="background: white; border-left: 4px solid #f9556d; padding: 16px; border-radius: 0 8px 8px 0; margin: 0 0 16px;">
+            <p style="margin: 0 0 4px; color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">When</p>
+            <p style="margin: 0; color: #1a1a1a; font-size: 16px; font-weight: 600;">${when}</p>
+          </div>
+          ${opts.notes ? `<div style="background: white; border-left: 4px solid #01358d; padding: 16px; border-radius: 0 8px 8px 0; margin: 0 0 16px;"><p style="margin: 0 0 4px; color: #666; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Notes</p><p style="margin: 0; color: #333; font-size: 14px; white-space: pre-wrap;">${opts.notes}</p></div>` : ""}
+          <div style="text-align: center; margin: 24px 0 0;">
+            <a href="${detailLink}" style="display: inline-block; background: #01358d; color: white; padding: 12px 28px; border-radius: 8px; text-decoration: none; font-size: 15px; font-weight: 600;">Open Meetings</a>
+          </div>
+        </div>
+      </div>
+    `,
+  });
+}
+
+/**
  * Notify watchers + the assigned admin when a customer adds a requirement.
  * Same pref-gating shape as notifyLeadWatchers — opting out of customer
  * comments also opts out of requirement notifications, since the customer

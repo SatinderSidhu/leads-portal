@@ -35,6 +35,7 @@ const PREVIEW_SAMPLE: Record<string, string> = {
   source: "Cold Outreach",
   dateCreated: new Date().toLocaleDateString(),
   customerPortalUrl: "https://leadsportal.kitlabs.us?id=sample",
+  bookMeetingUrl: "https://leadsportal.kitlabs.us/book?leadId=sample",
 };
 
 function mergeSample(text: string): string {

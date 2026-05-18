@@ -169,6 +169,7 @@ export async function POST(
   const customerPortalBase = process.env.CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us";
   // `id` is the route param above — lead.id is not selected. Same value.
   const customerPortalUrl = `${customerPortalBase}?id=${id}`;
+  const bookMeetingUrl = `${customerPortalBase}/book?leadId=${id}`;
   // first_name: best-effort split on customerName for casual greetings.
   // 44+ existing templates use {{first_name}} — keep them rendering correctly
   // without forcing rewrites.
@@ -190,7 +191,8 @@ export async function POST(
       .replace(/\{\{stage\}\}/g, STAGE_LABELS[lead.stage] || lead.stage)
       .replace(/\{\{source\}\}/g, lead.source || "")
       .replace(/\{\{dateCreated\}\}/g, dateLabel)
-      .replace(/\{\{customerPortalUrl\}\}/g, customerPortalUrl);
+      .replace(/\{\{customerPortalUrl\}\}/g, customerPortalUrl)
+      .replace(/\{\{bookMeetingUrl\}\}/g, bookMeetingUrl);
 
   // Append signature if requested
   let finalBody = mergeTemplateTags(emailBody.trim());

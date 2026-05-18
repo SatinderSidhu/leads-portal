@@ -20,6 +20,9 @@ export interface MergeContext {
   /** Override the customer-portal URL. If omitted, the helper builds it
    *  from `process.env.CUSTOMER_PORTAL_URL + ?id=<id>`. */
   customerPortalUrl?: string;
+  /** Override the book-meeting URL. If omitted, the helper builds it
+   *  from `process.env.CUSTOMER_PORTAL_URL + /book?leadId=<id>`. */
+  bookMeetingUrl?: string;
 }
 
 export function mergeTags(text: string, ctx: MergeContext): string {
@@ -36,6 +39,14 @@ export function mergeTags(text: string, ctx: MergeContext): string {
   if (!customerPortalUrl && ctx.id) {
     const base = process.env.CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us";
     customerPortalUrl = `${base}?id=${ctx.id}`;
+  }
+  // bookMeetingUrl: deep-link to the public /book page on the customer
+  // portal. When a leadId is in context we pass it via query so the
+  // booking auto-links and the form pre-fills.
+  let bookMeetingUrl = ctx.bookMeetingUrl || "";
+  if (!bookMeetingUrl) {
+    const base = process.env.CUSTOMER_PORTAL_URL || "https://leadsportal.kitlabs.us";
+    bookMeetingUrl = ctx.id ? `${base}/book?leadId=${ctx.id}` : `${base}/book`;
   }
 
   // first_name: best-effort split on the customerName so casual greetings
@@ -60,6 +71,7 @@ export function mergeTags(text: string, ctx: MergeContext): string {
     company_name: ctx.companyName || "",
     jobTitle: ctx.jobTitle || "",
     customerPortalUrl,
+    bookMeetingUrl,
   };
 
   let result = text;

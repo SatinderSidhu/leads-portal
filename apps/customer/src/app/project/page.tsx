@@ -11,6 +11,7 @@ import RequirementsSection from "../../components/RequirementsSection";
 import ProjectShell from "../../components/ProjectShell";
 import VisitTracker from "../../components/VisitTracker";
 import ChatWidget from "../../components/ChatWidget";
+import BookingForm from "../../components/BookingForm";
 import { getCustomerSession } from "../../lib/session";
 
 /* ─── Constants ─── */
@@ -649,16 +650,11 @@ export default async function ProjectPage({
                 </div>
               </div>
             </div>
-            <div className="rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-700">
-              <iframe
-                width="100%"
-                height="750px"
-                src="https://satinder-kitlabs.zohobookings.com/portal-embed#/kitlabsinc"
-                frameBorder="0"
-                allowFullScreen
-                className="bg-white"
-              />
-            </div>
+            <BookingForm
+              leadId={lead.id}
+              defaultName={lead.customerName}
+              defaultEmail={lead.customerEmail}
+            />
           </div>
         )}
       </div>

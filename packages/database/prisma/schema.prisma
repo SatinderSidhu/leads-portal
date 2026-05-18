@@ -162,6 +162,7 @@ model Lead {
   auditLogs            AuditLog[]
   sequenceEnrollments  SequenceEnrollment[]
   listMemberships      ListMembership[]
+  meetingBookings      MeetingBooking[]
 
   @@map("leads")
 }
@@ -1158,6 +1159,60 @@ model AppFactoryEnhancement {
   updatedAt     DateTime          @updatedAt @map("updated_at")
 
   @@map("app_factory_enhancements")
+}
+
+// ── Native Meeting Booking (replaces the Zoho Bookings iframe) ──────
+//
+// Customers book a 15- or 30-minute call directly on the customer portal
+// via /book?leadId=<id> (deep-linked from email campaigns) or via the
+// Book Meeting tab inside their project. Admins manage meeting types and
+// see bookings in /meetings on the admin portal.
+
+enum MeetingBookingStatus {
+  CONFIRMED
+  CANCELLED
+  COMPLETED
+}
+
+model MeetingType {
+  id          String    @id @default(uuid())
+  name        String
+  durationMin Int       @map("duration_min")
+  description String?   @db.Text
+  isActive    Boolean   @default(true) @map("is_active")
+  sortOrder   Int       @default(0) @map("sort_order")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  bookings MeetingBooking[]
+
+  @@map("meeting_types")
+}
+
+model MeetingBooking {
+  id               String               @id @default(uuid())
+  meetingTypeId    String               @map("meeting_type_id")
+  meetingType      MeetingType          @relation(fields: [meetingTypeId], references: [id], onDelete: Restrict)
+  // Optional lead link. Email-campaign clicks pass ?leadId=...; cold
+  // bookings (someone shares the /book URL) leave this null and we'll
+  // match on email later via a backfill if needed.
+  leadId           String?              @map("lead_id")
+  lead             Lead?                @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  attendeeName     String               @map("attendee_name")
+  attendeeEmail    String               @map("attendee_email")
+  attendeePhone    String?              @map("attendee_phone")
+  notes            String?              @db.Text
+  startsAt         DateTime             @map("starts_at")
+  endsAt           DateTime             @map("ends_at")
+  timezone         String?              // IANA TZ the attendee saw when booking (display-only)
+  status           MeetingBookingStatus @default(CONFIRMED)
+  conferencingLink String?              @map("conferencing_link")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  updatedAt        DateTime             @updatedAt @map("updated_at")
+
+  @@index([startsAt])
+  @@index([leadId])
+  @@map("meeting_bookings")
 }
 
 // ── System Health (singleton table for cron heartbeat) ──────────────
