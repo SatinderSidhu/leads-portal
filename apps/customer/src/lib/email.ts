@@ -2,6 +2,26 @@ import nodemailer from "nodemailer";
 import { prisma } from "@leads-portal/database";
 import { buildMeetingIcs } from "./ics";
 
+/**
+ * Build a display-name "From" header. Mirrors the helper in
+ * apps/admin/src/lib/email.ts — duplicated rather than cross-imported
+ * because the two apps don't share a lib.
+ *
+ * SMTP_FROM may be either a bare address ("leads@kitlabs.us") or
+ * already pre-decorated ("KITLabs <leads@kitlabs.us>"). We pull the
+ * address out and replace whatever display name was in front with the
+ * one we want, so the customer sees a real human or branded sender
+ * instead of the raw account.
+ */
+function getFromAddress(name?: string): string {
+  const smtpFrom = process.env.SMTP_FROM || "noreply@kitlabs.us";
+  if (!name) return smtpFrom;
+  const m = smtpFrom.match(/<(.+)>/);
+  const address = m ? m[1] : smtpFrom;
+  const safeName = name.replace(/"/g, '\\"');
+  return `"${safeName}" <${address}>`;
+}
+
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || "smtp.gmail.com",
   port: Number(process.env.SMTP_PORT) || 587,
@@ -560,6 +580,10 @@ export async function sendMeetingConfirmation(opts: {
   timezone: string | null;
   notes?: string | null;
   conferencingLink?: string | null;
+  /** Display name shown in the From header. When the booking is tied
+   *  to a lead, this is the assigned admin's name; otherwise it's a
+   *  branded fallback like "KITLabs Meetings". */
+  senderName?: string;
 }) {
   const tz = opts.timezone || "America/New_York";
   const when = opts.startsAt.toLocaleString("en-US", {
@@ -594,7 +618,7 @@ export async function sendMeetingConfirmation(opts: {
   });
 
   await transporter.sendMail({
-    from: process.env.SMTP_FROM || "noreply@leadsportal.com",
+    from: getFromAddress(opts.senderName || "KITLabs Meetings"),
     to: opts.attendeeEmail,
     subject: `Meeting confirmed — ${opts.meetingTypeName} on ${opts.startsAt.toLocaleDateString("en-US", { timeZone: tz, month: "short", day: "numeric" })}`,
     html: `
@@ -717,7 +741,7 @@ export async function notifyMeetingBooked(opts: {
   });
 
   await transporter.sendMail({
-    from: process.env.SMTP_FROM || "noreply@leadsportal.com",
+    from: getFromAddress("KITLabs Meetings"),
     to: emailList[0],
     ...(emailList.length > 1 && { bcc: emailList.slice(1).join(",") }),
     subject: `New meeting booked — ${opts.attendeeName} (${opts.meetingTypeName})`,

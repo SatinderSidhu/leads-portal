@@ -44,7 +44,12 @@ export async function POST(req: Request) {
     take: BATCH_SIZE,
     include: {
       meetingType: { select: { name: true, durationMin: true } },
-      lead: { select: { projectName: true } },
+      lead: {
+        select: {
+          projectName: true,
+          assignedTo: { select: { name: true } },
+        },
+      },
     },
   });
 
@@ -90,6 +95,7 @@ export async function POST(req: Request) {
         joinUrl: result.joinUrl,
         password: result.password,
         notes: b.notes,
+        senderName: b.lead?.assignedTo?.name ?? undefined,
       }).catch((err) => console.error("[zoom] sendZoomLinkEmail failed:", err));
     } catch (err) {
       failed++;

@@ -7,6 +7,20 @@
 import nodemailer from "nodemailer";
 import { buildMeetingIcs } from "./ics";
 
+/**
+ * Display-name "From" header builder. The cron runs in the admin
+ * container but the main admin email lib uses its own copy; duplicated
+ * here to keep this file standalone for the Zoom-provisioning hot path.
+ */
+function getFromAddress(name?: string): string {
+  const smtpFrom = process.env.SMTP_FROM || "noreply@kitlabs.us";
+  if (!name) return smtpFrom;
+  const m = smtpFrom.match(/<(.+)>/);
+  const address = m ? m[1] : smtpFrom;
+  const safeName = name.replace(/"/g, '\\"');
+  return `"${safeName}" <${address}>`;
+}
+
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: parseInt(process.env.SMTP_PORT || "587"),
@@ -28,6 +42,9 @@ export interface ZoomLinkEmailArgs {
   joinUrl: string;
   password: string | null;
   notes?: string | null;
+  /** Display name in the From header. Use the assigned admin's name
+   *  when the booking is lead-linked; "KITLabs Meetings" otherwise. */
+  senderName?: string;
 }
 
 export async function sendZoomLinkEmail(args: ZoomLinkEmailArgs) {
@@ -62,7 +79,7 @@ export async function sendZoomLinkEmail(args: ZoomLinkEmailArgs) {
   });
 
   await transporter.sendMail({
-    from: process.env.SMTP_FROM || "noreply@leadsportal.com",
+    from: getFromAddress(args.senderName || "KITLabs Meetings"),
     to: args.attendeeEmail,
     subject: `Zoom link for your KITLabs meeting on ${args.startsAt.toLocaleDateString("en-US", { timeZone: tz, month: "short", day: "numeric" })}`,
     icalEvent: {

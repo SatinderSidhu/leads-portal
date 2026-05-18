@@ -78,13 +78,25 @@ export async function POST(req: Request) {
 
   // Validate the lead if one was passed (email-campaign deep links).
   // A bad / missing leadId is non-fatal — store the booking unlinked.
+  // We also pull the assigned admin's name so the confirmation email
+  // can show a real person in the From header instead of the raw
+  // leads@kitlabs.us address.
   let resolvedLeadId: string | null = null;
+  let assignedAdminName: string | null = null;
   if (leadId) {
     const lead = await prisma.lead.findUnique({
       where: { id: leadId },
-      select: { id: true, projectName: true, doNotContact: true },
+      select: {
+        id: true,
+        projectName: true,
+        doNotContact: true,
+        assignedTo: { select: { name: true } },
+      },
     });
-    if (lead && !lead.doNotContact) resolvedLeadId = lead.id;
+    if (lead && !lead.doNotContact) {
+      resolvedLeadId = lead.id;
+      assignedAdminName = lead.assignedTo?.name ?? null;
+    }
   }
 
   const booking = await prisma.meetingBooking.create({
@@ -129,6 +141,7 @@ export async function POST(req: Request) {
     // at this point in the flow it's null. The Zoom-link follow-up email
     // re-attaches an updated .ics (SEQUENCE:1) with the actual link.
     conferencingLink: null,
+    senderName: assignedAdminName ?? undefined,
   }).catch((err) => console.error("[meeting] sendMeetingConfirmation failed:", err));
 
   notifyMeetingBooked({
