@@ -15,6 +15,7 @@ interface Preferences {
   sowSigned: boolean;
   ndaSigned: boolean;
   taskCompleted: boolean;
+  sequenceActivity: boolean;
 }
 
 const NOTIFICATION_TYPES: { key: keyof Omit<Preferences, "notificationEmail">; label: string; description: string }[] = [
@@ -28,6 +29,7 @@ const NOTIFICATION_TYPES: { key: keyof Omit<Preferences, "notificationEmail">; l
   { key: "sowSigned", label: "SOW Signed", description: "When a customer signs the Scope of Work" },
   { key: "ndaSigned", label: "NDA Signed", description: "When a customer signs the NDA" },
   { key: "taskCompleted", label: "Task Completed", description: "When a task you assigned or were assigned is completed" },
+  { key: "sequenceActivity", label: "Sequence Activity", description: "Per-tick digest after the sequence cron sends emails. Lists recipient + step + template. Defaults on; turn off if it gets noisy." },
 ];
 
 const defaults: Preferences = {
@@ -42,6 +44,7 @@ const defaults: Preferences = {
   sowSigned: true,
   ndaSigned: true,
   taskCompleted: true,
+  sequenceActivity: true,
 };
 
 export default function NotificationSettingsPage() {
@@ -69,6 +72,7 @@ export default function NotificationSettingsPage() {
         sowSigned: prefsData.sowSigned ?? true,
         ndaSigned: prefsData.ndaSigned ?? true,
         taskCompleted: prefsData.taskCompleted ?? true,
+        sequenceActivity: prefsData.sequenceActivity ?? true,
       });
       setAdminEmail(meData.email || "");
       setLoading(false);

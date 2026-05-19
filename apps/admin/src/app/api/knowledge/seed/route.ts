@@ -263,7 +263,7 @@ Email templates are reusable email formats that save time when sending similar e
 ### Compose Templates
 - Created by admins for manual email composition
 - Shown in the template dropdown when composing emails on lead detail
-- Shown in the email flow builder as draggable nodes
+- Used as the templates inside Smart Sequences steps
 - Can be created, edited, and deleted freely
 - Found in: **Email Templates** → **Compose Templates** tab
 
@@ -359,108 +359,206 @@ The Compose Templates tab shows a table with:
 
 Templates are sorted newest first.` },
 
-  { category: "Email System", sortOrder: 6, title: "Email Flow Builder", slug: "email-flow-builder", content: `# Email Flow Builder
+  { category: "Email System", sortOrder: 6, title: "Smart Sequences (Email Automation)", slug: "smart-sequences", content: `# Smart Sequences
 
-The Email Flow Builder lets you create visual email automation flows — sequence diagrams showing which emails to send and in what order based on customer responses.
+Smart Sequences are form-driven, multi-step email nurture sequences. You build a sequence once, enroll contacts, and the system sends emails on schedule, branching based on whether each email was opened, clicked, or replied to.
 
-## What Are Email Flows?
+> **Note:** The older "Email Flow Builder" feature has been retired. Smart Sequences replace it with a simpler, more reliable workflow.
 
-Email flows are visual diagrams that map out email sequences. Each node represents an email template, and edges (arrows) represent the path between emails based on customer actions (e.g., "Customer accepts", "No response after 3 days").
+## When to use a sequence
+- Drip campaigns ("send 5 emails over 2 weeks")
+- Post-demo follow-ups ("if no reply in 3 days, send reminder")
+- Re-engagement of cold leads
+- Onboarding nurture for new customers
 
-Think of flows as blueprints for your email campaigns — they help you plan and visualize multi-step communication strategies.
+## Creating a sequence
 
-## Creating a New Flow
+1. Sidebar → **Smart Sequences** → **+ New Sequence**
+2. Pick a **Goal** (Book a Meeting / Get Reply / Drive Purchase / Nurture Only)
+3. Pick an **Enrollment Trigger** (Manual / Stage Change / Lead Created / Added to List)
+4. Set **Exit Conditions** (e.g., REPLIED — sequence auto-exits anyone who responds)
 
-1. Go to **Email Flows** in the sidebar
-2. Click **"+ New Flow"**
-3. Enter a **Flow Name** (required) and optional **Description**
-4. Click **"Create Flow & Open Builder"**
+The sequence starts in **DRAFT**. You can't activate it until it has at least one step.
 
-## The Flow Builder Interface
+## Building steps
 
-### Sidebar (Template Panel)
-- Located on the left side of the screen
-- Shows all your **compose templates** (system templates are excluded)
-- Each template displays its **title** and **subject line**
-- Toggle the sidebar with the **"Templates" / "Hide Panel"** button
+Each step does three things: **wait**, **send a template**, then **decide**.
 
-### Canvas (Center Area)
-- The main workspace where you build your flow
-- Grid background for alignment
-- **Zoom controls** in the bottom-left corner
-- **Mini-map** in the bottom-right for navigation in large flows
-- Drag to pan, scroll to zoom
+1. Click **+ Add Step** on the Steps tab
+2. Pick a **template** from the dropdown (the Preview button next to it shows the rendered email)
+3. Set **wait** time (e.g., \`3 days\`) — measured from the previous step's send
+4. Pick a **branching condition**:
+   - **Always** — fire regardless of recipient behavior
+   - **If opened** / **If not opened** — fired based on whether they opened the previous step
+   - **If clicked** / **If not clicked** — based on link clicks
+   - **If replied** / **If no reply**
+5. (Optional) **Exit if …** — set a condition that ejects the contact from the sequence on this step
 
-## Building a Flow
+Drag the step cards to reorder. Each step preview button shows the rendered email with sample values for all merge tags.
 
-### Adding Email Nodes
-1. Click any template in the sidebar
-2. A new node appears on the canvas representing that email
-3. Each node shows:
-   - **Template name** (title)
-   - **Subject line** (smaller text below)
-   - **Purpose badge** (color-coded: green, blue, yellow, purple, pink, gray)
-   - **Connection handles** (gray dots) at top and bottom
+## Six tabs on the sequence detail
 
-### Connecting Nodes (Edges)
-1. Hover over the **bottom handle** of a node (the gray dot at the bottom)
-2. Click and drag to the **top handle** of another node
-3. A prompt appears asking for an **edge label** — this describes the condition:
-   - Examples: "Customer opens email", "No response after 3 days", "Customer clicks CTA"
-4. The connection is drawn as a smooth line with the label
+| Tab | What's there |
+|-----|--------------|
+| Steps | The editor — drag-to-reorder, per-step preview, branching, exit conditions |
+| Flowchart | Read-only top-to-bottom diagram of the sequence — great for sharing with non-technical reviewers |
+| Contacts | Search and enroll leads, see per-contact status (current step, last action, next send), pause / resume / advance / remove |
+| Preview | Plain-language timeline ("Day 0: Send 'Welcome'…") |
+| Performance | Funnel of enrollments — how many got past each step, where they exited |
+| Audit Log | Every email this sequence has ever sent, with recipient, step #, template, status, and open/click timestamps |
 
-### Editing Edge Labels
-- **Double-click** any edge/connection to edit its label
-- Enter the new label and press OK
+## Enrolling contacts
 
-### Rearranging Nodes
-- Drag any node to reposition it on the canvas
-- Nodes snap to the grid for alignment
-- Edges automatically adjust to follow the nodes
+**Manually**: Contacts tab → search lead → enroll. Bulk-select supported.
 
-## Flow Node Colors
+**Via Contact List**: Set the sequence's enrollment trigger to "Added to List", pick the list, and any contact added to the list gets enrolled automatically.
 
-Nodes are color-coded by the template's **purpose**:
-| Purpose | Border Color | Background |
-|---------|-------------|------------|
-| Welcome | Green | Light green |
-| Follow Up | Blue | Light blue |
-| Reminder | Yellow | Light yellow |
-| Notification | Purple | Light purple |
-| Promotional | Pink | Light pink |
-| Other | Gray | Light gray |
+**Via stage change**: Use the Stage Change trigger and set \`fromStage\` / \`toStage\` in trigger config — contacts moving between stages get auto-enrolled.
 
-## Saving a Flow
+**Via lead creation**: Use the Lead Created trigger — any new lead gets enrolled.
 
-1. Click **"Save Flow"** (top-right, green button)
-2. The button shows **"Saving..."** while in progress
-3. All nodes (positions, template data) and edges (connections, labels) are saved
-4. The flow persists and can be reopened later
+## Activating
 
-## Editing Flow Details
+Once at least one step exists, the status dropdown lets you flip the sequence to **ACTIVE**. The processor (runs every minute) picks up due contacts and sends.
 
-- Click the **flow name** in the header to edit it
-- Click **"Done"** to confirm the name change
-- The description can also be edited inline
+## Safety guarantees
 
-## Deleting a Flow
+- **Do Not Contact** is checked at every send — if a customer is flagged DNC, they're exited from every active sequence
+- **Bounces & spam complaints** auto-exit and DNC the contact
+- **Suppression lists** block enrollment globally
+- **5 retry attempts** on SMTP failure (10-min backoff) before giving up
+- **Idempotency**: a sent step is never duplicated even after a server crash
 
-1. Open the flow in the builder
-2. Click **"Delete Flow"** (red button, top-right)
-3. Confirm the deletion
+## The post-tick summary email
 
-## How Flows Connect to Email Compose
+After each cron tick that sent ≥1 email, you (and other admins) get a digest listing exactly what went out — recipient, step #, template. Defaults ON; toggle off at **Communications** settings → "Sequence Activity".
 
-When you've set up email flows, the lead detail page can show **"Recommended Next Email"** suggestions based on which emails have already been sent and what flows define as the next step. Clicking a recommendation auto-loads the template into the compose form.
+## Tips
 
-## Tips for Building Effective Flows
+- Use the **Flowchart tab** to sanity-check a long sequence before going live
+- Use the **Audit Log tab** to investigate "did this customer actually get the email?" without paging through the lead detail
+- Start sequences in DRAFT with a small test contact list before going broad — once contacts are enrolled, schema-level decoupling means list edits won't pull them out
+- For meeting-booking campaigns, embed \`{{bookMeetingUrl}}\` in your templates — one-click public booking page` },
 
-- **Start with your welcome email** as the first node
-- **Branch for different scenarios**: customer responds vs. no response
-- **Label edges clearly** so any admin can understand the flow at a glance
-- **Use purpose categories** to color-code different types of emails
-- **Keep flows focused** — one flow per campaign or lead stage works best
-- **Reuse templates** — the same template can appear in multiple flows` },
+  { category: "Sales Tools", sortOrder: 2, title: "Native Meeting Booking", slug: "meeting-booking", content: `# Native Meeting Booking
+
+Customers and leads can book a 15- or 30-minute call directly on the KITLabs portal — no Zoho iframe, no external scheduler. Bookings are automatically tied to a lead (when linked via the email-campaign deep link) and a Zoom meeting is provisioned in the background.
+
+## Where customers book
+
+**Public booking page** — \`https://leadsportal.kitlabs.us/book\`. No login required. Designed for cold leads clicking a link in an email campaign.
+
+When the link carries \`?leadId=<id>\`, name and email are pre-filled and the booking auto-links to that lead in our system. Add it to templates with the \`{{bookMeetingUrl}}\` merge tag.
+
+**In-portal booking** — \`/project?tab=appointments\` (or \`{{projectBookingUrl}}\` in email templates). For customers who are already signed in, this drops them straight onto the Book Meeting tab inside their project.
+
+## What the customer sees
+
+A simple 4-step flow:
+1. Pick a meeting type (defaults: Quick Chat 15 min, Discovery Call 30 min)
+2. Pick a day (next 14 weekdays)
+3. Pick a time slot (rendered in their browser's timezone)
+4. Confirm with name, email, optional notes
+
+## What happens when they confirm
+
+1. **Booking created** instantly — they see a success screen
+2. **Confirmation email** lands in their inbox with an \`.ics\` calendar invite (Outlook / Google Calendar / Apple Calendar all accept it natively)
+3. **Admin notification** goes to the assigned admin + lead watchers
+4. **Zoom meeting** is provisioned within 2 minutes by a background cron — the customer gets a second email "Your Zoom link is ready" with the join URL, and the calendar invite is silently updated in place (same UID, SEQUENCE:1)
+
+## Where you manage bookings
+
+Sidebar → **Meetings** (between Live Chat and Activity Feed).
+
+**Bookings tab** — filter Upcoming / Past / All. Each row shows attendee, type, status, conferencing link (editable inline if you need to paste a manual link). Status dropdown lets you mark a meeting Completed or Cancelled.
+
+**Meeting Types tab** — add new types (e.g., "Demo", 45 min), edit descriptions, hide types you no longer offer (hidden types stay linked to existing bookings).
+
+## Upcoming-meeting card on the lead
+
+Open any lead detail page — the top of the right column highlights the next upcoming meeting with a one-click **Join meeting** button. Within 30 minutes of the meeting it turns emerald and says "Join now".
+
+## Booking emails — what they look like
+
+The From header carries the assigned admin's name (e.g. \`"Satinder Sidhu" <leads@kitlabs.us>\`) when the booking is tied to a lead. Cold bookings come from "KITLabs Meetings" instead.
+
+Every email carries the \`.ics\` calendar invite. Customers don't have to copy-paste the time into Outlook — one click and it's on their calendar.
+
+## When Zoom is unreachable
+
+If our Zoom credentials fail or Zoom's API is down, the cron retries up to 4 times. After that, the booking shows an amber **"Zoom retry 4/4"** badge on the /meetings page — you can paste a manual conferencing link in the inline field and the customer's calendar invite updates automatically.
+
+## Availability window
+
+Currently hardcoded to **Mon–Fri 9 AM – 5 PM America/New_York**. The customer sees slots in their own timezone. A 60-minute minimum lead time prevents same-second bookings. 14-day booking horizon.` },
+
+  { category: "Integrations", sortOrder: 3, title: "Zoom Auto-Provisioning Setup", slug: "zoom-setup", content: `# Zoom Auto-Provisioning Setup
+
+When a customer books a meeting on \`/book\` or \`/project?tab=appointments\`, the system automatically creates a Zoom meeting and emails the join link to the attendee within ~2 minutes. Setup is one-time and lives entirely in Zoom Marketplace + GitHub Secrets — no code change needed.
+
+## One-time setup in Zoom
+
+1. Go to **https://marketplace.zoom.us** → **Develop** → **Build App**
+2. Pick **Server-to-Server OAuth**
+3. Name the app something like "KITLabs Leads Portal"
+4. Add scopes:
+   - \`meeting:write:meeting:admin\`
+   - \`user:read:user:admin\`
+5. **Activate** the app
+6. From the app's **App Credentials** tab, copy:
+   - **Account ID**
+   - **Client ID**
+   - **Client Secret**
+
+## Add the secrets to GitHub
+
+In the repository **Settings → Secrets and variables → Actions**, add:
+
+| Secret name | Value |
+|-------------|-------|
+| \`ZOOM_ACCOUNT_ID\` | Account ID from Zoom |
+| \`ZOOM_CLIENT_ID\` | Client ID from Zoom |
+| \`ZOOM_CLIENT_SECRET\` | Client Secret from Zoom |
+| \`ZOOM_HOST_USER_ID\` | (Optional) Zoom user id who will host the meetings. Defaults to "me" (the OAuth app owner) |
+
+The next deploy after you add the secrets is when Zoom provisioning goes live.
+
+## How to verify it's working
+
+After the next booking comes in, watch the admin container logs:
+
+\`\`\`bash
+ssh -i leads-portal-key.pem ubuntu@100.52.66.158
+cd ~/leads-portal
+docker compose logs -f admin | grep -i "zoom\\|sequence-cron"
+\`\`\`
+
+Within ~2 minutes you should see:
+
+\`\`\`
+[sequence-cron] zoom: { claimed: 1, provisioned: 1, failed: 0 }
+\`\`\`
+
+And the booking on the **/meetings** page will show:
+- The conferencing link populated
+- A small "Zoom #1234567890" label below it
+
+## Graceful degradation
+
+If any of the three required env vars are unset, the provisioning cron is a **no-op** — the booking flow still works, customers get the "we'll send the conferencing link separately" email, and you can paste a manual link from \`/meetings\` to fill in.
+
+## Retry behavior
+
+Failed provisioning attempts retry up to **4 times**, two minutes apart. On the lead detail page, bookings with a failed/pending Zoom link show:
+- Blue **"Zoom link pending"** spinner while waiting
+- Amber **"Zoom retry N/4"** badge with the error in the tooltip if it failed
+
+After 4 failures, the booking is flagged and you can paste a manual link in the inline field on \`/meetings\` — that overrides the retry and stops further attempts.
+
+## Who hosts the meeting?
+
+Currently a single Zoom account (the one tied to the OAuth app) hosts every meeting. If you want per-admin Zoom hosts (so each rep shows up as host on their own calls), set \`ZOOM_HOST_USER_ID\` to a different user id per environment — but a proper per-admin mapping is a future enhancement.` },
 
   // SOW
   { category: "SOW & Documents", sortOrder: 1, title: "Creating a Scope of Work", slug: "creating-sow", content: `# Creating a Scope of Work (SOW)
@@ -928,8 +1026,8 @@ The system automatically sends emails to customers for various events (welcome, 
 ## Compose vs System Templates
 
 The Email Templates page has two tabs:
-- **Compose Templates**: User-created templates for manual email composition. These are the only templates shown in the email compose dropdown on lead detail and in the email flow builder.
-- **System Templates**: Automated email templates triggered by the system. These are NOT shown in email compose or flow builder — they are only used by the system when specific events occur.
+- **Compose Templates**: User-created templates for manual email composition. These are the only templates shown in the email compose dropdown on lead detail and as step templates in Smart Sequences.
+- **System Templates**: Automated email templates triggered by the system. These are NOT shown in email compose or in sequence steps — they are only used by the system when specific events occur.
 
 ## Available System Templates (12)
 
@@ -1156,122 +1254,6 @@ The live chat widget appears on the customer portal as a floating chat bubble in
 
 - When a customer sends a message: admin watchers + assigned admin get an email
 - When an admin replies: customer gets an email notification` },
-
-  { category: "Email System", sortOrder: 7, title: "Smart Sequences", slug: "smart-sequences", content: `# Smart Sequences
-
-Smart Sequences is a form-driven email sequence builder — an alternative to the canvas-based Email Flow Builder. It's designed for the most common use case: timed, multi-step email nurture sequences.
-
-## Why Smart Sequences?
-
-| Feature | Canvas Flow Builder | Smart Sequences |
-|---------|-------------------|-----------------|
-| Setup time | 10–20 minutes | 2–5 minutes |
-| Mobile friendly | No | Yes |
-| Delay configuration | Free text on edges | Structured (number + unit) |
-| Branching conditions | Opened / not opened | Opened, clicked, replied + more |
-| Enrollment trigger | Not present | Built-in |
-| Exit conditions | Not present | Built-in |
-| Contact tracking | No | Per-step tracking |
-| Preview mode | No | Plain-language summary |
-| Performance dashboard | No | Built-in per sequence |
-
-## Creating a Sequence
-
-1. Go to **Smart Sequences** in the sidebar
-2. Click **"+ New Sequence"**
-3. Fill in:
-   - **Name**: e.g. "B2B SaaS Lead Nurture"
-   - **Goal**: Book a Meeting, Get a Reply, Drive a Purchase, or Nurture Only
-   - **Enrollment Trigger**: Manual, Stage Changes, or New Lead Created
-   - **Exit Conditions**: Check which events should remove contacts (replied, booked meeting, unsubscribed)
-   - **Re-enroll After Days**: Optional cooldown before a contact can re-enter
-4. Click **"Create Sequence & Add Steps"**
-
-## Building Steps
-
-Each step is a card with:
-- **Send Template**: Select a compose email template
-- **Wait**: Number + unit (hours, days, weeks) — how long to wait before sending
-- **Then — If**: Branching condition (Always, If opened, If clicked, If replied, etc.)
-- **Go to**: Next step (default) or skip to a specific step number
-- **Step-level exit**: Optional — exit the sequence if a condition is met at this step
-
-### Drag to Reorder
-Grab the drag handle on any step card and drag it to a new position. Steps are automatically renumbered.
-
-### Tips
-- Set the first step's wait to 0 to send immediately on enrollment
-- Use "If clicked" as your primary engagement signal — it's more reliable than "If opened"
-- Add a step-level exit condition on the final step to catch late converters
-
-## Enrolling Contacts
-
-1. Go to the **Contacts** tab on any sequence
-2. Click **"+ Enroll Contacts"**
-3. Search for leads by name, email, or company
-4. Check the leads you want to enroll
-5. Click **"Enroll"**
-
-Contacts with Do Not Contact enabled are automatically skipped. Each contact can only be enrolled once per sequence.
-
-## Managing Enrolled Contacts
-
-On the Contacts tab, each enrolled contact shows:
-- Current step number
-- Last action (opened, clicked, replied, no action)
-- Next scheduled send date
-- Status (Active, Paused, Completed, Exited, Removed)
-
-**Actions per contact:**
-- **Pause**: Temporarily stop the sequence for this contact
-- **Resume**: Continue from where they left off
-- **Advance**: Skip to the next step
-- **Remove**: Remove from the sequence with a reason
-
-## Preview Mode
-
-The **Preview** tab shows a plain-language summary of your sequence logic:
-
-> Day 0: Send 'The Challenge Leaders Don't See Coming'
-> Day 7: Wait 7 days → send 'Is This the Bottleneck?'
-> Day 14: Wait 7 days, if clicked → send 'What Changed When We Stepped In'
-> Exit: If contact replies → remove from sequence
-
-This is useful for reviewing the flow without reading individual step cards.
-
-## Performance Dashboard
-
-The **Performance** tab shows:
-- **Summary cards**: Total Enrolled, Active, Completed, Exited, Removed, Paused, Conversion Rate
-- **Drop-off funnel**: Per-step table showing how many contacts reached each step and the drop-off percentage between steps
-
-## Sequence Statuses
-
-| Status | Meaning |
-|--------|---------|
-| **Draft** | Being configured, no emails sent |
-| **Active** | Running — enrolled contacts will receive emails on schedule |
-| **Paused** | Temporarily stopped — no emails sent, contacts keep their position |
-
-- You can only delete Draft or Paused sequences
-- Activate requires at least one step
-
-## Exit Conditions
-
-When any exit condition is met, the contact is automatically removed:
-- **Contact replied** to any email in the sequence
-- **Contact booked a meeting** (clicked booking link)
-- **Contact unsubscribed** or marked as Do Not Contact
-
-## How Automated Sending Works
-
-The sequence processor runs on a schedule and:
-1. Finds contacts whose next send time has passed
-2. Checks exit conditions (replied? unsubscribed?)
-3. Evaluates the step's branching condition
-4. Sends the email with tracking pixel
-5. Advances the contact to the next step
-6. Calculates the next send time based on the next step's wait value` },
 
   { category: "Email System", sortOrder: 8, title: "Contact Lists", slug: "contact-lists", content: `# Contact Lists
 

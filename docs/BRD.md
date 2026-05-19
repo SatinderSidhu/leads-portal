@@ -659,6 +659,81 @@ Watchers receive email notifications when any of the following occur on a watche
 - "Assigned To" column added to the leads grid, displaying the assigned admin's name
 - Filter persists via query parameter (`assignedTo=me`, `assignedTo={adminId}`, `assignedTo=all`)
 
+### 5.8 Smart Sequences (Email Automation)
+
+Form-driven multi-step email sequences. Each sequence has a goal (Book a Meeting / Get Reply / Drive Purchase / Nurture-Only), an enrollment trigger (Manual / Stage Change / Lead Created / Added to List), and exit conditions (e.g., REPLIED). Contacts are enrolled either individually, via list bulk-enrollment, or auto-enrolled by triggers.
+
+**Sequence detail tabs** (6 total at `/sequences/[id]`):
+- **Steps** — drag-to-reorder cards, each with template selector + per-step Preview button, wait (hours/days/weeks), branching condition (ALWAYS / OPENED / NOT_OPENED / CLICKED / NOT_CLICKED / REPLIED / NOT_REPLIED), go-to step (loops/jumps), and step-level "Exit if" condition
+- **Flowchart** — read-only top-to-bottom visualization. Each step card shows template, wait time, condition, exit badges, and goToStep jumps. For sharing with a non-admin reviewer or grasping a 10-step sequence at a glance
+- **Contacts** — search and enroll leads; per-contact tracking (current step, last action, next send); pause / resume / advance / remove
+- **Preview** — plain-language timeline ("Day 0: Send 'Welcome'…")
+- **Performance** — enrollment funnel + per-step drop-off table
+- **Audit Log** — paginated table of every email sent from this sequence (recipient, step #, template, opened/clicked timestamps). Click a recipient to jump to the lead detail
+
+**Automated sending** runs every minute via node-cron inside the admin container. Crash-safe (claim-and-lock, idempotency unique constraint, advance-before-send order), 80ms pacing, max 5 retries on SMTP failure.
+
+**Post-tick summary email**: when the cron tick sends ≥1 email, fires one BCC'd digest to all active admins (gated on `sequenceActivity` notification preference; defaults ON) listing recipient + step + template per sequence. Admin can opt out at `/notification-settings`.
+
+### 5.9 Contact Lists
+
+Static (manual) or Dynamic (rule-based, auto-updating) lists for organizing contacts. Filter rule builder with AND/OR logic across 12 criteria. Suppression lists block enrollment globally. One-click bulk-enroll a list into a Smart Sequence. Added-to-list events can auto-trigger sequence enrollment.
+
+### 5.10 Native Meeting Booking
+
+| Aspect | Detail |
+|--------|--------|
+| Purpose | Let leads / customers schedule a 15- or 30-minute call without leaving the KITLabs domain |
+| Entry points | (1) Public `/book` page (no auth — designed for cold leads via email campaigns; `?leadId=<id>` deep-links a lead). (2) In-portal Book Meeting tab inside the customer's project (`/project?tab=appointments`) |
+| Replaces | The previously embedded Zoho Bookings iframe |
+| Admin surface | New sidebar page `/meetings` — Bookings tab (upcoming / past / all filter, status + conferencing link editing) + Meeting Types CRUD |
+| Default types | "Quick Chat" (15 min) and "Discovery Call" (30 min). Seeded on deploy. Admin can add more, deactivate ones not wanted |
+| Availability | Mon–Fri 9 AM – 5 PM America/New_York. 14-day booking horizon. 60-min minimum lead time. Customer sees slots in browser timezone |
+| Double-book guard | Overlap check at write time; HTTP 409 if a competing booking just took the slot |
+| Lead linkage | `?leadId=` from email campaigns links the booking to the lead; "Meeting Booked" audit entry added |
+| Upcoming-meeting card | Lead detail page right column highlights the next confirmed meeting at the top with a "Join Zoom" button (turns emerald + "Join now" when within 30 min) |
+
+**Booking emails** (sent on book, then on Zoom provisioning):
+- **Customer confirmation** (immediate): "You're booked!" with the slot details. `.ics` attached (SEQUENCE:0)
+- **Admin notification** (immediate): "New meeting booked" to assigned admin + watchers (or broadcast to all admins for cold bookings). Gated on `customerComment` preference
+- **Zoom-link follow-up** (when cron provisions): "Your Zoom link is ready". `.ics` re-issued with same UID + SEQUENCE:1 and `joinUrl` populated — calendar clients update the event in place rather than duplicating
+- **Sender display name**: when the booking is lead-linked, the From header carries the assigned admin's name (e.g. `"Satinder Sidhu" <leads@kitlabs.us>`). Cold bookings fall back to `"KITLabs Meetings"`
+
+### 5.11 Zoom Auto-Provisioning
+
+Zoom meetings are created asynchronously after a booking — the booking write path never depends on Zoom being reachable. A cron tick every 2 min picks up confirmed future bookings with no link yet, calls Zoom's Server-to-Server OAuth API, stores the `joinUrl` + `zoomMeetingId`, and emails the attendee the link. Up to 4 retries per booking before giving up; admin can paste a manual link if all retries fail (visible as an amber "Zoom retry N/4" badge on `/meetings`).
+
+| Env var | Purpose |
+|---------|---------|
+| `ZOOM_ACCOUNT_ID` | Server-to-Server OAuth app account id |
+| `ZOOM_CLIENT_ID` | OAuth client id |
+| `ZOOM_CLIENT_SECRET` | OAuth client secret |
+| `ZOOM_HOST_USER_ID` | (Optional) Zoom user who hosts the meeting. Defaults to "me" (OAuth app owner) |
+
+If any of the three required env vars are unset, the cron is a no-op — the booking flow keeps working unchanged; admins paste conferencing links manually.
+
+### 5.12 Email Merge Tag Library
+
+Templates use `{{tag}}` syntax. Tags are rendered by `template-merge.ts` (Smart Sequences + scheduled Drafts) and the manual compose route. Available tags:
+
+| Tag | Resolves to |
+|-----|-------------|
+| `{{customerName}}` | Full name |
+| `{{first_name}}` / `{{firstName}}` | First name split from customerName |
+| `{{customerEmail}}` | Email |
+| `{{customerPhone}}` | Phone |
+| `{{customerCity}}` | City |
+| `{{jobTitle}}` | Job title |
+| `{{companyName}}` / `{{company_name}}` | Company name |
+| `{{projectName}}` | Project / lead name |
+| `{{status}}` / `{{stage}}` / `{{source}}` | Lead classification labels |
+| `{{dateCreated}}` | Localized lead creation date |
+| `{{customerPortalUrl}}` | `/?id=<leadId>` — project landing page |
+| `{{bookMeetingUrl}}` | `/book?leadId=<leadId>` — public booking page (use for cold outreach) |
+| `{{projectBookingUrl}}` | `/project?id=<leadId>&tab=appointments` — in-portal booking (use for existing customers) |
+
+The template editor at `/email-templates/new` and `/email-templates/[id]` exposes the full palette in an "Available Template Tags" accordion, grouped into Contact info / Project info / Links with click-to-copy.
+
 ---
 
 ## 6. Business Flows
@@ -1149,6 +1224,7 @@ _This section will be updated as new features are planned and developed._
 | 4.12 | April 8, 2026 | Email template enhancements: body preview in list view, Send After Days timing field, two new purpose categories (Nurture, Cold Outreach), clone/duplicate template feature on list and edit pages. Flow builder shows send delay on nodes and sidebar | — |
 | 4.11 | April 8, 2026 | Email template type separation: system templates excluded from email compose and flow builder (only compose templates shown). Comprehensive API documentation update (OpenAPI v5.0 with all 90+ endpoints) | — |
 | 4.16 | April 10, 2026 | Production hardening: email bounce and spam complaint handling (auto-blocks bad addresses), click tracking on all links (enables CLICKED/NOT_CLICKED branching in sequences), auto-enrollment triggers now work (new leads and stage changes auto-enroll in matching sequences), scheduled email drafts now actually send, cron health monitoring with green/yellow/red status on dashboard | — |
+| 5.0 | May 19, 2026 | **Major release — see Section 5.10 / 5.11 for full detail.** Native Meeting Booking (replaces Zoho Bookings iframe — public /book + in-portal /project?tab=appointments, customer / Zoom-link / admin emails all carry .ics calendar invites). Zoom auto-provisioning (Server-to-Server OAuth, async cron every 2 min, graceful no-op when not configured). Email-template merge tag set expanded — first_name, company_name, customerPortalUrl, bookMeetingUrl, projectBookingUrl all wired through. Smart Sequences gain a Flowchart tab (read-only visual) and an Audit Log tab; post-tick summary email digest with new sequenceActivity notification preference. Booking emails go out with the assigned admin's name as sender display. Email Flow Builder retired (deprecated by Smart Sequences); pages, APIs, schema removed. Additional Contacts panel moved under Project Details and auto-CC'd in compose (admin can remove before send). Upcoming-meeting card on lead detail with one-click Join Zoom | — |
 | 4.15 | April 9, 2026 | Smart Sequence email sending is now automated. Sequences send their own emails on schedule (every minute) without manual intervention. Includes crash safety (no duplicate sends after a server restart), automatic retries for transient SMTP failures (5 attempts with backoff), branching condition fixes so "if opened" and "if replied" steps actually fire, and 90-day archival of old enrollments to keep the system fast as data grows | — |
 | 4.14 | April 9, 2026 | Contact Lists: static lists (manually curated) and dynamic lists (rule-based auto-updating) for organizing contacts. Filter rule builder with AND/OR logic and 12 criteria fields. Suppression lists to block enrollment. One-click bulk enrollment of list into sequence. "Added to list" enrollment trigger for Smart Sequences. Enrollment decoupling rule (list changes don't affect active sequences) | — |
 | 4.13 | April 8, 2026 | Smart Sequences: form-driven email sequence builder (alternative to canvas flow builder). Sequence header with goal, enrollment trigger, exit conditions. Step card builder with drag-to-reorder, structured delay (hours/days/weeks), branching conditions (opened/clicked/replied). Contact enrollment with per-step tracking, pause/resume/remove/advance. Plain-language preview mode. Performance dashboard with drop-off funnel. Cron-driven sequence processor for automated email sending | — |

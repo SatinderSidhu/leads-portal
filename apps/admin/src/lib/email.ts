@@ -536,3 +536,116 @@ export async function sendAppFlowReadyEmail(
   console.log(`[Email] App flow ready email sent in ${Date.now() - start}ms. Message ID: ${info.messageId}`);
   return { subject, html: flowHtmlWithUnsub };
 }
+
+/**
+ * After-tick digest of what the sequence processor sent.
+ *
+ * Sent at most once per cron tick that produced sends > 0. Goes to
+ * every active admin who hasn't opted out via the sequenceActivity
+ * notification preference. BCC'd as a single message — multiple
+ * recipients should never see each other's mail.
+ *
+ * Designed to be non-blocking; the processor must not slow down or
+ * fail because of a digest hiccup.
+ */
+export interface SequenceTickRow {
+  sequenceId: string;
+  sequenceName: string;
+  recipientName: string;
+  recipientEmail: string;
+  stepOrder: number;
+  templateTitle: string;
+  sentAt: Date;
+}
+
+export async function sendSequenceTickSummary(rows: SequenceTickRow[]) {
+  if (rows.length === 0) return;
+
+  const admins = await prisma.adminUser.findMany({
+    where: { active: true },
+    select: { id: true, email: true, name: true },
+  });
+  if (admins.length === 0) return;
+
+  const prefs = await prisma.notificationPreference.findMany({
+    where: { adminId: { in: admins.map((a) => a.id) } },
+  });
+  const prefsMap = new Map(prefs.map((p) => [p.adminId, p]));
+
+  const emailList: string[] = [];
+  for (const admin of admins) {
+    const pref = prefsMap.get(admin.id);
+    // Default ON if no pref record. Skip only when explicitly false.
+    if (pref && pref.sequenceActivity === false) continue;
+    emailList.push(pref?.notificationEmail || admin.email);
+  }
+  if (emailList.length === 0) return;
+
+  // Group rows by sequence for a readable digest.
+  const bySeq = new Map<string, { name: string; rows: SequenceTickRow[] }>();
+  for (const r of rows) {
+    const entry = bySeq.get(r.sequenceId) || { name: r.sequenceName, rows: [] };
+    entry.rows.push(r);
+    bySeq.set(r.sequenceId, entry);
+  }
+
+  const adminUrl = process.env.NEXT_PUBLIC_ADMIN_URL || "https://leadsportaladmin.kitlabs.us";
+
+  const groupsHtml = Array.from(bySeq.entries())
+    .map(([seqId, group]) => {
+      const seqUrl = `${adminUrl}/sequences/${seqId}`;
+      const rowsHtml = group.rows
+        .map(
+          (r) => `
+            <tr>
+              <td style="padding:6px 12px;border-bottom:1px solid #eee;color:#666;font-size:12px;white-space:nowrap;">${r.sentAt.toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "numeric", minute: "2-digit" })}</td>
+              <td style="padding:6px 12px;border-bottom:1px solid #eee;color:#1a1a1a;font-size:13px;">${escapeHtml(r.recipientName)}<br/><span style="color:#999;font-size:11px;">${escapeHtml(r.recipientEmail)}</span></td>
+              <td style="padding:6px 12px;border-bottom:1px solid #eee;color:#666;font-size:12px;text-align:center;">#${r.stepOrder}</td>
+              <td style="padding:6px 12px;border-bottom:1px solid #eee;color:#333;font-size:12px;">${escapeHtml(r.templateTitle)}</td>
+            </tr>`
+        )
+        .join("");
+      return `
+        <div style="margin-bottom:24px;">
+          <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:#1a1a1a;">
+            <a href="${seqUrl}" style="color:#01358d;text-decoration:none;">${escapeHtml(group.name)}</a>
+            <span style="color:#999;font-weight:400;font-size:12px;"> · ${group.rows.length} email${group.rows.length === 1 ? "" : "s"}</span>
+          </p>
+          <table style="width:100%;border-collapse:collapse;background:#fafafa;border:1px solid #eee;border-radius:6px;overflow:hidden;">
+            <tr style="background:#f0f0f0;">
+              <th style="padding:6px 12px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;letter-spacing:0.5px;">Time (ET)</th>
+              <th style="padding:6px 12px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;letter-spacing:0.5px;">Recipient</th>
+              <th style="padding:6px 12px;text-align:center;font-size:10px;text-transform:uppercase;color:#666;letter-spacing:0.5px;">Step</th>
+              <th style="padding:6px 12px;text-align:left;font-size:10px;text-transform:uppercase;color:#666;letter-spacing:0.5px;">Template</th>
+            </tr>
+            ${rowsHtml}
+          </table>
+        </div>`;
+    })
+    .join("");
+
+  await transporter.sendMail({
+    from: getFromAddress("KITLabs Sequences"),
+    to: emailList[0],
+    ...(emailList.length > 1 && { bcc: emailList.slice(1).join(",") }),
+    subject: `Sequence cron sent ${rows.length} email${rows.length === 1 ? "" : "s"} (${bySeq.size} sequence${bySeq.size === 1 ? "" : "s"})`,
+    html: `
+      <div style="font-family:'Segoe UI',Arial,sans-serif;max-width:680px;margin:0 auto;padding:32px 20px;">
+        <div style="background:linear-gradient(135deg,#01358d 0%,#2870a8 100%);border-radius:12px;padding:24px;text-align:center;margin-bottom:24px;">
+          <h1 style="color:white;margin:0;font-size:20px;">Sequence activity</h1>
+          <p style="color:rgba(255,255,255,0.92);margin:6px 0 0;font-size:13px;">${rows.length} email${rows.length === 1 ? " was" : "s were"} sent in the last tick</p>
+        </div>
+        ${groupsHtml}
+        <p style="margin:16px 0 0;color:#999;font-size:11px;text-align:center;">
+          Toggle these digests off in <a href="${adminUrl}/notification-settings" style="color:#01358d;">Notification Settings → Sequence activity</a>.
+        </p>
+      </div>
+    `,
+  });
+
+  console.log(`[Email] Sequence tick summary sent to ${emailList.length} admin(s) for ${rows.length} send(s).`);
+}
+
+function escapeHtml(s: string): string {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c] || c));
+}

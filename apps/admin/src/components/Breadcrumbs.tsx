@@ -18,7 +18,6 @@ const ROUTE_LABELS: Record<string, string> = {
   nda: "NDA",
   "email-templates": "Email Templates",
   "sow-templates": "SOW Templates",
-  "email-flows": "Email Flows",
   content: "Content",
   branding: "Branding",
   "zoho-settings": "Zoho CRM",

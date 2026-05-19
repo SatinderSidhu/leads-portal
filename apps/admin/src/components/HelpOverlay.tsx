@@ -125,23 +125,6 @@ const helpContent: Record<string, { title: string; sections: { heading: string; 
       },
     ],
   },
-  "/email-flows": {
-    title: "Email Flows",
-    sections: [
-      {
-        heading: "Visual Flow Builder",
-        text: "Design automated email sequences using a drag-and-drop interface. Connect nodes to create multi-step communication workflows.",
-      },
-      {
-        heading: "Flow Nodes",
-        text: "Add trigger nodes (e.g., lead created), action nodes (e.g., send email), delay nodes (e.g., wait 3 days), and condition nodes (e.g., if opened).",
-      },
-      {
-        heading: "Managing Flows",
-        text: "Save, edit, and organize your flows. Each flow has a name and description to help your team understand its purpose.",
-      },
-    ],
-  },
   "/content": {
     title: "Content Management",
     sections: [
@@ -224,7 +207,6 @@ function getHelpForPath(pathname: string) {
   if (/^\/leads\/[^/]+\/nda$/.test(pathname)) return helpContent["/leads/[id]/nda"];
   if (/^\/leads\/[^/]+$/.test(pathname)) return helpContent["/leads/[id]"];
   if (/^\/email-templates\/(new|[^/]+)$/.test(pathname)) return helpContent["/email-templates"];
-  if (/^\/email-flows\/(new|[^/]+)$/.test(pathname)) return helpContent["/email-flows"];
   if (/^\/content\/(new|[^/]+)$/.test(pathname)) return helpContent["/content"];
   if (/^\/admin-users\/(new|[^/]+)$/.test(pathname)) return helpContent["/admin-users"];
 

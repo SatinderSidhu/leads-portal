@@ -82,7 +82,6 @@ leads-portal/
 | LeadFile | lead_files | File attachments on leads (legacy, stored on disk under `/uploads/leads/`) |
 | LeadDocument | lead_documents | Customer- and admin-shared documents stored in S3 (`leads/{leadId}/{uuid}-{filename}`), uploaded via presigned PUT URLs |
 | EmailTemplate | email_templates | Reusable email templates with HTML body, sendAfterDays timing, industry, naicsSectorCode, naicsSubsectorCode, systemKey for system templates |
-| EmailFlow | email_flows | Visual email automation flows (JSON nodes/edges) |
 | SentEmail | sent_emails | Email tracking (sent, opened, clicked, failed; clickedAt timestamp for link click tracking) |
 | EmailAttachment | email_attachments | File attachments on sent emails |
 | ReceivedEmail | received_emails | Inbound email replies via SES |
@@ -97,7 +96,7 @@ leads-portal/
 | AuditLog | audit_logs | Complete audit trail per lead (action, detail, actor, timestamp) |
 | ZohoConfig | zoho_config | Zoho CRM OAuth credentials, tokens, data center, org ID, enabled flag |
 | CustomerVisit | customer_visits | Tracks customer portal page views (leadId, visitorEmail, page, timestamp) |
-| NotificationPreference | notification_preferences | Per-admin notification toggles (9 event types) + optional notification email |
+| NotificationPreference | notification_preferences | Per-admin notification toggles (11 event types) + optional notification email |
 | PortfolioService | portfolio_services | Services offered by KITLabs (name, description, pitch scripts, documents, URLs) |
 | PortfolioProject | portfolio_projects | Completed projects (title, description, category, domain, industry, industrySector/NAICS, industrySubsector/NAICS, technologies, client, demoVideoUrl, portfolioUrl, customerReviewUrl, additionalLinks JSON, scripts, docs) |
 | Message | messages | Secure messaging between admin and customer (content, senderName, senderType, readAt) |
@@ -165,12 +164,10 @@ leads-portal/
 | `/email-templates` | Template list |
 | `/email-templates/new` | Create template |
 | `/email-templates/[id]` | Edit template |
-| `/email-flows` | Flow builder list |
-| `/email-flows/new` | Create flow |
-| `/email-flows/[id]` | Edit flow |
 | `/sequences` | Smart Sequences list — form-driven email sequence builder |
 | `/sequences/new` | Create sequence (name, goal, trigger, exit conditions) |
-| `/sequences/[id]` | Sequence detail with 4 tabs (Steps, Contacts, Preview, Performance) |
+| `/sequences/[id]` | Sequence detail with 6 tabs (Steps, Flowchart, Contacts, Preview, Performance, Audit Log) |
+| `/meetings` | Native meeting booking management — Bookings tab + Meeting Types CRUD |
 | `/lists` | Contact Lists index — search, type filter toggle (All/Static/Dynamic), suppression badges |
 | `/lists/new` | Create list — type selector, name, description, suppression toggle, dynamic filter rule builder |
 | `/lists/[id]` | List detail with 3 tabs (Contacts, Sequences, Settings) |
@@ -182,7 +179,7 @@ leads-portal/
 | `/zoho-settings/unlinked` | Find Portal leads that exist in Zoho but aren't linked — link them |
 | `/zoho-settings/import` | Import leads from Zoho CRM that don't exist in Portal |
 | `/zoho-settings/export` | Export Portal leads to Zoho CRM that aren't synced yet |
-| `/notification-settings` | Per-admin notification preferences (9 event types, optional notification email) |
+| `/notification-settings` | Per-admin notification preferences (11 event types, optional notification email) |
 | `/portfolio` | Portfolio main page — services and projects tabs with card grid |
 | `/portfolio/services/new` | Create new service (name, description, scripts, URLs, documents) |
 | `/portfolio/services/[id]` | Service detail — pitch scripts, URLs, documents, linked projects |
@@ -224,7 +221,6 @@ leads-portal/
 - `GET/POST /api/sow-templates` — SOW template list/create (POST with isDefault unsets previous default)
 - `GET/PUT/DELETE /api/sow-templates/[id]` — SOW template CRUD (PUT with isDefault unsets other defaults)
 - `GET/POST/PUT/DELETE /api/email-templates[/id]` — Template CRUD
-- `GET/POST/PUT/DELETE /api/email-flows[/id]` — Flow CRUD
 - `GET/POST/PUT/DELETE /api/content[/id]` — Content CRUD
 - `POST /api/content/upload` — Media upload
 - `GET/PUT /api/branding` — Get/update company branding config
@@ -392,7 +388,6 @@ Multi-page portal with session-based authentication (bcryptjs + cookie). Google 
 | Sidebar | `apps/admin/src/components/Sidebar.tsx` | Fixed left nav (w-56): logo, New Lead button, grouped nav links, theme toggle, logout |
 | Breadcrumbs | `apps/admin/src/components/Breadcrumbs.tsx` | Auto-generated from URL path, handles UUIDs as "Lead Detail", clickable parent segments |
 | RichTextEditor | `apps/admin/src/components/RichTextEditor.tsx` | TipTap editor with visual/code toggle, syncs external content changes via useEffect. Auto-switches to raw-HTML (code) mode when content contains email-template structures (tables, `<style>`, inline `background`/`padding`/`border`/`gradient`/`color`, styled `<div>`/`<span>`) since TipTap's schema strips them on parse — banner explains why; switching back to visual prompts a confirm |
-| FlowBuilder | `apps/admin/src/components/FlowBuilder.tsx` | @xyflow drag-and-drop email flow builder |
 | AppFlowBuilder | `apps/admin/src/components/AppFlowBuilder.tsx` | @xyflow app flow editor with AI sidebar, save, PNG download |
 | BasicNode / WireframeNode | `apps/admin/src/components/app-flow-nodes.tsx` | Custom ReactFlow node types for app flows |
 | ThemeProvider | `apps/admin/src/components/ThemeProvider.tsx` | Dark mode context provider |
@@ -616,7 +611,7 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - Dashboard filters updated for all new LeadSource and LeadStage values
 
 ## Notification System
-- **NotificationPreference** model: per-admin toggles for 9 event types + optional notification email override
+- **NotificationPreference** model: per-admin toggles for 11 event types + optional notification email override
 - All notifications default to ON (no preference record = all enabled)
 - Admin configures at `/notification-settings` — toggle individual events, set notification email, enable/disable all
 - **Central dispatcher** (`notify.ts`): `sendNotification()` checks each admin's preferences before sending
@@ -696,7 +691,7 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - Audit logged: "Task Created", "Task Reassigned", "Task Completed", "Task Reopened", "Task Deleted"
 - Task emails use system templates (`system_task_assigned`, `system_task_completed`) — admin can customize via Email Templates > System Templates
 - On completion: both assignedTo and assignedBy are notified (respects `taskCompleted` notification preference)
-- `taskCompleted` notification event added (10th preference in Communications settings)
+- `taskCompleted` and `sequenceActivity` notification events round out the 11 toggles in Communications settings
 
 ## Admin Portal Navigation
 - **Collapsible sidebar**: expanded (w-56), collapsed (w-16 icons only), hover-expand when collapsed
@@ -704,7 +699,7 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - **Sticky breadcrumb bar** at top showing current page path (auto-generated from URL)
 - **AdminShell** layout wrapper in root layout — wraps all pages except /login
 - Pages no longer have individual headers/nav — sidebar handles all navigation
-- Nav groups: Dashboard/Leads/Activity/Portfolio, Templates (Email, SOW, Flows, Smart Sequences, Contact Lists, Content), NAICS Codes, Knowledge Base, Settings (Branding, Zoho, Notifications), Users (Admin Users, Profile)
+- Nav groups: Dashboard / Leads / Live Chat / Meetings / Activity / Portfolio, Templates (Email, SOW, Questionnaires, Smart Sequences, Contact Lists, Content), NAICS Codes, Knowledge Base, Settings (Branding, Zoho, Notifications), Users (Admin Users, Profile, Release History)
 
 ## Live Chat / Secure Messaging
 - **Message** model: leadId, content, senderName, senderType (admin/customer), readAt for read receipts
@@ -737,18 +732,21 @@ All admin notifications respect per-admin preferences in `NotificationPreference
 - CRUD API: `GET/POST/PUT/DELETE /api/leads/[id]/drafts`
 
 ## Smart Sequences
-- Form-driven email sequence builder — alternative to canvas-based Email Flow Builder, optimized for timed multi-step email nurture sequences
+- Form-driven email sequence builder, optimized for timed multi-step email nurture sequences. Smart Sequences are the canonical automation primitive — the older canvas-based "Email Flow" feature has been retired.
 - **SmartSequence** model: name, goal (BOOK_MEETING/GET_REPLY/DRIVE_PURCHASE/NURTURE_ONLY), status (DRAFT/ACTIVE/PAUSED), enrollment trigger (MANUAL/STAGE_CHANGE/LEAD_CREATED), triggerConfig JSON, audienceTags JSON, exitConditions JSON, reEnrollAfterDays
 - **SequenceStep** model: stepOrder, templateId (FK to EmailTemplate), waitValue + waitUnit (HOURS/DAYS/WEEKS), condition (ALWAYS/OPENED/NOT_OPENED/CLICKED/NOT_CLICKED/REPLIED/NOT_REPLIED), goToStepOrder, exitOnCondition boolean
 - **SequenceEnrollment** model: leadId, currentStepOrder, status (ACTIVE/PAUSED/COMPLETED/EXITED/REMOVED), lastAction (NONE/OPENED/CLICKED/REPLIED), nextSendAt, exitReason
-- **Step builder**: drag-to-reorder step cards, each with template selector, structured delay (number + unit), branching condition, go-to step, step-level exit condition
+- **Step builder**: drag-to-reorder step cards, each with template selector, structured delay (number + unit), branching condition, go-to step, step-level exit condition, per-step "Preview" button that renders the template against sample merge data
+- **Flowchart tab**: read-only top-to-bottom visual of the sequence (Enrollment starts → wait → Step N → … → Sequence complete). Each step card shows template title, wait, condition label, "Exit if …" badge for step-level exits, and "Then jump to Step N" badge for non-default goToStepOrder. Plain CSS — no extra dependency
 - **Contact enrollment**: search leads by name/email/company, multi-select, per-contact tracking (current step, last action, next send time), pause/resume/advance/remove actions
 - **Preview tab**: plain-language timeline summary of sequence logic (e.g. "Day 0: Send 'Template Name'")
 - **Performance tab**: summary cards (enrolled/active/completed/exited/removed/conversion rate) + per-step drop-off funnel table
+- **Audit Log tab**: paginated table of every SentEmail that came from this sequence's enrollments — recipient, step #, template, status, openedAt / clickedAt timestamps. Click a recipient name to jump to the lead detail. `GET /api/sequences/[id]/audit?page=N&limit=50`
 - **Sequence processor**: cron-driven `POST /api/sequences/process` endpoint — finds due contacts, checks exit conditions, evaluates branching, sends emails with tracking, advances to next step
+- **Post-tick summary email**: when the processor sends ≥1 email, it fires one digest (BCC'd to all active admins who haven't opted out via the `sequenceActivity` notification preference) listing each recipient + step + template. Subject `Sequence cron sent N email(s)`. Fire-and-forget after the tick — never blocks the heartbeat
 - Sequences can only be deleted when in DRAFT or PAUSED status; activation requires at least one step
-- Sidebar nav: "Smart Sequences" under Templates group after Email Flows
-- 8 API routes, 3 admin pages (/sequences list, /sequences/new, /sequences/[id] with 4 tabs)
+- Sidebar nav: "Smart Sequences" under Templates group after Email Templates
+- 9 API routes, 3 admin pages (/sequences list, /sequences/new, /sequences/[id] with 6 tabs)
 
 ## Smart Sequence Sending Pipeline
 - **Cron wiring**: `apps/admin/src/instrumentation.ts` (Next.js startup hook) calls `startSequenceCron()` from `lib/sequence-cron.ts`. node-cron runs inside the admin container and self-calls the app via HTTP with `Bearer ${CRON_SECRET}` — no external scheduler, no separate worker process
@@ -923,6 +921,8 @@ The customer's booking succeeds even if Zoom is unreachable. A separate cron tic
 - **On book** (sent from customer app, immediate): "You're booked!" with the slot + "We'll send the conferencing link separately."
 - **Admin notification** (sent from customer app, immediate): "New meeting booked" to assigned admin + watchers (broadcasts to all active admins if the booking has no lead). Gated on `customerComment` preference.
 - **Zoom link follow-up** (sent from admin app, after provisioning): "Your Zoom link is ready" with `joinUrl` (+ password if Zoom returns one). Helper lives in `apps/admin/src/lib/booking-email.ts` because the cron runs in the admin container.
+- **iCalendar attachments**: every booking email carries an `.ics` file (METHOD:REQUEST, deterministic `UID:meeting-<bookingId>@kitlabs.us`). Outlook / Google Calendar / Apple Calendar pick them up natively. The Zoom-link follow-up re-issues the same UID with `SEQUENCE:1` + the join URL populated as LOCATION/DESCRIPTION — calendar clients update the existing event instead of duplicating it. Generator lives in `apps/{admin,customer}/src/lib/ics.ts` (duplicated; the two apps don't share a lib).
+- **Sender display name**: booking emails go out as `"Satinder Sidhu" <leads@kitlabs.us>` style — the assigned admin's name when the booking is lead-linked, falling back to `"KITLabs Meetings"` otherwise. `getFromAddress(name?)` helper duplicated in each portal's email lib; pulls the address out of `SMTP_FROM` and quotes the display name per RFC 5322.
 
 ### Admin UI
 - New `/meetings` page (sidebar nav between Live Chat and Activity Feed) with two tabs:
@@ -935,8 +935,13 @@ The customer's booking succeeds even if Zoom is unreachable. A separate cron tic
 - `GET /api/meetings/availability?typeId=X&date=YYYY-MM-DD` — days payload (no date) or slot list (with date), public
 - `POST /api/meetings/book` — public; re-validates slot, double-book guards, audit-logs if `leadId` resolved, fires confirmation + admin notification
 
-### Merge tag
-`{{bookMeetingUrl}}` resolves to `${CUSTOMER_PORTAL_URL}/book?leadId=<id>` when a lead is in scope, otherwise the generic `/book` URL. Wired through `template-merge.ts`, the manual compose route, and client-side previews on the lead page + `/email-templates` + `/sequences/[id]` step preview.
+### Merge tags
+Two booking-link tags wired through every renderer (`template-merge.ts`, manual compose, client-side previews, sample data on `/email-templates` + `/sequences/[id]`):
+- `{{bookMeetingUrl}}` → `${CUSTOMER_PORTAL_URL}/book?leadId=<id>` (or just `/book` for cold sends) — public booking page, no login. Best for cold outreach / email campaigns.
+- `{{projectBookingUrl}}` → `${CUSTOMER_PORTAL_URL}/project?id=<id>&tab=appointments` — drops existing customers onto the Book Meeting tab inside their project. Requires the customer to be signed in.
+
+### Upcoming meeting card on lead detail
+The lead detail page (right column, top) renders the next confirmed upcoming meeting as a prominent card with date/time, attendee, optional notes, and a primary "Join meeting" button (links to `conferencingLink`). When the meeting is within 30 min the card flips emerald and the button says "Join now". Zoom states are reflected via badges: blue "Zoom link pending" while the cron hasn't run, amber "Zoom retry N/4" on provisioning failures. Additional upcoming + past meetings collapse into a scrollable list below; click any row to expand notes, phone, full URL, Zoom meeting ID. Driven by `meetingBookings` included on the lead GET payload.
 
 ## App Factory Admin
 - `/app-factory` lists all `AppFactoryProject` rows with three visible counts per row: builds, enhancements, and app-store configs (X/2 since iOS + Android).

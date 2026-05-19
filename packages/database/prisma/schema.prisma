@@ -394,20 +394,6 @@ model EmailTemplate {
   @@map("email_templates")
 }
 
-model EmailFlow {
-  id          String   @id @default(uuid())
-  name        String
-  description String?  @db.Text
-  nodes       Json     @default("[]")
-  edges       Json     @default("[]")
-  createdBy   String?  @map("created_by")
-  updatedBy   String?  @map("updated_by")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  @@map("email_flows")
-}
-
 model Message {
   id         String   @id @default(uuid())
   leadId     String   @map("lead_id")
@@ -750,6 +736,9 @@ model NotificationPreference {
   sowSigned             Boolean  @default(true) @map("sow_signed")
   ndaSigned             Boolean  @default(true) @map("nda_signed")
   taskCompleted         Boolean  @default(true) @map("task_completed")
+  // Per-tick digest of what the sequence processor sent. Defaults ON;
+  // admins who find it noisy can flip it off at /notification-settings.
+  sequenceActivity      Boolean  @default(true) @map("sequence_activity")
 
   updatedAt             DateTime @updatedAt @map("updated_at")
 

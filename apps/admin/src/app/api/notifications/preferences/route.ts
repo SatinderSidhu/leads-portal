@@ -29,6 +29,7 @@ export async function GET() {
       sowSigned: true,
       ndaSigned: true,
       taskCompleted: true,
+      sequenceActivity: true,
       updatedAt: new Date(),
     };
   }
@@ -59,6 +60,8 @@ export async function PUT(req: Request) {
       leadAssigned: body.leadAssigned ?? true,
       sowSigned: body.sowSigned ?? true,
       ndaSigned: body.ndaSigned ?? true,
+      taskCompleted: body.taskCompleted ?? true,
+      sequenceActivity: body.sequenceActivity ?? true,
     },
     update: {
       ...(body.notificationEmail !== undefined && { notificationEmail: body.notificationEmail?.trim() || null }),
@@ -71,6 +74,8 @@ export async function PUT(req: Request) {
       ...(body.leadAssigned !== undefined && { leadAssigned: body.leadAssigned }),
       ...(body.sowSigned !== undefined && { sowSigned: body.sowSigned }),
       ...(body.ndaSigned !== undefined && { ndaSigned: body.ndaSigned }),
+      ...(body.taskCompleted !== undefined && { taskCompleted: body.taskCompleted }),
+      ...(body.sequenceActivity !== undefined && { sequenceActivity: body.sequenceActivity }),
     },
   });
 

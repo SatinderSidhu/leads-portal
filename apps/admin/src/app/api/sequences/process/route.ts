@@ -95,6 +95,9 @@ export async function POST(req: Request) {
     let sent = 0;
     let skipped = 0;
     let exited = 0;
+    // Rows captured for the post-tick summary email. Populated only when
+    // an email actually leaves SMTP successfully.
+    const summaryRows: import("../../../../lib/email").SequenceTickRow[] = [];
 
     // ── Phase 2: Process each claimed enrollment ──
     for (const enrollment of enrollments) {
@@ -309,6 +312,15 @@ export async function POST(req: Request) {
           html: clickTrackedBody + trackingPixel,
         });
         sent++;
+        summaryRows.push({
+          sequenceId: sequence.id,
+          sequenceName: sequence.name,
+          recipientName: lead.customerName || lead.customerEmail,
+          recipientEmail: lead.customerEmail,
+          stepOrder: stepOrderBeforeSend,
+          templateTitle: template.title,
+          sentAt: now,
+        });
       } catch (emailError) {
         // STEP 4: SMTP failed — roll back and increment retry counter
         console.error(
@@ -360,6 +372,15 @@ export async function POST(req: Request) {
 
       // Pace at ~14/sec to stay under SES sustained limit
       await new Promise((r) => setTimeout(r, SEND_PACING_MS));
+    }
+
+    // Fire-and-forget the post-tick digest so the cron's HTTP response
+    // doesn't wait on SMTP. A failure to summarize must never block or
+    // fail the next tick's tickWithHealth heartbeat.
+    if (summaryRows.length > 0) {
+      import("../../../../lib/email")
+        .then((mod) => mod.sendSequenceTickSummary(summaryRows))
+        .catch((err) => console.error("[seq-cron] tick summary failed:", err));
     }
 
     return NextResponse.json({

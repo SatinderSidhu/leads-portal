@@ -200,16 +200,6 @@ interface EmailTemplateItem {
   purpose: string;
 }
 
-interface Recommendation {
-  templateId: string;
-  templateTitle: string;
-  templateSubject: string;
-  purpose: string;
-  flowName: string;
-  edgeLabel: string | null;
-  fromTemplateName: string;
-}
-
 const NDA_STATUS_DISPLAY: Record<string, { label: string; color: string }> = {
   GENERATED: { label: "Generated", color: "bg-yellow-100 text-yellow-800" },
   SENT: { label: "Sent to Customer", color: "bg-blue-100 text-blue-800" },
@@ -429,9 +419,6 @@ export default function LeadDetailPage() {
   const [threadCollapsed, setThreadCollapsed] = useState(true);
   const [expandedEmails, setExpandedEmails] = useState<Set<string>>(new Set());
 
-  // Recommendations
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
-
   // SOW state
   const [sows, setSows] = useState<SowItem[]>([]);
   const [sowUploading, setSowUploading] = useState(false);
@@ -551,16 +538,6 @@ export default function LeadDetailPage() {
       .catch(() => {})
       .finally(() => setZohoLoading(false));
   }, [lead?.id, lead?.zohoLeadId]);
-
-  // Load recommendations
-  useEffect(() => {
-    if (!params.id) return;
-    fetch(`/api/leads/${params.id}/recommendations`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data)) setRecommendations(data);
-      });
-  }, [params.id, lead?.sentEmails?.length]);
 
   // Load Next Steps
   const fetchNextSteps = useCallback(async () => {
@@ -1199,26 +1176,6 @@ export default function LeadDetailPage() {
     }
   }
 
-  function loadRecommendation(rec: Recommendation) {
-    const template = templates.find((t) => t.id === rec.templateId);
-    if (template) {
-      setComposeTemplateId(template.id);
-      setComposeSubject(mergeTags(template.subject));
-      setComposeBody(mergeTags(template.body));
-    } else {
-      setComposeSubject(mergeTags(rec.templateSubject));
-      setComposeBody("");
-    }
-    // Pre-fill CC with additional contacts if not already populated.
-    if (!composeCc) {
-      const auto = defaultAutoCc();
-      if (auto) {
-        setComposeCc(auto);
-        setShowCcBcc(true);
-      }
-    }
-    setComposeOpen(true);
-  }
 
   function resetCompose() {
     setComposeOpen(false);
@@ -3331,36 +3288,6 @@ export default function LeadDetailPage() {
                       Send Email
                     </button>
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* Recommended Next Email */}
-            {recommendations.length > 0 && (
-              <div className="md:col-span-2 bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                  Recommended Next Email
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {recommendations.map((rec) => (
-                    <button
-                      key={rec.templateId}
-                      onClick={() => loadRecommendation(rec)}
-                      className="text-left p-4 rounded-lg border border-gray-200 dark:border-gray-600 hover:border-teal-400 hover:bg-teal-50 dark:hover:bg-teal-900/20 transition"
-                    >
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">
-                        {rec.templateTitle}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                        {rec.templateSubject}
-                      </div>
-                      <div className="text-xs text-teal-600 dark:text-teal-400 mt-2">
-                        {rec.edgeLabel
-                          ? `After: ${rec.fromTemplateName} → ${rec.edgeLabel}`
-                          : `From flow: ${rec.flowName}`}
-                      </div>
-                    </button>
-                  ))}
                 </div>
               </div>
             )}

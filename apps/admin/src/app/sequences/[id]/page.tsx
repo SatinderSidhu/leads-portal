@@ -51,13 +51,24 @@ interface Step { id?: string; templateId: string; template?: Template; waitValue
 interface Enrollment { id: string; currentStepOrder: number; status: string; enrolledAt: string; lastEmailSentAt: string | null; lastAction: string; nextSendAt: string | null; exitReason: string | null; lead: { id: string; customerName: string; customerEmail: string; projectName: string; companyName: string | null } }
 interface PreviewData { name: string; goal: string; stepCount: number; preview: string[] }
 interface PerfData { summary: { totalEnrolled: number; active: number; completed: number; exited: number; removed: number; paused: number; conversionRate: number }; stepStats: { stepOrder: number; templateTitle: string; reached: number; currentlyAt: number }[] }
+interface AuditRow {
+  id: string;
+  subject: string;
+  status: string;
+  openedAt: string | null;
+  clickedAt: string | null;
+  createdAt: string;
+  enrollmentStep: number | null;
+  template: { id: string; title: string } | null;
+  lead: { id: string; customerName: string; customerEmail: string; companyName: string | null };
+}
 
 export default function SequenceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
 
-  const [tab, setTab] = useState<"steps" | "contacts" | "preview" | "performance">("steps");
+  const [tab, setTab] = useState<"steps" | "flowchart" | "contacts" | "preview" | "performance" | "audit">("steps");
   const [sequence, setSequence] = useState<{
     id: string; name: string; goal: string; status: string;
     enrollmentTrigger: string; triggerConfig: { source?: string; fromStage?: string; toStage?: string; listId?: string };
@@ -80,6 +91,10 @@ export default function SequenceDetailPage() {
   const [showEnrollModal, setShowEnrollModal] = useState(false);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [previewTemplate, setPreviewTemplate] = useState<Template | null>(null);
+  const [auditRows, setAuditRows] = useState<AuditRow[]>([]);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditLoading, setAuditLoading] = useState(false);
 
   const fetchSequence = useCallback(() => {
     Promise.all([
@@ -102,8 +117,14 @@ export default function SequenceDetailPage() {
       fetch(`/api/sequences/${id}/preview`).then((r) => r.json()).then(setPreview);
     } else if (tab === "performance") {
       fetch(`/api/sequences/${id}/performance`).then((r) => r.json()).then(setPerf);
+    } else if (tab === "audit") {
+      setAuditLoading(true);
+      fetch(`/api/sequences/${id}/audit?page=${auditPage}&limit=50`)
+        .then((r) => r.json())
+        .then((d) => { setAuditRows(d.rows || []); setAuditTotal(d.total || 0); })
+        .finally(() => setAuditLoading(false));
     }
-  }, [tab, id]);
+  }, [tab, id, auditPage]);
 
   async function handleSaveSteps() {
     setSaving(true);
@@ -287,7 +308,7 @@ export default function SequenceDetailPage() {
 
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1 mb-6 w-fit">
-        {(["steps", "contacts", "preview", "performance"] as const).map((t) => (
+        {(["steps", "flowchart", "contacts", "preview", "performance", "audit"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} className={`px-4 py-2 rounded-lg text-sm font-medium transition capitalize ${tab === t ? "bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm" : "text-gray-500 dark:text-gray-400 hover:text-gray-700"}`}>
             {t}
           </button>
@@ -610,6 +631,118 @@ export default function SequenceDetailPage() {
         </div>
       )}
 
+      {/* ── Audit Log Tab ── */}
+      {tab === "audit" && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 overflow-hidden">
+          <div className="px-4 py-3 border-b dark:border-gray-700 flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Audit Log</h3>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                {auditTotal} email{auditTotal === 1 ? "" : "s"} sent from this sequence — newest first
+              </p>
+            </div>
+            {auditTotal > 50 && (
+              <div className="flex items-center gap-1 text-xs">
+                <button
+                  disabled={auditPage <= 1}
+                  onClick={() => setAuditPage((p) => Math.max(1, p - 1))}
+                  className="px-2 py-1 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-40"
+                >
+                  Prev
+                </button>
+                <span className="text-gray-500 dark:text-gray-400 px-1">
+                  Page {auditPage} of {Math.ceil(auditTotal / 50)}
+                </span>
+                <button
+                  disabled={auditPage >= Math.ceil(auditTotal / 50)}
+                  onClick={() => setAuditPage((p) => p + 1)}
+                  className="px-2 py-1 rounded border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-40"
+                >
+                  Next
+                </button>
+              </div>
+            )}
+          </div>
+          {auditLoading ? (
+            <p className="p-6 text-sm text-gray-400">Loading…</p>
+          ) : auditRows.length === 0 ? (
+            <p className="p-6 text-sm text-gray-400">No emails have been sent from this sequence yet.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50 dark:bg-gray-900/50 border-b dark:border-gray-700">
+                  <tr>
+                    <th className="text-left px-4 py-2 text-[10px] font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">When</th>
+                    <th className="text-left px-4 py-2 text-[10px] font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Recipient</th>
+                    <th className="text-left px-4 py-2 text-[10px] font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Step</th>
+                    <th className="text-left px-4 py-2 text-[10px] font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Template</th>
+                    <th className="text-left px-4 py-2 text-[10px] font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Status</th>
+                    <th className="text-left px-4 py-2 text-[10px] font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">Engagement</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                  {auditRows.map((row) => {
+                    const sent = new Date(row.createdAt);
+                    return (
+                      <tr key={row.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                        <td className="px-4 py-2 align-top">
+                          <div className="text-xs text-gray-900 dark:text-white whitespace-nowrap">{sent.toLocaleDateString()}</div>
+                          <div className="text-[10px] text-gray-500 dark:text-gray-400 whitespace-nowrap">{sent.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" })}</div>
+                        </td>
+                        <td className="px-4 py-2 align-top">
+                          <button
+                            type="button"
+                            onClick={() => router.push(`/leads/${row.lead.id}`)}
+                            className="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline text-left"
+                          >
+                            {row.lead.customerName}
+                          </button>
+                          <div className="text-[10px] text-gray-500 dark:text-gray-400">{row.lead.customerEmail}</div>
+                        </td>
+                        <td className="px-4 py-2 align-top text-xs text-gray-700 dark:text-gray-300">
+                          {row.enrollmentStep !== null ? `#${row.enrollmentStep}` : "—"}
+                        </td>
+                        <td className="px-4 py-2 align-top">
+                          <div className="text-xs text-gray-900 dark:text-white">{row.template?.title || "(no template)"}</div>
+                          <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[280px]" title={row.subject}>{row.subject}</div>
+                        </td>
+                        <td className="px-4 py-2 align-top">
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium ${row.status === "FAILED" ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"}`}>
+                            {row.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 align-top">
+                          <div className="flex flex-wrap gap-1">
+                            {row.openedAt && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" title={`Opened ${new Date(row.openedAt).toLocaleString()}`}>
+                                Opened
+                              </span>
+                            )}
+                            {row.clickedAt && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" title={`Clicked ${new Date(row.clickedAt).toLocaleString()}`}>
+                                Clicked
+                              </span>
+                            )}
+                            {!row.openedAt && !row.clickedAt && (
+                              <span className="text-[10px] text-gray-400">—</span>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Flowchart Tab — read-only visual of the sequence ── */}
+      {tab === "flowchart" && (
+        <SequenceFlowchart steps={steps} exitConditions={sequence?.exitConditions || []} />
+      )}
+
       {/* Template Preview Modal */}
       {previewTemplate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -648,6 +781,118 @@ export default function SequenceDetailPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Read-only flowchart view of a sequence.
+ *
+ * Plain vertical layout — start → step 1 → step 2 → … → end. Each step
+ * shows wait, template, and the branching condition. goToStepOrder is
+ * rendered as a labeled side branch arrow so the reader can trace
+ * conditional jumps without reading the code. exitOnCondition gets a
+ * red "exit if" badge on the step card.
+ *
+ * Intentionally not interactive (no zoom / drag) — that's what the
+ * AppFlow builder is for. This is a static read-only diagram you
+ * scroll through, optimized for legibility over interactivity.
+ */
+function SequenceFlowchart({
+  steps,
+  exitConditions,
+}: {
+  steps: Step[];
+  exitConditions: string[];
+}) {
+  if (steps.length === 0) {
+    return (
+      <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-10 text-center text-sm text-gray-500 dark:text-gray-400">
+        Add at least one step on the Steps tab to see the flowchart.
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl border dark:border-gray-700 p-6">
+      <div className="flex flex-col items-center">
+        {/* Start node */}
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-semibold uppercase tracking-wider">
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" /></svg>
+          Enrollment starts
+        </div>
+
+        {steps.map((step, i) => {
+          const goTo = step.goToStepOrder != null ? step.goToStepOrder : i + 2; // 1-based next step
+          const goToIsNext = goTo === i + 2;
+          const isLast = i === steps.length - 1;
+          return (
+            <div key={i} className="flex flex-col items-center w-full">
+              <FlowArrow label={`wait ${step.waitValue} ${step.waitUnit.toLowerCase()}`} />
+
+              <div className="w-full max-w-lg rounded-xl border-2 border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-900/20 p-4 shadow-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-full bg-indigo-600 text-white text-xs font-bold">{i + 1}</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">Step {i + 1}</span>
+                  </div>
+                  <span className="text-[10px] uppercase tracking-wider font-medium text-indigo-600 dark:text-indigo-400">
+                    {CONDITION_LABELS[step.condition]}
+                  </span>
+                </div>
+                <div className="text-sm text-gray-900 dark:text-white mb-1">
+                  📧 {step.template?.title || "(template not loaded)"}
+                </div>
+                {step.template?.subject && (
+                  <div className="text-[11px] text-gray-500 dark:text-gray-400 italic truncate">{step.template.subject}</div>
+                )}
+                {step.exitOnCondition && (
+                  <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300">
+                    Exit if {CONDITION_LABELS[step.exitOnCondition].toLowerCase()}
+                  </div>
+                )}
+                {!goToIsNext && goTo <= steps.length && (
+                  <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                    ↳ Then jump to Step {goTo}
+                  </div>
+                )}
+              </div>
+
+              {isLast && <FlowArrow />}
+            </div>
+          );
+        })}
+
+        {/* End node */}
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs font-semibold uppercase tracking-wider">
+          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="2" /></svg>
+          Sequence complete
+        </div>
+
+        {/* Sequence-level exit conditions */}
+        {exitConditions.length > 0 && (
+          <div className="mt-6 text-[11px] text-gray-500 dark:text-gray-400 italic">
+            Global exits: {exitConditions.map((c) => EXIT_LABELS[c] || c).join(", ")}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function FlowArrow({ label }: { label?: string }) {
+  return (
+    <div className="flex flex-col items-center py-2">
+      <div className="w-px h-4 bg-gray-300 dark:bg-gray-600" />
+      {label && (
+        <span className="text-[10px] text-gray-500 dark:text-gray-400 my-1 px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700">
+          {label}
+        </span>
+      )}
+      <div className="w-px h-4 bg-gray-300 dark:bg-gray-600" />
+      <svg className="w-3 h-3 text-gray-400 -mt-1" fill="currentColor" viewBox="0 0 12 12">
+        <path d="M6 12L0 4h12z" />
+      </svg>
     </div>
   );
 }
